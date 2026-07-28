@@ -28,11 +28,18 @@ class RagAskResponse(BaseModel):
 
     Matches the rag_example_app capability's Outputs/Mechanisms schema: an
     answer grounded in, and citing, the retrieved passages that informed it.
+
+    `status` distinguishes retrieval failure ("low_relevance") from grounding
+    failure ("unsupported"), and `cited_passages`/`unresolved_citations`
+    carry the audit behind that distinction so the client can report what was
+    actually cited rather than inferring grounding from a similarity score.
     """
 
     answer: str
     retrieved_passages: list[RetrievedPassageOut]
-    status: Literal["grounded", "low_relevance"]
+    status: Literal["grounded", "unsupported", "low_relevance"]
+    cited_passages: list[int] = []
+    unresolved_citations: list[int] = []
 
 
 class LlmAnswer(BaseModel):

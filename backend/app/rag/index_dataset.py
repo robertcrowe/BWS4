@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.config import get_settings
 from backend.app.db.models import DatasetEmbedding, TextRepresentation
 from backend.app.db.session import async_session_factory
-from backend.app.rag.chunking import Passage, chunk_document
+from backend.app.rag.chunking import Passage, chunk_document, embedding_text
 from backend.app.rag.dataset_loader import load_dataset_documents
 from backend.app.services.embedding import EMBEDDING_DIMENSIONS, embed_text
 
@@ -56,8 +56,10 @@ def build_embedded_passages() -> list[EmbeddedPassage]:
     embedded: list[EmbeddedPassage] = []
     for document in load_dataset_documents():
         for passage in chunk_document(document.title, document.text):
+            # embedding_text(), not text_excerpt: the vector needs the source
+            # title that the excerpt alone no longer carries.
             embedded.append(
-                EmbeddedPassage(passage=passage, embedding=embed_text(passage.text_excerpt))
+                EmbeddedPassage(passage=passage, embedding=embed_text(embedding_text(passage)))
             )
     return embedded
 

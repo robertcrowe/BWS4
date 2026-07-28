@@ -14,15 +14,11 @@ order) and asyncio.run() rather than pytest-asyncio.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncGenerator
 from datetime import timedelta
 
 import pytest
-from fastapi.testclient import TestClient
 
 from backend.app.db.models import UsageLimit
-from backend.app.db.session import get_db_session
-from backend.app.main import app
 from backend.app.services import shared
 
 
@@ -134,37 +130,6 @@ def test_a_missing_window_fails_closed_rather_than_clearing_the_counter() -> Non
 
     assert limit.used == 30
     assert limit.window_start == shared.utc_today(), "the window should be adopted, not the reset"
-
-
-def test_console_status_reports_zero_used_for_a_stale_window() -> None:
-    """The console must show today's budget, not a leftover total."""
-    yesterday = shared.utc_today() - timedelta(days=1)
-    stale = UsageLimit(capability="search", used=30, cap=30, window_start=yesterday)
-    fresh = UsageLimit(
-        capability="generation", used=4, cap=100, window_start=shared.utc_today()
-    )
-    session = _FakeSession(
-        queued_results=[
-            _FakeExecuteResult(all_rows=[fresh, stale]),
-            _FakeExecuteResult(all_rows=[]),
-        ]
-    )
-
-    async def _override_session() -> AsyncGenerator[_FakeSession, None]:
-        yield session
-
-    app.dependency_overrides[get_db_session] = _override_session
-    try:
-        with TestClient(app) as client:
-            response = client.get("/api/console/status")
-    finally:
-        app.dependency_overrides.clear()
-
-    assert response.status_code == 200
-    rows = {row["capability"]: row for row in response.json()["usage_limits"]}
-    assert rows["search"]["used"] == 0, "yesterday's exhausted counter is not today's usage"
-    assert rows["search"]["window_start"] == yesterday.isoformat()
-    assert rows["generation"]["used"] == 4
 
 
 def test_the_unavailable_message_tells_the_visitor_when_it_recovers() -> None:

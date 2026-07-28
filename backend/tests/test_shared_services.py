@@ -1,10 +1,6 @@
 # Built with Spec4 AI - https://spec4.ai
 import asyncio
-from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
 from unittest.mock import patch
-
-from fastapi.testclient import TestClient
 
 from backend.app.db.models import (
     LanguageGenerationRequest,
@@ -13,8 +9,6 @@ from backend.app.db.models import (
     TextRepresentation,
     UsageLimit,
 )
-from backend.app.db.session import get_db_session
-from backend.app.main import app
 from backend.app.services import shared
 
 
@@ -155,69 +149,3 @@ def test_generate_text_raises_service_unavailable_once_capability_cap_is_reached
     mocked_generate.assert_not_called()
     assert not any(isinstance(obj, LanguageGenerationRequest) for obj in session.added)
 
-
-def test_console_test_request_endpoint_returns_503_when_capability_cap_is_reached() -> None:
-    exhausted_limit = UsageLimit(capability="generation", used=1, cap=1)
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=exhausted_limit)])
-
-    async def _override_session() -> AsyncGenerator[_FakeSession, None]:
-        yield session
-
-    app.dependency_overrides[get_db_session] = _override_session
-    try:
-        with patch("backend.app.services.generation.generate_text") as mocked_generate:
-            with TestClient(app) as client:
-                response = client.post(
-                    "/api/console/test-request",
-                    json={"request_type": "generation", "request_payload": "Summarize BWS4."},
-                )
-    finally:
-        app.dependency_overrides.clear()
-
-    mocked_generate.assert_not_called()
-    assert response.status_code == 503
-    body = response.json()
-    assert body["status"] == "error"
-    assert "generation" in body["detail"]
-
-
-def test_console_status_endpoint_returns_usage_limits_and_log_entries() -> None:
-    usage_row = UsageLimit(
-        capability="generation", used=3, cap=100, window_start=shared.utc_today()
-    )
-    log_row = ServiceLogEntry(
-        app_name="RAG Example App",
-        capability="generation",
-        summary="Generated a grounded RAG answer",
-        timestamp=datetime.now(timezone.utc),
-    )
-    session = _FakeSession(
-        queued_results=[
-            _FakeExecuteResult(all_rows=[usage_row]),
-            _FakeExecuteResult(all_rows=[log_row]),
-        ]
-    )
-
-    async def _override_session() -> AsyncGenerator[_FakeSession, None]:
-        yield session
-
-    app.dependency_overrides[get_db_session] = _override_session
-    try:
-        with TestClient(app) as client:
-            response = client.get("/api/console/status")
-    finally:
-        app.dependency_overrides.clear()
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["usage_limits"] == [
-        {
-            "capability": "generation",
-            "used": 3,
-            "cap": 100,
-            "window_start": shared.utc_today().isoformat(),
-        }
-    ]
-    assert len(body["log_entries"]) == 1
-    assert body["log_entries"][0]["app_name"] == "RAG Example App"
-    assert body["log_entries"][0]["capability"] == "generation"

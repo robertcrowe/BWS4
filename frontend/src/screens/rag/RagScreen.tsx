@@ -1,6 +1,7 @@
 // Built with Spec4 AI - https://spec4.ai
 import { RagApp } from '../../apps/rag/RagApp'
 import { LayoutShell } from '../../components/LayoutShell'
+import { PatternSummary } from '../../components/PatternSummary'
 
 /**
  * screen-rag: the RAG example app's route-level screen, framing the app in
@@ -20,11 +21,12 @@ export function RagScreen() {
           </span>
         </div>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">RAG Example App</h1>
-        <p className="mt-2 max-w-2xl text-sm text-gray-600 dark:text-gray-400">
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           Ask a question and watch BWS4 retrieve supporting passages from a small public dataset,
           then generate an answer grounded in what it found. Both the retrieved passages and the
           generated answer are shown, so the retrieval → generation chain stays visible.
         </p>
+        <PatternSummary appId="rag_example_app" />
       </div>
 
       <div className="mt-6">

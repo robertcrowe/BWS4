@@ -6,10 +6,23 @@ export interface RetrievedPassage {
   similarity_score: number
 }
 
+/**
+ * `low_relevance` means retrieval never cleared the similarity threshold, so
+ * no answer was generated. `grounded` and `unsupported` both mean the model
+ * ran: they differ in whether its answer cited any retrieved passage. The
+ * backend audits the answer's `[N]` markers to decide, so this is a property
+ * of the answer rather than a restatement of the similarity score.
+ */
+export type RagStatus = 'grounded' | 'unsupported' | 'low_relevance'
+
 export interface AskRagResponse {
   answer: string
   retrieved_passages: RetrievedPassage[]
-  status: 'grounded' | 'low_relevance'
+  status: RagStatus
+  /** 1-based positions in `retrieved_passages` the answer actually cites. */
+  cited_passages: number[]
+  /** Citation markers in the answer that match no retrieved passage. */
+  unresolved_citations: number[]
 }
 
 export interface DatasetDocument {

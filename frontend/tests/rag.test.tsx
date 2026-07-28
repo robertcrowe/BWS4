@@ -54,6 +54,8 @@ describe('RagApp', () => {
         },
       ],
       status: 'grounded',
+      cited_passages: [1],
+      unresolved_citations: [],
     })
 
     renderRagApp()
@@ -61,7 +63,8 @@ describe('RagApp', () => {
 
     expect(await screen.findByText('Voyager 1 launched in 1977 [1].')).toBeInTheDocument()
     expect(screen.getByText(/match score: 0\.82/)).toBeInTheDocument()
-    expect(screen.getByText(/Grounded in 1 retrieved passage/)).toBeInTheDocument()
+    expect(screen.getByText(/Grounded in 1 of 1 retrieved passage/)).toBeInTheDocument()
+    expect(screen.getByText('cited')).toBeInTheDocument()
   })
 
   it('renders the graceful no-strong-match message instead of a fabricated answer', async () => {
@@ -69,6 +72,8 @@ describe('RagApp', () => {
       answer: 'No strong match found in this dataset for that question.',
       retrieved_passages: [],
       status: 'low_relevance',
+      cited_passages: [],
+      unresolved_citations: [],
     })
 
     renderRagApp()
@@ -76,5 +81,55 @@ describe('RagApp', () => {
 
     expect(await screen.findByText(/no strong match found in this dataset/i)).toBeInTheDocument()
     expect(screen.getByText(/low confidence/i)).toBeInTheDocument()
+  })
+
+  it('does not claim grounding when passages scored well but the answer cites none', async () => {
+    // The case the similarity score alone cannot catch: an on-topic question
+    // the dataset does not answer. The passage scores 0.46, comfortably above
+    // the threshold, so the old badge called this grounded.
+    mockedAskRag.mockResolvedValue({
+      answer: 'These passages do not say who the first woman in space was.',
+      retrieved_passages: [
+        {
+          passage_id: 'yuri-gagarin-1',
+          source_title: 'Yuri Gagarin',
+          text_excerpt: 'Yuri Gagarin became the first human to journey into outer space.',
+          similarity_score: 0.46,
+        },
+      ],
+      status: 'unsupported',
+      cited_passages: [],
+      unresolved_citations: [],
+    })
+
+    renderRagApp()
+    await submitQuestion('Who was the first woman in space?')
+
+    expect(await screen.findByText(/answer cites no retrieved passage/i)).toBeInTheDocument()
+    expect(screen.queryByText(/^Grounded in/)).not.toBeInTheDocument()
+    expect(screen.getByText('retrieved, not cited')).toBeInTheDocument()
+  })
+
+  it('flags a citation that matches no retrieved passage', async () => {
+    mockedAskRag.mockResolvedValue({
+      answer: 'Voyager 1 launched in 1977 [4].',
+      retrieved_passages: [
+        {
+          passage_id: 'voyager-1-1',
+          source_title: 'Voyager 1',
+          text_excerpt: 'Voyager 1 launched on September 5, 1977.',
+          similarity_score: 0.82,
+        },
+      ],
+      status: 'unsupported',
+      cited_passages: [],
+      unresolved_citations: [4],
+    })
+
+    renderRagApp()
+    await submitQuestion('When did Voyager 1 launch?')
+
+    expect(await screen.findByText(/invented by the model/i)).toBeInTheDocument()
+    expect(screen.getByText(/\[4\], which/)).toBeInTheDocument()
   })
 })

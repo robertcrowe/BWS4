@@ -13,7 +13,9 @@ from backend.app.rag.retriever import RetrievedPassage
 from backend.app.rag.schemas import LlmAnswer
 from backend.app.services.generation import GenerationServiceError, generate_text
 
-PROMPT_VERSION = "answer_v1"
+#: v2 adds the "no citation markers when declining" rule that citations.py's
+#: audit depends on to tell a grounded answer from a refusal.
+PROMPT_VERSION = "answer_v2"
 
 _SYSTEM_PROMPT = (
     "You are a careful, grounded question-answering assistant. Follow the "

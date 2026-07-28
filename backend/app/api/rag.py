@@ -91,6 +91,8 @@ async def ask(
         "rag_ask_succeeded",
         status=result.status,
         passage_count=len(result.retrieved_passages),
+        cited_passages=result.cited_passages,
+        unresolved_citations=result.unresolved_citations,
     )
 
     response = RagAskResponse(
@@ -99,5 +101,7 @@ async def ask(
             RetrievedPassageOut(**vars(p)) for p in result.retrieved_passages
         ],
         status=result.status,
+        cited_passages=result.cited_passages,
+        unresolved_citations=result.unresolved_citations,
     )
     return JSONResponse(status_code=200, content=response.model_dump())

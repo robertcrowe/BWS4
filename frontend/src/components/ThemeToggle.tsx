@@ -3,8 +3,8 @@ import { useTheme } from '../useTheme'
 
 /**
  * Header control that flips the app between light and dark mode. Rendered in
- * the shared NavBar, so it reaches the landing, RAG, tool-use, and console
- * screens identically; the choice persists in localStorage.
+ * the shared NavBar, so it reaches the landing, RAG, and tool-use screens
+ * identically; the choice persists in localStorage.
  */
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme()

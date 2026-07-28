@@ -1,6 +1,7 @@
 // Built with Spec4 AI - https://spec4.ai
 import { ToolUseApp } from '../../apps/tooluse/ToolUseApp'
 import { LayoutShell } from '../../components/LayoutShell'
+import { PatternSummary } from '../../components/PatternSummary'
 
 /**
  * screen-tooluse: the tool-use example app's route-level screen, framing the
@@ -20,12 +21,13 @@ export function ToolUseScreen() {
           </span>
         </div>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Tool-Use Example App</h1>
-        <p className="mt-2 max-w-2xl text-sm text-gray-600 dark:text-gray-400">
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           The model is handed a <code className="font-mono">web_search</code> tool schema and runs
           a real function-calling loop: it decides whether the tool is needed, writes its own
           search query, reads the results, and may search again before answering. Every step below
           is what the model actually did — nothing is scripted.
         </p>
+        <PatternSummary appId="tool_use_integration" />
       </div>
 
       <div className="mt-6">

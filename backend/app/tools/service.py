@@ -158,7 +158,7 @@ async def run_search(session: AsyncSession, search_query: str) -> AgentSearchRun
 
 
 async def _log_failure(session: AsyncSession, search_query: str, reason: str) -> None:
-    """Record a failed invocation on the console's cross-app request log.
+    """Record a failed invocation on the shared cross-app request log.
 
     Args:
         session: An async SQLAlchemy session to write through.

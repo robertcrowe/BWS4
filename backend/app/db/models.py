@@ -140,8 +140,10 @@ class ServiceLogEntry(Base):
     """One cross-app record of a shared-service invocation (ServiceLogEntry).
 
     Maps to the stack spec's `service_log_entries` collection: written on
-    every generation, representation, or storage call so the framework
-    services console can show a live cross-app request log.
+    every generation, representation, or storage call, giving one operator-
+    facing audit trail across every app. Read via the database directly --
+    the maintainer console that used to surface these was removed, since it
+    was a public, unauthenticated page and demonstrated no Spec4 pattern.
     """
 
     __tablename__ = "service_log_entries"

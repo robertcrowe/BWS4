@@ -3,12 +3,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.rag.answer import generate_answer
+from backend.app.rag.citations import audit_citations
 from backend.app.rag.retriever import (
     SIMILARITY_THRESHOLD,
     RetrievedPassage,
@@ -35,11 +36,29 @@ class RagServiceError(Exception):
 
 @dataclass(frozen=True)
 class AnswerResult:
-    """The outcome of answering one question, ready for the API response."""
+    """The outcome of answering one question, ready for the API response.
+
+    Attributes:
+        answer: The answer text shown to the visitor.
+        retrieved_passages: The retriever's top-N passages, in rank order.
+        status: "low_relevance" when retrieval never cleared the similarity
+            threshold (no generation was attempted), "grounded" when the model
+            answered and cited at least one retrieved passage, "unsupported"
+            when it answered but cited none of them. The last case is not an
+            error -- it is usually the model correctly reporting that the
+            passages don't answer the question -- but it must not be presented
+            as a grounded answer.
+        cited_passages: 1-based positions in `retrieved_passages` that the
+            answer actually cites.
+        unresolved_citations: Citation markers in the answer that point at no
+            retrieved passage at all.
+    """
 
     answer: str
     retrieved_passages: list[RetrievedPassage]
-    status: Literal["grounded", "low_relevance"]
+    status: Literal["grounded", "unsupported", "low_relevance"]
+    cited_passages: list[int] = field(default_factory=list)
+    unresolved_citations: list[int] = field(default_factory=list)
 
 
 async def answer_question(session: AsyncSession, question: str) -> AnswerResult:
@@ -90,7 +109,10 @@ async def answer_question(session: AsyncSession, question: str) -> AnswerResult:
 
     result = build_answer(question, passages)
 
-    if result.status == "grounded":
+    # Anything that isn't "low_relevance" reached the model, so it must be
+    # recorded as a generation regardless of how the citation audit went --
+    # an uncited answer costs exactly as much quota as a cited one.
+    if result.status != "low_relevance":
         await shared.record_generation_request(
             session,
             app_name=RAG_APP_NAME,
@@ -101,7 +123,10 @@ async def answer_question(session: AsyncSession, question: str) -> AnswerResult:
             session,
             app_name=RAG_APP_NAME,
             capability=shared.CAPABILITY_GENERATION,
-            summary="Generated a grounded RAG answer",
+            summary=(
+                f"Generated a RAG answer ({result.status}), citing "
+                f"{len(result.cited_passages)} of {len(result.retrieved_passages)} passage(s)"
+            ),
         )
 
     return result
@@ -114,13 +139,22 @@ def build_answer(question: str, passages: list[RetrievedPassage]) -> AnswerResul
     answer from weak or absent passages would contradict the rag_example_app
     specification's below-threshold failure-mode mitigation.
 
+    Above the threshold, the generated answer's citations are audited before
+    the result claims to be grounded. The threshold alone can't support that
+    claim: it rejects only questions with little *lexical* overlap with the
+    dataset, so an on-topic question the dataset simply cannot answer (asking
+    about the first woman in space, when the dataset covers Gagarin) clears it
+    comfortably. Whether the model then cited a real passage is the closest
+    checkable proxy for grounding available without a second model call.
+
     Args:
         question: The visitor's natural-language question.
         passages: The retriever's top-N passages for this question.
 
     Returns:
         A "low_relevance" result with a graceful message when no passage
-        clears SIMILARITY_THRESHOLD, otherwise a "grounded" generated result.
+        clears SIMILARITY_THRESHOLD, otherwise a generated result marked
+        "grounded" or "unsupported" according to its citations.
 
     Raises:
         RagServiceError: If generation is attempted but the shared
@@ -138,4 +172,11 @@ def build_answer(question: str, passages: list[RetrievedPassage]) -> AnswerResul
     except GenerationServiceError as exc:
         raise RagServiceError(str(exc)) from exc
 
-    return AnswerResult(answer=answer_text, retrieved_passages=passages, status="grounded")
+    audit = audit_citations(answer_text, len(passages))
+    return AnswerResult(
+        answer=answer_text,
+        retrieved_passages=passages,
+        status="grounded" if audit.is_grounded else "unsupported",
+        cited_passages=audit.cited,
+        unresolved_citations=audit.unresolved,
+    )

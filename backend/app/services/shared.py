@@ -135,7 +135,7 @@ async def reserve_capability(session: AsyncSession, capability: str, *, app_name
 async def log_invocation(
     session: AsyncSession, *, app_name: str, capability: str, summary: str
 ) -> None:
-    """Record one cross-app ServiceLogEntry row for the console's request log.
+    """Record one cross-app ServiceLogEntry row in the shared request log.
 
     Args:
         session: An async SQLAlchemy session to write through.

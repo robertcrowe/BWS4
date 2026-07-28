@@ -10,9 +10,6 @@ import { exampleApps } from '../../data/example-apps'
  * with Spec4, and lists every example app currently available to explore.
  */
 export function LandingScreen() {
-  const visitorApps = exampleApps.filter((app) => app.audience !== 'maintainer')
-  const maintainerApps = exampleApps.filter((app) => app.audience === 'maintainer')
-
   return (
     <LayoutShell>
       <section className="py-8 text-center">
@@ -37,34 +34,18 @@ export function LandingScreen() {
           </span>
         </div>
 
-        {visitorApps.length === 0 ? (
+        {exampleApps.length === 0 ? (
           <p className="py-10 text-center text-sm text-gray-500">
             No example apps are available yet — check back soon.
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {visitorApps.map((app) => (
+            {exampleApps.map((app) => (
               <ExampleAppCard key={app.id} app={app} />
             ))}
           </div>
         )}
       </section>
-
-      {maintainerApps.length > 0 && (
-        <section className="mt-10">
-          <div className="mb-4 flex items-baseline justify-between">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Maintainer Tools</h2>
-            <span className="font-mono text-xs text-gray-500">
-              behind-the-scenes surfaces, not part of the visitor-facing gallery
-            </span>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {maintainerApps.map((app) => (
-              <ExampleAppCard key={app.id} app={app} />
-            ))}
-          </div>
-        </section>
-      )}
     </LayoutShell>
   )
 }

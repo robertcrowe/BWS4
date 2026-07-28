@@ -11,7 +11,7 @@ The gallery is designed to grow. New example apps can be added over time without
 - **Landing page & example app directory** — a consistent entry point listing every example app in the gallery, with a uniform look, feel, and navigation pattern across all of them.
 - **RAG example app** — a full retrieval-augmented generation pipeline: a curated reference dataset is chunked, embedded, and indexed; user questions are answered by retrieving the most relevant passages and grounding a generated response in them.
 - **Tool-use example app** — a live web-search integration (via Exa) demonstrating how an LLM can call out to an external tool mid-conversation to answer questions beyond its own knowledge.
-- **Shared framework services** — common generation, representation, and storage capabilities (including a small internal storage console) reused across example apps, so each new pattern only needs to add what's unique to it.
+- **Shared framework services** — common generation, representation, and storage capabilities reused across example apps, so each new pattern only needs to add what's unique to it.
 - **Route-based code-splitting** — each example app is lazy-loaded independently, keeping the initial page load light as the gallery grows.
 - **Light/dark theming** — a visitor's theme preference is remembered locally across visits.
 - **Built-in observability** — optional, zero-config error tracking and model-call observability that no-ops cleanly when not configured, so the project runs the same whether or not monitoring is wired up.
@@ -38,9 +38,11 @@ The gallery is designed to grow. New example apps can be added over time without
 - Browser `localStorage` — theme preference only, not a source of truth
 
 **Retrieval & indexing**
-- A hand-rolled paragraph/fixed-window chunking pipeline (kept intentionally simple and transparent for teaching purposes)
+- A hand-rolled sentence-aligned chunking pipeline with overlapping windows (kept intentionally simple and transparent for teaching purposes)
+- Each passage is embedded with its source title prepended, so a chunk that says "It launched in 1977" is still reachable by a question naming Voyager
 - Embeddings written to and read from a `dataset_embeddings` table
 - Retrieval via SQLAlchemy queries using pgvector's cosine-distance operator
+- Generated answers are audited against the passages they cite, so a response is only reported as grounded when it actually cites one
 
 **Observability**
 - Sentry (frontend and backend error tracking, and performance spans around LLM calls)
@@ -128,7 +130,7 @@ npm run test --prefix frontend
 ### Using the app
 
 - Open the landing page to see every available example app.
-- Select **RAG** to ask questions against the curated reference dataset — the app retrieves relevant passages and generates a grounded answer.
+- Select **RAG** to ask questions against the curated reference dataset — the app retrieves relevant passages and generates an answer from them, showing every passage it retrieved and marking which ones the answer actually cited. Two different failure modes are worth trying: `What's the best pizza topping?` is rejected by the retriever before any model runs, while `Who was the first woman in space?` scores *above* the similarity threshold on the dataset's Gagarin passages and is caught only by the citation audit — a reminder that a good similarity score is not evidence the dataset contains the answer.
 - Select **Tool-Use** to watch a real function-calling loop. The model is given a `web_search` tool schema and decides for itself whether to call it, writes its own search query, reads the results, and may search again before answering. The trace shown under each run is what the model actually did — including choosing *not* to search, which you can see by asking it something like `What is 17 times 24?`.
 - Toggle light/dark mode from the header; your preference is remembered on your device.
 
@@ -155,14 +157,16 @@ platform's secrets manager.
 | `STORAGE_DAILY_LIMIT` | — | Daily cap on storage calls (default 300). |
 | `SEARCH_DAILY_LIMIT` | — | Daily cap on Exa search calls (default 30). One tool-use request may run up to 3 searches, so 30 is a floor of ~10 agent runs per day. |
 
-All four caps are **per UTC day** and reset at 00:00 UTC — `usage_limits.window_start`
-records the day each counter belongs to, and the counter rolls over on the first
-reservation of a new day. No cron job or manual intervention is involved. The
-`/console` screen shows each capability's current window alongside its counter.
 | `SENTRY_DSN` | — | Optional error tracking. **Unset → Sentry is never initialized** and the app runs normally. |
 | `SENTRY_ENVIRONMENT` | — | Environment tag on Sentry events (default `development`). |
 | `HF_HOME` | — | Where the sentence-transformers model is cached. Set on Render so the build-time download survives into the running service; unset locally, where it defaults to `~/.cache/huggingface`. |
 | `HF_TOKEN` | — | Optional. Raises Hugging Face's anonymous download rate limit. The embedding model is public, so no token is needed to fetch it. |
+
+All four caps are **per UTC day** and reset at 00:00 UTC — `usage_limits.window_start`
+records the day each counter belongs to, and the counter rolls over on the first
+reservation of a new day. No cron job or manual intervention is involved. There is
+no in-app surface for these counters; query `usage_limits` and `service_log_entries`
+directly when you need to see them.
 
 The four required variables fail fast at startup with a descriptive error if missing.
 
@@ -270,5 +274,25 @@ Other deployment notes:
 
 - **Playwright** — end-to-end browser testing is planned but not yet part of this project's test suite or CI pipeline.
 - Additional example apps demonstrating further AI patterns, added incrementally without affecting existing ones.
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for how the project is
+governed, how to set up a development environment, and the conventions a pull request is
+expected to follow. All contributors agree to the
+[Contributor License Agreement](CLA.md); for individuals this is handled automatically on
+your first pull request.
+
+## License
+
+The code in this repository is licensed under the **Apache License 2.0** — see
+[LICENSE](LICENSE).
+
+The RAG reference dataset under `backend/app/rag/dataset/` is **not** covered by that
+license. Those documents are adapted from Wikipedia and are licensed under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); each file records its own
+source and license. CC BY-SA is a share-alike license, so anything you redistribute that
+incorporates that text carries the same obligation. Keep the attribution lines intact, and
+add them to any document you contribute to the dataset.
 
 [Built with Spec4 AI](https://spec4.ai)
