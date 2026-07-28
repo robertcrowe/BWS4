@@ -1,0 +1,94 @@
+# Built with Spec4 AI - https://spec4.ai
+"""Async Exa Search API client, per Exa's documented REST search endpoint."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import httpx
+
+from backend.app.core.config import get_settings
+
+EXA_SEARCH_URL = "https://api.exa.ai/search"
+REQUEST_TIMEOUT_SECONDS = 15
+NUM_RESULTS = 5
+
+_RATE_LIMIT_STATUS_CODES = {402, 429}
+
+
+@dataclass(frozen=True)
+class ExaResult:
+    """One result item from the Exa Search API, as needed by tool_use_integration."""
+
+    title: str
+    summary: str
+    source: str
+
+
+class ExaClientError(Exception):
+    """Raised when the Exa Search API call fails for a non-rate-limit reason."""
+
+
+class ExaRateLimitError(Exception):
+    """Raised when Exa rejects the request for hitting its rate/usage limit."""
+
+
+async def search(query: str) -> list[ExaResult]:
+    """Call Exa's Search API and return ranked results.
+
+    Google-style docstring per project convention.
+
+    Args:
+        query: The search query text.
+
+    Returns:
+        Up to NUM_RESULTS results, in the order Exa ranked them.
+
+    Raises:
+        ExaRateLimitError: If Exa responds with a rate-limit/usage-limit
+            status (402 or 429).
+        ExaClientError: If the request fails for any other reason, or Exa
+            returns a response that can't be parsed into results.
+    """
+    settings = get_settings()
+
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:
+        try:
+            response = await client.post(
+                EXA_SEARCH_URL,
+                headers={
+                    "x-api-key": settings.exa_api_key,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "query": query,
+                    "numResults": NUM_RESULTS,
+                    "contents": {"summary": True},
+                },
+            )
+        except httpx.HTTPError as exc:
+            raise ExaClientError(str(exc)) from exc
+
+    if response.status_code in _RATE_LIMIT_STATUS_CODES:
+        raise ExaRateLimitError(
+            f"Exa Search API rejected the request with status {response.status_code}"
+        )
+    if response.is_error:
+        raise ExaClientError(
+            f"Exa Search API request failed with status {response.status_code}: {response.text}"
+        )
+
+    try:
+        payload = response.json()
+        raw_results = payload["results"]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise ExaClientError("Exa Search API returned an unparseable response") from exc
+
+    return [
+        ExaResult(
+            title=item.get("title") or "Untitled result",
+            summary=item.get("summary") or "",
+            source=item.get("url", ""),
+        )
+        for item in raw_results
+    ]

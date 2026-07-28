@@ -1,0 +1,86 @@
+{
+  "vision_statement": {
+    "name": "Built with Spec4 (BWS4)",
+    "vision": {
+      "purpose": "BWS4 is an **overall framework and collection of example apps** designed to **demonstrate and teach the capabilities of Spec4** for building agentic applications. It helps developers understand different agentic patterns and styles concretely, through a unified set of illustrative example apps built with Spec4 itself.",
+      "ui_surface": "Web app (browser-based) \u2014 one unified application presenting multiple example apps",
+      "target_audience": [
+        "Developers evaluating Spec4 for their own projects (primary)",
+        "Developers learning agentic AI patterns generally (primary)",
+        "The Spec4 team/maintainers, as a showcase for Spec4 itself (secondary)",
+        "Educators/students learning about agentic AI (secondary, possible)"
+      ],
+      "key_features_mvp": [
+        {
+          "Landing_Page": {
+            "description": "Introduces BWS4, explains that it and all example apps were built using Spec4, and lists the available example apps for users to explore.",
+            "example": "A single landing page acts as the entry point to all example apps within the unified BWS4 application.",
+            "id": "landing_page"
+          }
+        },
+        {
+          "RAG_Example_App": {
+            "description": "A single example app illustrating the Retrieval-Augmented Generation (RAG) pattern, using a small, publicly downloadable dataset. Designed to be illustrative and educational rather than practically useful for a specific task.",
+            "example": "Demonstrates how retrieval and generation combine in an agentic workflow, using a small public dataset.",
+            "id": "rag_example_app"
+          }
+        },
+        {
+          "Shared_Framework_Services": {
+            "description": "Core services shared across all example apps, including LLM model/provider access (via LiteLLM and OpenRouter free models), a small local embedding model, and a small local database.",
+            "example": "Each example app draws on the same underlying LLM access, embedding, and database services rather than reimplementing them.",
+            "id": "shared_framework_services"
+          }
+        },
+        {
+          "Tool_Use_Integration": {
+            "description": "Example apps requiring tool use integrate with the free Exa search API.",
+            "example": "A tool-use example app calls Exa's free search API to retrieve real-time information.",
+            "id": "tool_use_integration"
+          }
+        }
+      ],
+      "differentiators": [
+        "Built entirely with Spec4 itself \u2014 BWS4 is a living, dogfooding demonstration of the tool it promotes, not just documentation or tutorials about it."
+      ],
+      "monetization": {
+        "current": "Free, non-monetized project \u2014 exists purely for education and demonstration purposes.",
+        "future_options": []
+      },
+      "future_enhancements": [
+        {
+          "Additional_Example_Apps": {
+            "description": "Expand the collection of example apps to cover additional agentic patterns and styles beyond the initial RAG example.",
+            "example": "Human-in-the-loop, MCP, parallel fanout, reflection, retrieval reranking, structured outputs, embeddings, single call, tool agent, chained calls, planning agent, orchestrated subagents, multi-agent collaboration."
+          }
+        }
+      ],
+      "constraints": [
+        "Must be designed to be hosted on the Render free tier.",
+        "Must use LiteLLM to access only free LLMs provided by OpenRouter."
+      ],
+      "references": [
+        {
+          "standard": "LiteLLM",
+          "url": "https://docs.litellm.ai/docs"
+        },
+        {
+          "standard": "OpenRouter",
+          "url": "https://openrouter.ai/docs"
+        },
+        {
+          "standard": "Render",
+          "url": "https://render.com/docs"
+        },
+        {
+          "standard": "Exa Search API",
+          "url": "https://exa.ai/docs/reference/search-api-guide"
+        },
+        {
+          "standard": "Model Context Protocol (MCP)",
+          "url": "https://modelcontextprotocol.io/"
+        }
+      ]
+    }
+  }
+}

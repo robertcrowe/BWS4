@@ -1,0 +1,334 @@
+{
+  "entities": [
+    {
+      "name": "ExampleApp",
+      "fields": [
+        "name",
+        "description",
+        "patternTag",
+        "status",
+        "route"
+      ]
+    },
+    {
+      "name": "Dataset",
+      "fields": [
+        "name",
+        "sourceLabel",
+        "documents"
+      ]
+    },
+    {
+      "name": "Question",
+      "fields": [
+        "text",
+        "submittedAt"
+      ]
+    },
+    {
+      "name": "RetrievedPassage",
+      "fields": [
+        "title",
+        "source",
+        "excerpt",
+        "relevanceScore"
+      ]
+    },
+    {
+      "name": "Answer",
+      "fields": [
+        "text",
+        "groundedIn",
+        "confidence"
+      ]
+    },
+    {
+      "name": "LanguageGenerationRequest",
+      "fields": [
+        "prompt",
+        "requestingApp",
+        "status"
+      ]
+    },
+    {
+      "name": "TextRepresentation",
+      "fields": [
+        "sourceText",
+        "vectorPreview",
+        "dimensions"
+      ]
+    },
+    {
+      "name": "StoredRecord",
+      "fields": [
+        "key",
+        "value",
+        "writtenBy",
+        "timestamp"
+      ]
+    },
+    {
+      "name": "SearchQuery",
+      "fields": [
+        "text",
+        "submittedAt"
+      ]
+    },
+    {
+      "name": "SearchResult",
+      "fields": [
+        "title",
+        "summary",
+        "sourceLabel",
+        "rank"
+      ]
+    },
+    {
+      "name": "UsageLimit",
+      "fields": [
+        "capability",
+        "used",
+        "cap"
+      ]
+    },
+    {
+      "name": "ServiceLogEntry",
+      "fields": [
+        "timestamp",
+        "requestingApp",
+        "capability",
+        "summary"
+      ]
+    }
+  ],
+  "screens": [
+    {
+      "id": "screen-landing",
+      "audience": "Developers evaluating Spec4 / all visitors",
+      "purpose": "Orient a first-time visitor to what BWS4 is, confirm it is built with Spec4, and let them browse into any example app.",
+      "surfaces": [
+        "landing_hero_intro",
+        "example_app_directory"
+      ]
+    },
+    {
+      "id": "screen-rag",
+      "audience": "Developers learning agentic AI patterns",
+      "purpose": "Let a visitor submit a question and see the retrieval-augmented-generation pattern end to end, including the passages that grounded the answer.",
+      "surfaces": [
+        "rag_dataset_browser",
+        "rag_question_answer"
+      ]
+    },
+    {
+      "id": "screen-tooluse",
+      "audience": "Developers learning agentic AI patterns",
+      "purpose": "Show how an agent reaches out to an external search tool mid-response to incorporate up-to-date information.",
+      "surfaces": [
+        "tool_use_search_demo"
+      ]
+    },
+    {
+      "id": "screen-console",
+      "audience": "Spec4 team / maintainers (showcase)",
+      "purpose": "Expose the shared framework services (generation, representation, storage) that every example app relies on, with live usage limits and a cross-app request log, as a dogfooding showcase.",
+      "surfaces": [
+        "framework_services_console"
+      ]
+    }
+  ],
+  "surfaces": [
+    {
+      "name": "landing_hero_intro",
+      "kind": "non_ai",
+      "screen": "screen-landing",
+      "implements_features": [
+        "Landing_Page"
+      ],
+      "inputs": [],
+      "output": "Explanatory hero copy stating BWS4 is a framework + example apps built with Spec4 to teach agentic patterns",
+      "states": [
+        "idle"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "landing_page"
+      ]
+    },
+    {
+      "name": "example_app_directory",
+      "kind": "non_ai",
+      "screen": "screen-landing",
+      "implements_features": [
+        "Landing_Page"
+      ],
+      "inputs": [
+        "browse (click card)"
+      ],
+      "output": "Grid of ExampleApp cards (name, description, pattern tag, status) each navigating into its screen",
+      "states": [
+        "idle",
+        "empty"
+      ],
+      "reads": [
+        "ExampleApp"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "landing_page"
+      ]
+    },
+    {
+      "name": "rag_dataset_browser",
+      "kind": "non_ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "RAG_Example_App"
+      ],
+      "inputs": [
+        "toggle to expand/collapse each document"
+      ],
+      "output": "List of the small public reference Dataset's documents with title, source label and full text",
+      "states": [
+        "idle",
+        "expanded",
+        "collapsed"
+      ],
+      "reads": [
+        "Dataset"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "rag_question_answer",
+      "kind": "ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "rag_example_app"
+      ],
+      "affordance": "streaming (staged reveal: retrieving \u2192 grounding \u2192 answer) with confirmation of grounded sources",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "rag_example_app",
+      "inputs": [
+        "user_question (text input)",
+        "example question chips (quick-fill)"
+      ],
+      "output": "Generated Answer text nested with its RetrievedPassage citations, a relevance/confidence indicator, and a low-relevance warning banner when the dataset gap edge case is detected",
+      "states": [
+        "idle",
+        "retrieving",
+        "grounded-answer",
+        "low-relevance-edge-case",
+        "error-service-unavailable"
+      ],
+      "reads": [
+        "Dataset",
+        "Question"
+      ],
+      "writes": [
+        "Answer",
+        "RetrievedPassage",
+        "ServiceLogEntry",
+        "UsageLimit"
+      ],
+      "depends_on": [
+        "rag_dataset_browser"
+      ],
+      "catalog_surface_id": "rag_example_app",
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "tool_use_search_demo",
+      "kind": "non_ai",
+      "screen": "screen-tooluse",
+      "implements_features": [
+        "Tool_Use_Integration"
+      ],
+      "inputs": [
+        "search_query (text input)",
+        "example query chips (quick-fill)"
+      ],
+      "output": "Multi-step progress (parsing \u2192 calling search tool \u2192 synthesizing) nested with a routing indicator, the agent's synthesized answer, and the ranked list of SearchResults (title, summary, source)",
+      "states": [
+        "idle",
+        "step-parsing",
+        "step-searching",
+        "step-synthesizing",
+        "results",
+        "error-limit-reached"
+      ],
+      "reads": [
+        "SearchResult"
+      ],
+      "writes": [
+        "SearchQuery",
+        "ServiceLogEntry",
+        "UsageLimit"
+      ],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "tool_use_integration"
+      ]
+    },
+    {
+      "name": "framework_services_console",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [
+        "request_type (select: generation/representation/storage)",
+        "request_payload (textarea)",
+        "send button",
+        "simulate-limit-reached toggle"
+      ],
+      "output": "Simulated shared-service response (generated text / text representation / stored-record confirmation) nested with per-capability UsageLimit bars and a running cross-app ServiceLogEntry table",
+      "states": [
+        "idle",
+        "sending",
+        "response-generation",
+        "response-representation",
+        "response-storage",
+        "error-limit-exhausted",
+        "empty-log"
+      ],
+      "reads": [
+        "StoredRecord",
+        "UsageLimit",
+        "ServiceLogEntry"
+      ],
+      "writes": [
+        "LanguageGenerationRequest",
+        "TextRepresentation",
+        "StoredRecord",
+        "UsageLimit",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    }
+  ],
+  "shared_layout": {
+    "nav": "Fixed top navigation bar with gradient BWS4 wordmark, in-page links (Home, RAG Example, Tool-Use Example, Framework Console) that switch a single-page view, and a light/dark theme toggle",
+    "shell": [
+      "top nav bar",
+      "screen container (one active section at a time)",
+      "footer with Spec4 attribution note"
+    ]
+  }
+}

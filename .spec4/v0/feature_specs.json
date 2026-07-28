@@ -1,0 +1,217 @@
+{
+  "version": 1,
+  "features": [
+    {
+      "id": "landing_page",
+      "name": "Landing_Page",
+      "purpose": "Serves as the entry point to BWS4, explaining that the framework and all its example apps were built using Spec4, and directing visitors to the individual example apps.",
+      "invocation": {
+        "trigger": "A visitor opens the BWS4 application."
+      },
+      "inputs": [
+        {
+          "name": "example_app_directory",
+          "type": "list of items",
+          "description": "The set of available example apps, each with a name and short description, to present to the visitor.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "An introductory explanation of BWS4 and a browsable list of example apps",
+        "format": "structured page content",
+        "schema_notes": "Each listed app entry includes a name, a short description, and a way to navigate into it."
+      },
+      "success_criteria": [
+        "A first-time visitor can understand what BWS4 is and that it was built with Spec4 within a few seconds of arriving",
+        "Every currently available example app appears in the list and can be opened from it",
+        "Navigating into any listed app succeeds without error"
+      ],
+      "failure_modes": [
+        {
+          "mode": "The list of example apps is missing or outdated relative to what actually exists",
+          "likelihood": "medium",
+          "mitigation": "The listing is derived from the current set of available example apps rather than a hand-maintained copy."
+        },
+        {
+          "mode": "Explanatory text is unclear about the relationship between BWS4 and Spec4",
+          "likelihood": "low",
+          "mitigation": "Copy is reviewed to explicitly state that BWS4 and its examples were built with Spec4."
+        }
+      ],
+      "dependencies": [],
+      "entities": [
+        "ExampleApp"
+      ],
+      "references": []
+    },
+    {
+      "id": "rag_example_app",
+      "name": "RAG_Example_App",
+      "purpose": "Demonstrates the retrieval-augmented generation pattern in an educational way, letting a visitor see how a question is answered by combining a small public dataset with generated text.",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a question."
+      },
+      "inputs": [
+        {
+          "name": "user_question",
+          "type": "text",
+          "description": "The question the visitor wants answered using the example dataset.",
+          "required": true
+        },
+        {
+          "name": "reference_dataset",
+          "type": "collection of documents",
+          "description": "A small, publicly available set of documents used as the knowledge source for retrieval.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A generated answer grounded in passages retrieved from the reference dataset",
+        "format": "text with supporting excerpts",
+        "schema_notes": "Includes the generated answer plus the specific retrieved passages it drew from, so the pattern is visible to the visitor."
+      },
+      "success_criteria": [
+        "For questions covered by the dataset, the retrieved passages are topically relevant to the question",
+        "The generated answer visibly reflects the content of the retrieved passages rather than ignoring them",
+        "A visitor unfamiliar with retrieval-augmented generation can follow, from the output, how retrieval fed into the answer"
+      ],
+      "failure_modes": [
+        {
+          "mode": "Retrieved passages are irrelevant to the question asked",
+          "likelihood": "medium",
+          "mitigation": "The dataset is kept small and curated so relevant matches are more likely for typical example questions."
+        },
+        {
+          "mode": "The generated answer ignores the retrieved passages entirely",
+          "likelihood": "medium",
+          "mitigation": "The answer is structured to explicitly reference the retrieved content."
+        },
+        {
+          "mode": "Shared generation or embedding capability is unavailable when a question is submitted",
+          "likelihood": "low",
+          "mitigation": "A clear message is shown indicating the demonstration is temporarily unavailable."
+        }
+      ],
+      "dependencies": [
+        "landing_page",
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Dataset",
+        "Question",
+        "RetrievedPassage",
+        "Answer"
+      ],
+      "references": []
+    },
+    {
+      "id": "shared_framework_services",
+      "name": "Shared_Framework_Services",
+      "purpose": "Provides the common capabilities every example app relies on \u2014 generating text responses, producing compact representations of text for comparison, and keeping small amounts of data available across uses \u2014 so individual example apps don't each need their own version.",
+      "invocation": {
+        "trigger": "An example app requests text generation, text representation, or data storage/retrieval on behalf of a visitor's action."
+      },
+      "inputs": [
+        {
+          "name": "request_type",
+          "type": "text",
+          "description": "Which capability is being requested: text generation, text representation, or data storage/retrieval.",
+          "required": true
+        },
+        {
+          "name": "request_payload",
+          "type": "text or structured data",
+          "description": "The content needed to fulfill the request, such as a prompt, a piece of text to represent, or a record to store or fetch.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A response appropriate to the requested capability",
+        "format": "generated text, a compact text representation, or a stored/retrieved record",
+        "schema_notes": "Response shape is consistent across example apps regardless of which capability was invoked."
+      },
+      "success_criteria": [
+        "Any example app can obtain generated text, text representations, and stored data through the same consistent interface",
+        "Data written for later use remains available across separate visits or sessions",
+        "The service continues to respond, or degrades clearly and visibly, when usage limits are approached"
+      ],
+      "failure_modes": [
+        {
+          "mode": "Usage limits for text generation are exhausted",
+          "likelihood": "medium",
+          "mitigation": "Requests fail with a clear, visible message rather than silently hanging or returning wrong output."
+        },
+        {
+          "mode": "Stored data becomes unavailable or inconsistent between example apps",
+          "likelihood": "low",
+          "mitigation": "A single consistent storage capability is shared rather than each app managing its own."
+        },
+        {
+          "mode": "Behavior of the shared capability differs subtly between example apps",
+          "likelihood": "low",
+          "mitigation": "All example apps consume the same interface rather than app-specific variants."
+        }
+      ],
+      "dependencies": [],
+      "entities": [
+        "LanguageGenerationRequest",
+        "TextRepresentation",
+        "StoredRecord"
+      ],
+      "references": []
+    },
+    {
+      "id": "tool_use_integration",
+      "name": "Tool_Use_Integration",
+      "purpose": "Gives example apps that demonstrate tool-use patterns the ability to fetch external, up-to-date information via a search capability, illustrating how an agent can incorporate outside information into its responses.",
+      "invocation": {
+        "trigger": "An example app needing external information issues a search request on behalf of a visitor's action."
+      },
+      "inputs": [
+        {
+          "name": "search_query",
+          "type": "text",
+          "description": "The query describing what external information is needed.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A ranked list of relevant external results",
+        "format": "list of items",
+        "schema_notes": "Each result includes a title, a short summary, and an indication of its source, so the visitor can see where information came from."
+      },
+      "success_criteria": [
+        "Search requests return results relevant to the query for typical example scenarios",
+        "Requesting example apps can incorporate results into their own output smoothly",
+        "A visitor can clearly see that the answer involved an external tool lookup, illustrating the tool-use pattern"
+      ],
+      "failure_modes": [
+        {
+          "mode": "Search usage limits are reached",
+          "likelihood": "medium",
+          "mitigation": "The requesting example app shows a clear message that the tool is temporarily unavailable rather than failing silently."
+        },
+        {
+          "mode": "Returned results are irrelevant to the query",
+          "likelihood": "low",
+          "mitigation": "Example queries are chosen and, where needed, refined to demonstrate relevant results reliably."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "SearchQuery",
+        "SearchResult"
+      ],
+      "references": []
+    }
+  ],
+  "nfr_goals": [
+    "All example apps and shared capabilities operate within free, no-cost usage limits",
+    "Example app responses appear quickly enough to keep a demonstration engaging rather than feeling sluggish",
+    "New example apps can be added over time without disrupting the availability of existing ones",
+    "Visitors experience a consistent look, feel, and navigation pattern across all example apps",
+    "Each example app remains understandable as a teaching illustration even to visitors unfamiliar with the underlying pattern"
+  ]
+}

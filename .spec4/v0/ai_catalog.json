@@ -1,0 +1,12 @@
+{
+  "ai_catalog": [
+    {
+      "name": "rag_example_app",
+      "scope": "feature",
+      "rough_description": "Takes a natural-language question plus a small public dataset and produces a generated answer grounded in retrieved passages from that dataset, illustrating the RAG pattern end-to-end.",
+      "tier_recommendation": "single_call",
+      "tier_decision": "rag",
+      "tier_decision_rationale": "The whole point of this example is to illustrate the use of RAG, so the retrieval pipeline is intentional despite the small dataset size."
+    }
+  ]
+}

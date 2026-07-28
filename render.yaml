@@ -1,0 +1,94 @@
+# Built with Spec4 AI - https://spec4.ai
+#
+# Render blueprint for the two deployment targets in .spec4/v0/stack.json:
+#   web_client -> Render Static Site (CDN-served, no spin-down)
+#   api        -> Render free Web Service (Python 3.12, spins down after ~15 min idle)
+#
+# Both targets are HTTPS-only: Render terminates TLS and issues certificates for
+# every service, and the static site redirects HTTP to HTTPS by default. Secrets
+# are marked `sync: false` so they are entered in the Render dashboard rather
+# than committed here.
+
+services:
+  # ---------------------------------------------------------------- api ------
+  - type: web
+    name: bws4-api
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: .
+    # The trailing python -c pre-downloads the sentence-transformers embedding
+    # model (~88 MB) at build time. Without it the first request after every
+    # cold start pays for the download, and repeated anonymous pulls from
+    # Render's egress IPs can hit Hugging Face's unauthenticated rate limit.
+    # It lands in HF_HOME below, which is inside the project directory, so it
+    # is captured in the build output rather than a throwaway home dir.
+    buildCommand: pip install uv && uv sync --frozen --no-dev && uv run python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ.get('EMBEDDING_MODEL_NAME', 'sentence-transformers/all-MiniLM-L6-v2'))"
+    startCommand: uv run uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      # Must resolve to the same path at build time and run time. This is
+      # Render's project directory for the native Python runtime — adjust if
+      # that path ever changes, or the runtime will re-download the model.
+      - key: HF_HOME
+        value: /opt/render/project/src/.hf-cache
+      # Optional: raises Hugging Face's anonymous rate limit during the build.
+      # The model is public, so a token is not required to download it.
+      - key: HF_TOKEN
+        sync: false
+      # Neon pooled connection string, asyncpg-style:
+      # postgresql+asyncpg://...?ssl=require
+      - key: DATABASE_URL
+        sync: false
+      # Exactly the web_client's origin — never "*".
+      - key: CORS_ORIGIN
+        fromService:
+          name: bws4-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: OPENROUTER_API_KEY
+        sync: false
+      # Optional second LLM provider for the tool-use agent's model chain.
+      # Unset and the chain drops its groq/ entries and runs on OpenRouter
+      # alone — with far less headroom, since OpenRouter's free tier is one
+      # account-wide 50/day pool shared with the RAG app.
+      - key: GROQ_API_KEY
+        sync: false
+      - key: EXA_API_KEY
+        sync: false
+      # Optional: leave unset and error tracking no-ops cleanly.
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_ENVIRONMENT
+        value: production
+
+  # ---------------------------------------------------------- web_client -----
+  - type: web
+    name: bws4-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    autoDeploy: false
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          name: bws4-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      # Optional: leave unset and error tracking no-ops cleanly.
+      - key: VITE_SENTRY_DSN
+        sync: false
+    routes:
+      # Client-side routing: every unknown path serves the SPA shell.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      # Vite emits content-hashed bundles, so they are safe to cache forever.
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable

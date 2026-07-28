@@ -1,0 +1,40 @@
+[project]
+name = "bws4"
+version = "0.1.0"
+description = "Built with Spec4 (BWS4) example apps"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.18.5",
+    "asyncpg>=0.31.0",
+    "fastapi>=0.140.0",
+    "httpx>=0.28.1",
+    "litellm>=1.93.0",
+    "pgvector>=0.5.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "sentence-transformers>=5.6.1",
+    "sentry-sdk>=2.66.1",
+    "sqlalchemy>=2.0.51",
+    "structlog>=26.1.0",
+    "tenacity>=9.1.4",
+    "torch>=2.0",
+    "uvicorn[standard]>=0.51.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["backend/tests"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

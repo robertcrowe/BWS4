@@ -1,0 +1,348 @@
+{
+  "ai_features": [
+    {
+      "id": "rag_example_app",
+      "name": "rag_example_app",
+      "linked_vision_features": [
+        "rag_example_app"
+      ],
+      "scope": "feature",
+      "tier": "rag",
+      "tier_recommendation": "single_call",
+      "tier_decision_rationale": "The whole point of this example is to illustrate the use of RAG, so the retrieval pipeline is intentional despite the small dataset size.",
+      "rough_description": "Takes a natural-language question plus a small public dataset and produces a generated answer grounded in retrieved passages from that dataset, illustrating the RAG pattern end-to-end.",
+      "purpose": "Demonstrate the retrieval-augmented generation pattern end-to-end by answering a visitor's natural-language question with a generated response grounded in passages retrieved from a small public reference dataset.",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "inputs": [
+        {
+          "name": "user_question",
+          "type": "string",
+          "description": "The natural-language question submitted by the visitor",
+          "required": true
+        },
+        {
+          "name": "reference_dataset",
+          "type": "collection of documents",
+          "description": "Small, fixed public dataset of documents/passages used as the retrieval corpus for this example",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A generated natural-language answer to the question, accompanied by the specific retrieved passages that grounded it, so a visitor can see the retrieval-to-answer chain",
+        "format": "JSON object",
+        "schema_notes": "Object with fields: answer (string), retrieved_passages (array of {passage_id, source_title, text_excerpt, similarity_score}), and a short explanatory note pointing out which passage(s) informed which part of the answer"
+      },
+      "decision_authority": "autonomous",
+      "success_criteria": [
+        "For questions covered by the dataset, at least the top retrieved passage is topically relevant to the question (measured via relevance labels or human spot-check)",
+        "The generated answer contains content traceable to the retrieved passages (e.g. paraphrase or quote overlap) rather than being generic or unrelated",
+        "A visitor with no prior knowledge of RAG can, from the displayed passages and answer together, understand that retrieval fed into generation",
+        "Answer generation completes and displays within budgeted latency for at least 95% of requests"
+      ],
+      "failure_modes": [
+        {
+          "mode": "Retrieved passages are irrelevant to the question (dataset gap or poor embedding match)",
+          "likelihood": "medium",
+          "mitigation": "Show a similarity-score threshold; below threshold, display an explicit 'no strong match found in this dataset' message instead of forcing an answer"
+        },
+        {
+          "mode": "Generated answer ignores retrieved passages and hallucinates instead",
+          "likelihood": "medium",
+          "mitigation": "Prompt template explicitly instructs the model to answer only from provided passages and to cite which passage supports each claim; validate citations reference passages actually retrieved"
+        },
+        {
+          "mode": "Shared embedding or generation service is unavailable when a question is submitted",
+          "likelihood": "low",
+          "mitigation": "Return a clear error state in the UI and log the outage; no silent fallback that fabricates an answer"
+        },
+        {
+          "mode": "Question is out of scope for the small dataset entirely",
+          "likelihood": "high",
+          "mitigation": "Explicitly state in the UI that the dataset is small and topic-limited; return a graceful 'not covered by this dataset' response rather than a low-confidence guess"
+        }
+      ],
+      "escalation": "On retrieval or generation service failure, surface a user-facing error state (no answer generated) and log the incident for shared_framework_services monitoring; no automatic retry loop beyond a single transient-error retry.",
+      "eval_approach": {
+        "offline": "Curate a small set of question/expected-passage pairs from the reference dataset; verify retrieval returns the expected passage in top-k and that a held-out reviewer confirms the generated answer reflects the passage content",
+        "online": "Log retrieval similarity scores, whether the answer text overlaps lexically/semantically with retrieved passages, and visitor-facing error rates; sample transcripts periodically for manual relevance and groundedness review",
+        "ground_truth": "Manually authored question-to-passage mappings for the fixed dataset, created once during dataset curation and reused as a small regression eval set"
+      },
+      "budgets": {
+        "cost_per_call": "$0.001",
+        "p95_latency": "2.5s"
+      },
+      "privacy_safety": [
+        "Reference dataset is public and non-sensitive by design; no user PII is stored beyond the transient question text needed to serve the response",
+        "User questions are not persisted beyond logging needed for debugging/eval, and are not linked to visitor identity",
+        "Generated answers are constrained to dataset content to avoid producing unrelated or unsafe open-domain claims"
+      ],
+      "mechanisms": [
+        {
+          "name": "structured_outputs",
+          "rationale": "Forcing the response into a schema with distinct answer and retrieved_passages fields makes the retrieval-to-generation link visible and inspectable, which is the whole educational point of the example",
+          "configuration": {
+            "schema": "{ answer: string, retrieved_passages: [{passage_id, source_title, text_excerpt, similarity_score}] }"
+          }
+        }
+      ],
+      "references": [
+        "Lewis et al., 'Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks', https://arxiv.org/abs/2005.11401"
+      ],
+      "knowledge_sources": [
+        {
+          "name": "example_public_dataset_embeddings",
+          "type": "vector_store",
+          "content_description": "Embeddings of passages from a small, fixed, publicly licensed dataset (e.g. a curated set of short articles) used solely to illustrate retrieval for this example app",
+          "update_frequency": "static"
+        }
+      ],
+      "composed_under": "",
+      "requires": [
+        "chunking_pipeline",
+        "retriever",
+        "embedding_pipeline",
+        "vector_index"
+      ],
+      "kind": "feature",
+      "vision_grounding": {
+        "served_features": [
+          {
+            "id": "rag_example_app",
+            "name": "RAG_Example_App",
+            "purpose": "Demonstrates the retrieval-augmented generation pattern in an educational way, letting a visitor see how a question is answered by combining a small public dataset with generated text.",
+            "invocation": {
+              "trigger": "A visitor opens the RAG example app from the landing page and submits a question."
+            },
+            "inputs": [
+              {
+                "name": "user_question",
+                "type": "text",
+                "description": "The question the visitor wants answered using the example dataset.",
+                "required": true
+              },
+              {
+                "name": "reference_dataset",
+                "type": "collection of documents",
+                "description": "A small, publicly available set of documents used as the knowledge source for retrieval.",
+                "required": true
+              }
+            ],
+            "outputs": {
+              "primary": "A generated answer grounded in passages retrieved from the reference dataset",
+              "format": "text with supporting excerpts",
+              "schema_notes": "Includes the generated answer plus the specific retrieved passages it drew from, so the pattern is visible to the visitor."
+            },
+            "success_criteria": [
+              "For questions covered by the dataset, the retrieved passages are topically relevant to the question",
+              "The generated answer visibly reflects the content of the retrieved passages rather than ignoring them",
+              "A visitor unfamiliar with retrieval-augmented generation can follow, from the output, how retrieval fed into the answer"
+            ],
+            "failure_modes": [
+              {
+                "mode": "Retrieved passages are irrelevant to the question asked",
+                "likelihood": "medium",
+                "mitigation": "The dataset is kept small and curated so relevant matches are more likely for typical example questions."
+              },
+              {
+                "mode": "The generated answer ignores the retrieved passages entirely",
+                "likelihood": "medium",
+                "mitigation": "The answer is structured to explicitly reference the retrieved content."
+              },
+              {
+                "mode": "Shared generation or embedding capability is unavailable when a question is submitted",
+                "likelihood": "low",
+                "mitigation": "A clear message is shown indicating the demonstration is temporarily unavailable."
+              }
+            ],
+            "dependencies": [
+              "landing_page",
+              "shared_framework_services"
+            ],
+            "entities": [
+              "Dataset",
+              "Question",
+              "RetrievedPassage",
+              "Answer"
+            ],
+            "references": []
+          }
+        ]
+      },
+      "tier_analysis": {
+        "recommended_tier": "single_call",
+        "rationale": "The described dataset is explicitly a 'small public dataset,' which is the exact trigger in the rag pattern's when_doesnt list: knowledge that fits in roughly 5,000 tokens and rarely changes should be placed directly in the system prompt and answered with a single structured-output call rather than built out as a full retrieval pipeline. The task itself \u2014 turn a natural-language question plus grounding text into a generated answer \u2014 is a bounded input/bounded output transformation, squarely matching single_call's when_works criteria, and does not require acting on the world or fetching data outside what's already given.",
+        "compared_to_next_tier_down": "The next tier down (embeddings alone) could rank or surface similar passages but cannot generate the natural-language answer the feature requires \u2014 embeddings rank and group, they do not write, so single_call's generation capability is necessary here.",
+        "borderline": true,
+        "borderline_seams": [
+          "If 'small public dataset' later becomes large, frequently changing, or too big to fit in ~5,000 tokens, this should be re-escalated to rag.",
+          "If answers must cite specific retrieved passages for auditability, that requirement would push this back toward the rag tier even at small scale."
+        ],
+        "risks_of_going_higher": [
+          "Building embeddings-based retrieval and a retrieval step for a dataset small enough to fit in-prompt adds indexing, chunking, and retrieval-quality engineering with no accuracy benefit.",
+          "A full rag pipeline introduces failure modes (irrelevant chunk retrieval, retrieval latency) that a single well-crafted prompt with the whole dataset inline would avoid entirely for this scale."
+        ],
+        "risks_of_going_lower": [
+          "Trying to answer via pure deterministic logic (keyword match/lookup) would fail on natural-language questions whose phrasing doesn't match the dataset's exact wording, since meaning rather than surface form drives the answer.",
+          "Embeddings alone would only rank/retrieve passages but could not generate the natural-language answer the feature requires."
+        ]
+      },
+      "phase_priority": "steel_thread"
+    },
+    {
+      "id": "chunking_pipeline",
+      "name": "chunking_pipeline",
+      "linked_vision_features": [],
+      "scope": "feature",
+      "kind": "infrastructure",
+      "tier": "infrastructure",
+      "tier_recommendation": "",
+      "tier_decision_rationale": "",
+      "rough_description": "Enabling infrastructure (chunking pipeline): shared substrate injected because the selected rag feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "composed_under": "",
+      "requires": [],
+      "tier_analysis": {},
+      "phase_priority": "steel_thread"
+    },
+    {
+      "id": "embedding_pipeline",
+      "name": "embedding_pipeline",
+      "linked_vision_features": [],
+      "scope": "feature",
+      "kind": "infrastructure",
+      "tier": "infrastructure",
+      "tier_recommendation": "",
+      "tier_decision_rationale": "",
+      "rough_description": "Enabling infrastructure (embedding pipeline): shared substrate injected because the selected rag feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "composed_under": "",
+      "requires": [],
+      "tier_analysis": {},
+      "phase_priority": "steel_thread"
+    },
+    {
+      "id": "retriever",
+      "name": "retriever",
+      "linked_vision_features": [],
+      "scope": "feature",
+      "kind": "infrastructure",
+      "tier": "infrastructure",
+      "tier_recommendation": "",
+      "tier_decision_rationale": "",
+      "rough_description": "Enabling infrastructure (retriever): shared substrate injected because the selected rag feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "composed_under": "",
+      "requires": [],
+      "tier_analysis": {},
+      "phase_priority": "steel_thread"
+    },
+    {
+      "id": "vector_index",
+      "name": "vector_index",
+      "linked_vision_features": [],
+      "scope": "feature",
+      "kind": "infrastructure",
+      "tier": "infrastructure",
+      "tier_recommendation": "",
+      "tier_decision_rationale": "",
+      "rough_description": "Enabling infrastructure (vector index): shared substrate injected because the selected rag feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "composed_under": "",
+      "requires": [],
+      "tier_analysis": {},
+      "phase_priority": "steel_thread"
+    }
+  ],
+  "cross_cutting": {
+    "provider_strategy": {
+      "recommendation": "A single feature (rag_example_app) is in scope, and its task\u2014grounding a natural-language answer in retrieved passages and emitting a structured, schema-constrained output\u2014does not require frontier-tier reasoning. A mid-tier model with reliable instruction-following and strong structured-output/function-calling support (capability comparable to GPT-4o-mini / Claude Haiku 3.5-class models) is sufficient for the generation step. Reserve a higher-capability tier only if retrieval quality is poor and the model must do heavier synthesis or multi-hop reasoning over noisy context; this should be a configurable escalation, not the default. No fallback chain across capability tiers is needed for a single demo-style feature, but the model call should be abstracted behind an interface so the capability tier can be swapped without touching retrieval or prompt logic.",
+      "rationale": "Since only one RAG example app is present and its structured_outputs mechanism implies a bounded, schema-validated generation task, the capability need is modest: correct grounding and adherence to an output schema rather than open-ended reasoning. Tying capability level to task complexity (rather than defaulting to a frontier model) avoids over-provisioning for a demonstration feature, while leaving room to escalate if retrieval-augmented context proves insufficient. Provider/product choice and cost tradeoffs are explicitly deferred to the stack-selection phase.",
+      "cited_patterns": [
+        "structured_outputs"
+      ]
+    },
+    "prompt_versioning": {
+      "recommendation": "Store the rag_example_app's prompt template (including the structured-output schema/instructions) as a versioned artifact (e.g., a file with semantic version or content hash) checked into the same repo as the retrieval and app code, rather than inline in code. Pin the exact prompt version used at each generation call in logs/traces alongside the retrieved context and model output, so answers can be reproduced or rolled back if a schema or grounding regression appears after a prompt edit.",
+      "rationale": "Because this is a single-feature project built around structured_outputs, the main versioning risk is silent drift between the prompt's schema instructions and the actual output parser/validator. Explicit version pinning and logging let the team detect and roll back a prompt change that breaks the structured-output contract or degrades grounding quality, even with just one feature in scope.",
+      "cited_patterns": [
+        "structured_outputs"
+      ]
+    }
+  },
+  "explicitly_rejected": [
+    {
+      "name": "tool_use_agent",
+      "rough_description": "Takes a user's natural-language request and produces an answer by deciding when to call the Exa search API for real-time information, returning a response that incorporates the retrieved results.",
+      "reason": "deselected_by_user"
+    },
+    {
+      "name": "human_in_the_loop_example",
+      "rough_description": "Takes an in-progress agent task and a human's natural-language approval, correction, or feedback, and produces a revised agent output that incorporates that feedback, illustrating human-in-the-loop collaboration.",
+      "reason": "deselected_by_user"
+    },
+    {
+      "name": "mcp_tool_integration_example",
+      "rough_description": "Takes a user request and resolves it by invoking external tools/resources exposed over the Model Context Protocol, producing a response that demonstrates protocol-based tool integration as an agentic pattern.",
+      "reason": "deselected_by_user"
+    },
+    {
+      "name": "parallel_fanout_example",
+      "rough_description": "Takes a single user request and produces a combined answer by dispatching multiple concurrent model calls on subparts of the task and merging their generated results.",
+      "reason": "deselected_by_user"
+    },
+    {
+      "name": "reflection_example",
+      "rough_description": "Takes an initial generated answer to a task and produces a revised, improved answer by having the model critique and refine its own prior output.",
+      "reason": "deselected_by_user"
+    },
+    {
+      "name": "retrieval_reranking_example",
+      "rough_description": "Takes a query and a set of retrieved candidate passages and produces a reordered list ranked by semantic relevance to the query, illustrating a reranking stage in retrieval workflows.",
+      "reason": "deselected_by_user"
+    },
+    {
+      "name": "structured_output_example",
+      "rough_description": "Takes free-text input and produces output constrained to a defined schema (e.g. JSON fields), demonstrating reliable structured generation from an LLM.",
+      "reason": "deselected_by_user"
+    },
+    {
+      "name": "embedding_similarity_example",
+      "rough_description": "Takes a piece of text and a set of other texts and produces a similarity-ranked list based on semantic closeness, illustrating how embeddings capture meaning beyond exact keyword matches.",
+      "reason": "deselected_by_user"
+    },
+    {
+      "name": "single_call_example",
+      "rough_description": "Takes a natural-language prompt and produces a single generated model response, illustrating the simplest agentic building block of one LLM call.",
+      "reason": "deselected_by_user"
+    },
+    {
+      "name": "chained_calls_example",
+      "rough_description": "Takes a task and produces a final generated result by passing intermediate model outputs from one call as input to the next, illustrating sequential composition of LLM calls.",
+      "reason": "deselected_by_user"
+    },
+    {
+      "name": "planning_agent_example",
+      "rough_description": "Takes a high-level goal expressed in natural language and produces a generated plan of steps (and the execution of those steps) to accomplish it, illustrating a planning agentic pattern.",
+      "reason": "deselected_by_user"
+    },
+    {
+      "name": "orchestrated_subagents_example",
+      "rough_description": "Takes a complex user request and produces a combined result by delegating parts of the task to specialized subagents and assembling their outputs into one coherent answer.",
+      "reason": "deselected_by_user"
+    },
+    {
+      "name": "multi_agent_collaboration_example",
+      "rough_description": "Takes a shared goal or negotiation scenario and produces an outcome reached through multiple independent agents exchanging natural-language messages and reasoning toward agreement.",
+      "reason": "deselected_by_user"
+    }
+  ],
+  "references": [],
+  "consolidation": [],
+  "reconciliation": [],
+  "nfr_goals": [
+    "All example apps and shared capabilities operate within free, no-cost usage limits",
+    "Example app responses appear quickly enough to keep a demonstration engaging rather than feeling sluggish",
+    "New example apps can be added over time without disrupting the availability of existing ones",
+    "Visitors experience a consistent look, feel, and navigation pattern across all example apps",
+    "Each example app remains understandable as a teaching illustration even to visitors unfamiliar with the underlying pattern"
+  ]
+}
