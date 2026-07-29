@@ -52,6 +52,8 @@ class AnswerResult:
             answer actually cites.
         unresolved_citations: Citation markers in the answer that point at no
             retrieved passage at all.
+        model: The chain model that served this answer, or "" when no model
+            was called at all (the "low_relevance" case).
     """
 
     answer: str
@@ -59,6 +61,7 @@ class AnswerResult:
     status: Literal["grounded", "unsupported", "low_relevance"]
     cited_passages: list[int] = field(default_factory=list)
     unresolved_citations: list[int] = field(default_factory=list)
+    model: str = ""
 
 
 async def answer_question(session: AsyncSession, question: str) -> AnswerResult:
@@ -118,6 +121,7 @@ async def answer_question(session: AsyncSession, question: str) -> AnswerResult:
             app_name=RAG_APP_NAME,
             prompt_excerpt=question,
             response_excerpt=result.answer,
+            model_name=result.model,
         )
         await shared.log_invocation(
             session,
@@ -168,15 +172,16 @@ def build_answer(question: str, passages: list[RetrievedPassage]) -> AnswerResul
         )
 
     try:
-        answer_text = generate_answer(question, passages)
+        generated = generate_answer(question, passages)
     except GenerationServiceError as exc:
         raise RagServiceError(str(exc)) from exc
 
-    audit = audit_citations(answer_text, len(passages))
+    audit = audit_citations(generated.text, len(passages))
     return AnswerResult(
-        answer=answer_text,
+        answer=generated.text,
         retrieved_passages=passages,
         status="grounded" if audit.is_grounded else "unsupported",
         cited_passages=audit.cited,
         unresolved_citations=audit.unresolved,
+        model=generated.model,
     )

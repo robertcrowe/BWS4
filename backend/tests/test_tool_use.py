@@ -28,7 +28,7 @@ from backend.app.db.models import (
 from backend.app.db.session import get_db_session
 from backend.app.main import app
 from backend.app.services import model_registry
-from backend.app.tools.exa_client import ExaRateLimitError, ExaResult
+from backend.app.services.web_search import ExaRateLimitError, ExaResult
 
 #: LiteLLM reports the served model without its routing prefix, so the fake
 #: responses do too -- normalize() must map it back to a real chain slug.

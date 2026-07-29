@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.db.session import get_db_session
 from backend.app.main import app
+from backend.app.rag.answer import GeneratedAnswer
 from backend.app.rag.retriever import SIMILARITY_THRESHOLD, RetrievedPassage
 from backend.app.rag.service import (
     NO_STRONG_MATCH_MESSAGE,
@@ -13,6 +14,10 @@ from backend.app.rag.service import (
     build_answer,
 )
 from backend.app.services.generation import GenerationServiceError
+
+#: A stand-in for whichever chain model served the answer. Real runs walk
+#: a fallback chain, so the served model is data, not a constant.
+SERVED_MODEL = "openrouter/nvidia/nemotron-3-super-120b-a12b:free"
 
 _STRONG_PASSAGE = RetrievedPassage(
     passage_id="voyager-1-1",
@@ -49,7 +54,7 @@ def test_build_answer_returns_no_strong_match_message_with_no_passages() -> None
 def test_build_answer_generates_a_grounded_answer_above_threshold() -> None:
     with patch(
         "backend.app.rag.service.generate_answer",
-        return_value="Voyager 1 launched in 1977 [1].",
+        return_value=GeneratedAnswer(text="Voyager 1 launched in 1977 [1].", model=SERVED_MODEL),
     ):
         result = build_answer("When did Voyager 1 launch?", [_STRONG_PASSAGE])
 

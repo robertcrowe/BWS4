@@ -1,6 +1,20 @@
 # Built with Spec4 AI - https://spec4.ai
-"""Ordered free-model chain for tool-calling generation, plus a cooldown set
-that skips slugs OpenRouter has permanently withdrawn.
+"""Framework-level model routing: ordered free-model chains, provider
+credentials, and a cooldown set that skips slugs a provider has withdrawn.
+
+This is a *shared framework service*, not an example app's helper. Every
+example app that calls a language model routes through here, so that failover,
+provider-key handling, and the withdrawn-model bench behave identically no
+matter which app made the request -- the same reasoning that puts usage limits
+and request logging in services/shared.py.
+
+The chains are **per capability**, because the capability requirements differ
+and each list is backed by its own probe evidence: TOOL_MODEL_CHAIN entries are
+verified to emit well-formed tool calls and consume tool results,
+GENERATION_MODEL_CHAIN entries are verified to return schema-valid structured
+output. Everything around the chains -- cooldowns, credentials, name
+normalization -- is shared, and a slug benched by one capability stays benched
+for the other, since a withdrawn model is withdrawn for everyone.
 
 Discovery and serving are deliberately split:
 
@@ -41,7 +55,7 @@ logger = structlog.get_logger()
 #:
 #: The chain deliberately spans **two providers**, so an outage or a quota
 #: wall at either one still leaves working entries. Like
-#: generation.PRIMARY_MODEL/FALLBACK_MODEL, this list **is expected to rot**.
+#: GENERATION_MODEL_CHAIN below, this list **is expected to rot**.
 #: When tool calling starts failing, re-run discovery rather than assuming a
 #: code bug:
 #:
@@ -67,6 +81,57 @@ TOOL_MODEL_CHAIN = [
     "openrouter/poolside/laguna-s-2.1:free",
     "openrouter/inclusionai/ling-3.0-flash:free",
 ]
+
+#: Ordered chain of free-tier slugs for plain/structured text generation --
+#: the capability behind the RAG example's answer synthesis and shared.py's
+#: generate_text(). Separate from TOOL_MODEL_CHAIN because the requirement is
+#: different: these models are verified to return an answer_v2-shaped JSON
+#: object that validates against rag.schemas.LlmAnswer, cite the passage that
+#: actually supports the answer, and emit *no* citation markers when declining
+#: -- the last of which rag/citations.py's audit depends on.
+#:
+#: Every entry was probed with this app's own answer_v2 prompt and passed both
+#: the answerable and the unanswerable case. Like TOOL_MODEL_CHAIN this list
+#: **is expected to rot**; re-probe when generation starts failing.
+#:
+#: Ordered **Groq first, OpenRouter behind it**, for the same quota reason as
+#: TOOL_MODEL_CHAIN: Groq meters its free tier per model, while OpenRouter's is
+#: one account-wide 50/day pool that both example apps draw from. Vendors
+#: alternate within each provider block so one vendor's withdrawal can't take
+#: out the head of the chain.
+#:
+#: `groq/openai/gpt-oss-20b` is here despite sitting in
+#: discover_models.TOOL_KNOWN_BAD. That is not an oversight: it is excluded
+#: from the *tool* chain for 400ing on the loop's termination path, and it
+#: returns clean, correctly-cited answer_v2 JSON. A probe result belongs to a
+#: capability, not to a model -- don't propagate exclusions between chains.
+#:
+#: Probed and deliberately rejected:
+#:   * groq/qwen/qwen3.6-27b -- emits trailing junk after its JSON object.
+#:   * groq/allam-2-7b -- passes, but its 4,096-token context can't hold a
+#:     real passage set, and it padded its refusal with advice to look
+#:     elsewhere.
+#:   * groq/groq/compound -- passes cleanly, and is excluded anyway: it is an
+#:     agentic system with its own built-in web search, so it could answer
+#:     from the live web while the UI reports the answer as grounded in the
+#:     retrieved passages. A grounding claim nothing checked is the exact
+#:     defect citations.py exists to prevent.
+GENERATION_MODEL_CHAIN = [
+    "groq/openai/gpt-oss-120b",
+    "groq/llama-3.3-70b-versatile",
+    "groq/openai/gpt-oss-20b",
+    "groq/llama-3.1-8b-instant",
+    "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+    "openrouter/inclusionai/ling-3.0-flash:free",
+    "openrouter/poolside/laguna-s-2.1:free",
+    "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+]
+
+#: Every slug this deployment might route to, across all capabilities. The
+#: bench and the name normalizer work over this union rather than one chain:
+#: a model a provider has withdrawn is withdrawn for every capability, and
+#: LiteLLM echoes a served model name without saying which chain it came from.
+_ALL_MODELS = list(dict.fromkeys(TOOL_MODEL_CHAIN + GENERATION_MODEL_CHAIN))
 
 #: How long a slug stays benched after a *permanent* failure. Long enough to
 #: stop hammering a withdrawn model for the life of a free-tier dyno, short
@@ -118,10 +183,15 @@ def ensure_provider_credentials() -> None:
         os.environ["GROQ_API_KEY"] = settings.groq_api_key
 
 
-def configured_chain() -> list[str]:
-    """Return the chain minus providers this deployment has no key for.
+def configured_chain(chain: list[str]) -> list[str]:
+    """Return a chain minus providers this deployment has no key for.
 
     Google-style docstring per project convention.
+
+    Args:
+        chain: The capability's ordered chain, e.g. TOOL_MODEL_CHAIN. Passed
+            explicitly rather than defaulted, so no capability silently
+            inherits another's model list.
 
     Returns:
         The ordered chain with `groq/` slugs removed when GROQ_API_KEY is
@@ -129,14 +199,17 @@ def configured_chain() -> list[str]:
         burning its first attempts on 401s.
     """
     if get_settings().groq_api_key:
-        return list(TOOL_MODEL_CHAIN)
-    return [model for model in TOOL_MODEL_CHAIN if provider_of(model) != "groq"]
+        return list(chain)
+    return [model for model in chain if provider_of(model) != "groq"]
 
 
-def active_chain() -> list[str]:
-    """Return the usable model chain: configured providers, minus benched slugs.
+def active_chain(chain: list[str]) -> list[str]:
+    """Return a usable model chain: configured providers, minus benched slugs.
 
     Google-style docstring per project convention.
+
+    Args:
+        chain: The capability's ordered chain, e.g. GENERATION_MODEL_CHAIN.
 
     Returns:
         The ordered chain, minus any slug whose provider isn't configured and
@@ -146,7 +219,7 @@ def active_chain() -> list[str]:
         having nothing to try at all.
     """
     now = time.monotonic()
-    configured = configured_chain()
+    configured = configured_chain(chain)
     available = [model for model in configured if _benched.get(model, 0.0) <= now]
     return available or configured
 
@@ -157,6 +230,9 @@ def note_failure(error: BaseException) -> list[str]:
     LiteLLM walks the fallback chain internally and surfaces one final
     exception, so attribution is best-effort: this scans the error text for
     chain slugs mentioned alongside a permanent-failure marker.
+
+    The scan covers every capability's chain, not just the caller's: a slug
+    the provider has withdrawn is gone for whoever asks next.
 
     Args:
         error: The exception raised by the completion call.
@@ -169,7 +245,7 @@ def note_failure(error: BaseException) -> list[str]:
         return []
 
     newly_benched = []
-    for model in TOOL_MODEL_CHAIN:
+    for model in _ALL_MODELS:
         # LiteLLM may report the slug with or without its routing prefix.
         bare = model.split("/", 1)[1]
         if bare.lower() in text and model not in newly_benched:
@@ -178,10 +254,11 @@ def note_failure(error: BaseException) -> list[str]:
 
     if newly_benched:
         logger.warning(
-            "tool_models_benched",
+            "models_benched",
             models=newly_benched,
             cooldown_seconds=COOLDOWN_SECONDS,
-            remaining=len(active_chain()),
+            remaining_tool=len(active_chain(TOOL_MODEL_CHAIN)),
+            remaining_generation=len(active_chain(GENERATION_MODEL_CHAIN)),
         )
     return newly_benched
 
@@ -192,8 +269,9 @@ def normalize(model: str) -> str:
     LiteLLM echoes the served model on the response, usually without the
     routing prefix it was called with -- and the prefix can't be guessed,
     since "openai/gpt-oss-120b" is served by Groq here while OpenRouter has
-    its own entries. So the name is matched against the chain rather than
-    rewritten by string surgery.
+    its own entries. So the name is matched against the known slugs rather
+    than rewritten by string surgery. The match spans every capability's
+    chain, since the response doesn't say which chain it came from.
 
     Args:
         model: A model name as reported on a completion response.
@@ -202,9 +280,9 @@ def normalize(model: str) -> str:
         The matching chain slug, or the input unchanged if nothing matches
         (an unknown model is worth surfacing verbatim, not disguising).
     """
-    if model in TOOL_MODEL_CHAIN:
+    if model in _ALL_MODELS:
         return model
-    for candidate in TOOL_MODEL_CHAIN:
+    for candidate in _ALL_MODELS:
         if candidate.split("/", 1)[1] == model or candidate.endswith(f"/{model}"):
             return candidate
     return model

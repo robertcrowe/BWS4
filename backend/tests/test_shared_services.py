@@ -10,6 +10,11 @@ from backend.app.db.models import (
     UsageLimit,
 )
 from backend.app.services import shared
+from backend.app.services.generation import GenerationResult
+
+#: A stand-in for whichever chain model served the request. The shared
+#: interface must log the model that actually answered, not the chain head.
+SERVED_MODEL = "openrouter/inclusionai/ling-3.0-flash:free"
 
 
 class _FakeExecuteResult:
@@ -58,7 +63,7 @@ def test_generate_text_through_shared_interface_records_log_and_usage_rows() -> 
 
     with patch(
         "backend.app.services.generation.generate_text",
-        return_value="a generated response",
+        return_value=GenerationResult(text="a generated response", model=SERVED_MODEL),
     ) as mocked_generate:
         text = asyncio.run(
             shared.generate_text(
@@ -79,6 +84,9 @@ def test_generate_text_through_shared_interface_records_log_and_usage_rows() -> 
     assert len(generation_rows) == 1
     assert generation_rows[0].app_name == "Test App"
     assert generation_rows[0].response_excerpt == "a generated response"
+    # The served model is recorded, not the chain's first entry: the request
+    # walks a fallback chain, so the head may never have been called.
+    assert generation_rows[0].model_name == SERVED_MODEL
     assert len(log_rows) == 1
     assert log_rows[0].capability == "generation"
     assert session.commit_count >= 1

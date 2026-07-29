@@ -25,7 +25,7 @@ from backend.app.tools.agent import (
     AgentError,
     run_agent,
 )
-from backend.app.tools.exa_client import ExaClientError, ExaRateLimitError, ExaResult
+from backend.app.services.web_search import ExaClientError, ExaRateLimitError, ExaResult
 
 #: LiteLLM reports the served model without its routing prefix, so the fake
 #: responses do too -- normalize() must map it back to a real chain slug.
@@ -302,7 +302,7 @@ def test_agent_passes_the_whole_chain_as_fallbacks() -> None:
         asyncio.run(run_agent("q", execute_search=AsyncMock()))
 
     kwargs = acompletion.await_args_list[0].kwargs
-    chain = model_registry.active_chain()
+    chain = model_registry.active_chain(model_registry.TOOL_MODEL_CHAIN)
     assert kwargs["model"] == chain[0]
     assert kwargs["fallbacks"] == chain[1:]
     assert kwargs["tools"][0]["function"]["name"] == "web_search"

@@ -1,9 +1,14 @@
 # Built with Spec4 AI - https://spec4.ai
-"""Tests for the free-model chain and its permanent-failure cooldown.
+"""Tests for the shared model chains and their permanent-failure cooldown.
 
 The distinction these tests protect: a withdrawn slug should be benched, a
 merely rate-limited one should not. Benching healthy models on transient 429s
 is how a fallback chain eats itself.
+
+The registry is framework-level, serving every example app, so the invariants
+that apply to *any* chain (free tier only, vendor diversity, normalization)
+are parametrized over all of them rather than asserted about the tool chain
+alone.
 """
 
 from __future__ import annotations
@@ -15,7 +20,7 @@ from unittest.mock import patch
 import pytest
 
 from backend.app.services import model_registry
-from backend.app.services.discover_models import KNOWN_BAD, rank_cross_vendor
+from backend.app.services.discover_models import TOOL_KNOWN_BAD, rank_cross_vendor
 
 
 @pytest.fixture(autouse=True)
@@ -40,34 +45,79 @@ def _passing(model: str, note: str = "answered from tool results") -> dict:
     return {"model": model, "emits_call": True, "completes_loop": True, "note": note}
 
 
-def test_chain_spans_more_than_one_provider() -> None:
-    """A whole-provider outage or quota wall must not empty the chain."""
-    providers = {model_registry.provider_of(slug) for slug in model_registry.TOOL_MODEL_CHAIN}
-    assert len(providers) >= 2, f"chain is single-provider: {providers}"
+#: Local alias -- these tests reference the tool chain constantly.
+TOOL = model_registry.TOOL_MODEL_CHAIN
+
+#: Every capability chain the framework ships, for the invariants that hold
+#: across all of them. Adding a chain to the registry adds it here too.
+ALL_CHAINS = [
+    ("tool", model_registry.TOOL_MODEL_CHAIN),
+    ("generation", model_registry.GENERATION_MODEL_CHAIN),
+]
 
 
-def test_chain_head_and_tail_are_different_providers() -> None:
+def _vendor_of(slug: str) -> str:
+    """The model's publisher, below the routing provider.
+
+    `openrouter/nvidia/x:free` -> `nvidia`; `groq/llama-3.1-8b-instant` has no
+    vendor segment, so the model name stands in for it.
+    """
+    parts = slug.split("/")
+    return parts[1] if len(parts) > 2 else parts[-1]
+
+
+@pytest.mark.parametrize(("name", "chain"), ALL_CHAINS)
+def test_every_chain_spans_more_than_one_provider(name: str, chain: list[str]) -> None:
+    """A whole-provider outage or quota wall must not empty a chain.
+
+    Holds for every capability now that the generation chain has probed Groq
+    entries. It briefly held only for the tool chain, which meant an
+    OpenRouter outage took the RAG example dark while tool-use failed over.
+    """
+    providers = {model_registry.provider_of(slug) for slug in chain}
+    assert len(providers) >= 2, f"{name} chain is single-provider: {providers}"
+
+
+@pytest.mark.parametrize(("name", "chain"), ALL_CHAINS)
+def test_every_chain_head_and_tail_are_different_providers(name: str, chain: list[str]) -> None:
     """The deep fallback has to be somewhere the head's outage can't reach."""
-    chain = model_registry.TOOL_MODEL_CHAIN
-    assert model_registry.provider_of(chain[0]) != model_registry.provider_of(chain[-1])
+    assert model_registry.provider_of(chain[0]) != model_registry.provider_of(chain[-1]), (
+        f"{name} chain starts and ends on the same provider"
+    )
 
 
-def test_every_chain_entry_is_a_known_free_tier_slug() -> None:
+@pytest.mark.parametrize(("name", "chain"), ALL_CHAINS)
+def test_no_chain_leads_with_two_models_from_one_vendor(name: str, chain: list[str]) -> None:
+    """One vendor's withdrawal must not take out the head of a chain.
+
+    Only the head is constrained: deeper duplicates are fine, since by then
+    the request has already tried a different vendor.
+    """
+    assert _vendor_of(chain[0]) != _vendor_of(chain[1]), (
+        f"{name} chain leads with two {_vendor_of(chain[0])} models"
+    )
+
+
+@pytest.mark.parametrize(("name", "chain"), ALL_CHAINS)
+def test_every_chain_entry_is_a_known_free_tier_slug(name: str, chain: list[str]) -> None:
     """The binding project constraint: free tier only.
 
     OpenRouter marks free models in the slug; Groq's free tier is a property
     of the account, so a groq/ slug carries no marker and can only be checked
     by provider.
     """
-    for slug in model_registry.TOOL_MODEL_CHAIN:
+    for slug in chain:
         provider = model_registry.provider_of(slug)
-        assert provider in {"openrouter", "groq"}, f"unknown provider in chain: {slug}"
+        assert provider in {"openrouter", "groq"}, f"unknown provider in {name} chain: {slug}"
         if provider == "openrouter":
-            assert slug.endswith(":free"), f"non-free OpenRouter slug: {slug}"
+            assert slug.endswith(":free"), f"non-free OpenRouter slug in {name} chain: {slug}"
 
 
-def test_active_chain_returns_the_full_chain_when_nothing_is_benched() -> None:
-    assert model_registry.active_chain() == model_registry.TOOL_MODEL_CHAIN
+@pytest.mark.parametrize(("name", "chain"), ALL_CHAINS)
+def test_active_chain_returns_the_full_chain_when_nothing_is_benched(
+    name: str, chain: list[str]
+) -> None:
+    assert model_registry.active_chain(chain) == chain
 
 
 def test_a_withdrawn_model_is_benched_and_skipped() -> None:
@@ -79,8 +129,8 @@ def test_a_withdrawn_model_is_benched_and_skipped() -> None:
     )
 
     assert benched == [withdrawn]
-    assert withdrawn not in model_registry.active_chain()
-    assert len(model_registry.active_chain()) == len(model_registry.TOOL_MODEL_CHAIN) - 1
+    assert withdrawn not in model_registry.active_chain(TOOL)
+    assert len(model_registry.active_chain(TOOL)) == len(model_registry.TOOL_MODEL_CHAIN) - 1
 
 
 def test_a_rate_limited_model_is_not_benched() -> None:
@@ -93,13 +143,13 @@ def test_a_rate_limited_model_is_not_benched() -> None:
     )
 
     assert benched == []
-    assert model_registry.active_chain() == model_registry.TOOL_MODEL_CHAIN
+    assert model_registry.active_chain(TOOL) == model_registry.TOOL_MODEL_CHAIN
 
 
 def test_a_timeout_is_not_benched() -> None:
     slug = model_registry.TOOL_MODEL_CHAIN[1].split("/", 1)[1]
     assert model_registry.note_failure(RuntimeError(f"Timeout: {slug} aborted")) == []
-    assert model_registry.active_chain() == model_registry.TOOL_MODEL_CHAIN
+    assert model_registry.active_chain(TOOL) == model_registry.TOOL_MODEL_CHAIN
 
 
 def test_paid_only_withdrawal_is_recognised_as_permanent() -> None:
@@ -111,7 +161,7 @@ def test_paid_only_withdrawal_is_recognised_as_permanent() -> None:
         RuntimeError(f"{bare}: This model is unavailable for free. The paid version is available")
     )
 
-    assert withdrawn not in model_registry.active_chain()
+    assert withdrawn not in model_registry.active_chain(TOOL)
 
 
 def test_active_chain_never_returns_empty_even_if_everything_is_benched() -> None:
@@ -121,24 +171,31 @@ def test_active_chain_never_returns_empty_even_if_everything_is_benched() -> Non
             RuntimeError(f"{slug.split('/', 1)[1]} - No endpoints found")
         )
 
-    assert model_registry.active_chain() == model_registry.TOOL_MODEL_CHAIN
+    assert model_registry.active_chain(TOOL) == model_registry.TOOL_MODEL_CHAIN
 
 
 def test_an_unrelated_error_benches_nothing() -> None:
     assert model_registry.note_failure(RuntimeError("connection reset by peer")) == []
-    assert model_registry.active_chain() == model_registry.TOOL_MODEL_CHAIN
+    assert model_registry.active_chain(TOOL) == model_registry.TOOL_MODEL_CHAIN
 
 
-def test_normalize_maps_a_reported_model_back_to_its_chain_slug() -> None:
+@pytest.mark.parametrize(("name", "chain"), ALL_CHAINS)
+def test_normalize_maps_a_reported_model_back_to_its_chain_slug(
+    name: str, chain: list[str]
+) -> None:
     """The routing prefix can't be guessed -- it has to be matched.
 
     "openai/gpt-oss-120b" is served by Groq in this chain, so prepending
     "openrouter/" (the old behaviour) would mislabel every Groq response.
+
+    Every chain is covered because the response doesn't say which capability
+    it was serving: a generation answer and a tool call come back through the
+    same normalizer.
     """
-    for slug in model_registry.TOOL_MODEL_CHAIN:
+    for slug in chain:
         bare = slug.split("/", 1)[1]
-        assert model_registry.normalize(bare) == slug
-        assert model_registry.normalize(slug) == slug
+        assert model_registry.normalize(bare) == slug, f"{name} chain: {slug}"
+        assert model_registry.normalize(slug) == slug, f"{name} chain: {slug}"
 
 
 def test_normalize_leaves_an_unrecognised_model_alone() -> None:
@@ -218,7 +275,7 @@ def test_discovery_groups_groq_models_without_a_vendor_segment() -> None:
 
 def test_the_known_bad_models_are_not_in_the_shipped_chain() -> None:
     """Discovery excludes them; the chain must not have them either."""
-    for slug in KNOWN_BAD:
+    for slug in TOOL_KNOWN_BAD:
         assert slug not in model_registry.TOOL_MODEL_CHAIN
 
 
@@ -232,7 +289,7 @@ def test_groq_slugs_are_dropped_when_no_groq_key_is_configured() -> None:
     with patch(
         "backend.app.services.model_registry.get_settings", return_value=_fake_settings(None)
     ):
-        chain = model_registry.configured_chain()
+        chain = model_registry.configured_chain(TOOL)
 
     assert chain, "dropping Groq must not empty the chain"
     assert all(model_registry.provider_of(slug) == "openrouter" for slug in chain)
@@ -243,7 +300,7 @@ def test_groq_slugs_are_kept_when_a_groq_key_is_configured() -> None:
         "backend.app.services.model_registry.get_settings",
         return_value=_fake_settings("test-groq-key"),
     ):
-        chain = model_registry.configured_chain()
+        chain = model_registry.configured_chain(TOOL)
 
     assert chain == model_registry.TOOL_MODEL_CHAIN
 
@@ -253,12 +310,12 @@ def test_active_chain_drops_groq_before_applying_cooldowns() -> None:
     with patch(
         "backend.app.services.model_registry.get_settings", return_value=_fake_settings(None)
     ):
-        openrouter_slugs = model_registry.configured_chain()
+        openrouter_slugs = model_registry.configured_chain(TOOL)
         for slug in openrouter_slugs:
             model_registry.note_failure(
                 RuntimeError(f"{slug.split('/', 1)[1]} - No endpoints found")
             )
-        chain = model_registry.active_chain()
+        chain = model_registry.active_chain(TOOL)
 
     assert all(model_registry.provider_of(slug) == "openrouter" for slug in chain)
 

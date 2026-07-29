@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 
 import structlog
 from pydantic import ValidationError
@@ -26,7 +27,20 @@ _SYSTEM_PROMPT = (
 logger = structlog.get_logger()
 
 
-def generate_answer(question: str, passages: list[RetrievedPassage]) -> str:
+@dataclass(frozen=True)
+class GeneratedAnswer:
+    """A validated answer, plus the chain model that actually produced it.
+
+    The serving model rides along because the shared generation service walks
+    a multi-model fallback chain: naming the chain's first entry in the
+    request log would attribute the answer to a model that may never have run.
+    """
+
+    text: str
+    model: str
+
+
+def generate_answer(question: str, passages: list[RetrievedPassage]) -> GeneratedAnswer:
     """Generate a grounded answer to a question from its retrieved passages.
 
     Resolves the versioned prompt template, fills it with the numbered
@@ -43,8 +57,8 @@ def generate_answer(question: str, passages: list[RetrievedPassage]) -> str:
             similarity threshold.
 
     Returns:
-        The generated answer text, citing passages by their `[N]` position
-        in `passages`.
+        The generated answer, citing passages by their `[N]` position in
+        `passages`, together with the model that served it.
 
     Raises:
         GenerationServiceError: If the text-generation service fails, or its
@@ -59,10 +73,10 @@ def generate_answer(question: str, passages: list[RetrievedPassage]) -> str:
         "{{QUESTION}}", question
     )
 
-    raw_response = generate_text(system_prompt=_SYSTEM_PROMPT, user_prompt=prompt)
+    generated = generate_text(system_prompt=_SYSTEM_PROMPT, user_prompt=prompt)
 
     try:
-        parsed = LlmAnswer.model_validate(json.loads(_extract_json_object(raw_response)))
+        parsed = LlmAnswer.model_validate(json.loads(_extract_json_object(generated.text)))
     except (json.JSONDecodeError, ValidationError) as exc:
         raise GenerationServiceError(
             f"text-generation service returned a response that didn't match "
@@ -72,9 +86,10 @@ def generate_answer(question: str, passages: list[RetrievedPassage]) -> str:
     logger.info(
         "rag_answer_generated",
         prompt_version=PROMPT_VERSION,
+        model=generated.model,
         passage_ids=[p.passage_id for p in passages],
     )
-    return parsed.answer
+    return GeneratedAnswer(text=parsed.answer, model=generated.model)
 
 
 def _extract_json_object(text: str) -> str:

@@ -19,8 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db.models import SearchQuery
 from backend.app.services import shared
+from backend.app.services.web_search import ExaClientError, ExaRateLimitError, ExaResult, search
 from backend.app.tools.agent import AgentError, AgentStep, run_agent
-from backend.app.tools.exa_client import ExaClientError, ExaRateLimitError, ExaResult, search
 
 logger = structlog.get_logger()
 

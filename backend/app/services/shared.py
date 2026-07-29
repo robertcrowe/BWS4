@@ -34,6 +34,11 @@ CAPABILITY_SEARCH = "search"
 
 _EXCERPT_MAX_LENGTH = 1000
 
+#: Recorded when a caller couldn't determine which chain model served a
+#: request. The column is NOT NULL, so it needs *some* value -- and an honest
+#: "unknown" beats naming a model that may never have run.
+_UNKNOWN_MODEL = "unknown"
+
 
 class ServiceUnavailableError(Exception):
     """Raised when a capability's configured usage cap has been reached.
@@ -153,7 +158,7 @@ async def record_generation_request(
     app_name: str,
     prompt_excerpt: str,
     response_excerpt: str,
-    model_name: str | None = None,
+    model_name: str,
 ) -> None:
     """Record a language_generation_requests row for a successful generation call.
 
@@ -162,17 +167,17 @@ async def record_generation_request(
         app_name: The name of the app that made the request.
         prompt_excerpt: The prompt sent to the model (truncated for storage).
         response_excerpt: The model's response (truncated for storage).
-        model_name: The model that actually served the request. Callers that
-            walk a fallback chain (e.g. the tool-use agent) know which model
-            answered and should pass it; the default records the configured
-            primary.
+        model_name: The model that actually served the request. Required, not
+            defaulted: every caller here walks a fallback chain and knows what
+            answered, so defaulting to the chain's first entry would log a
+            model that may never have been called.
     """
     session.add(
         LanguageGenerationRequest(
             app_name=app_name,
             prompt_excerpt=prompt_excerpt[:_EXCERPT_MAX_LENGTH],
             response_excerpt=response_excerpt[:_EXCERPT_MAX_LENGTH],
-            model_name=model_name or generation.PRIMARY_MODEL,
+            model_name=model_name or _UNKNOWN_MODEL,
         )
     )
     await session.commit()
@@ -201,18 +206,22 @@ async def generate_text(
     """
     await reserve_capability(session, CAPABILITY_GENERATION, app_name=app_name)
 
-    text = generation.generate_text(system_prompt=system_prompt, user_prompt=user_prompt)
+    result = generation.generate_text(system_prompt=system_prompt, user_prompt=user_prompt)
 
     await record_generation_request(
-        session, app_name=app_name, prompt_excerpt=user_prompt, response_excerpt=text
+        session,
+        app_name=app_name,
+        prompt_excerpt=user_prompt,
+        response_excerpt=result.text,
+        model_name=result.model,
     )
     await log_invocation(
         session,
         app_name=app_name,
         capability=CAPABILITY_GENERATION,
-        summary=f"Generated text ({len(text)} chars)",
+        summary=f"Generated text ({len(result.text)} chars) via {result.model}",
     )
-    return text
+    return result.text
 
 
 async def represent_text(session: AsyncSession, *, text: str, app_name: str) -> list[float]:

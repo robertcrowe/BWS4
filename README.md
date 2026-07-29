@@ -29,8 +29,8 @@ The gallery is designed to grow. New example apps can be added over time without
 - FastAPI (REST API, with an auto-generated OpenAPI schema)
 - SQLAlchemy (data access, including pgvector cosine-distance queries)
 - sentence-transformers (`all-MiniLM-L6-v2`) for embeddings, run in-process
-- LiteLLM, routing to OpenRouter — a free-tier primary model with automatic fallback to a second, different-vendor free model if the primary is rate-limited or errors (the current pair is named in `backend/app/services/generation.py`; OpenRouter retires free slugs periodically, so expect to refresh it)
-- Exa (web search API) for the tool-use example app
+- LiteLLM, routing to OpenRouter and Groq — every example app calls models through one shared registry (`backend/app/services/model_registry.py`), which walks an ordered chain of free-tier models on failure and benches any slug a provider has withdrawn. The chains are per capability (tool calling vs. structured generation) because the two are verified separately; both rot as providers retire free slugs, so expect to refresh them
+- Exa (web search API), exposed as a shared framework capability in `backend/app/services/web_search.py` and used today by the tool-use example app
 
 **Data & storage**
 - Neon — serverless Postgres with the `pgvector` extension, used both as the primary relational store and as the vector index for the RAG example
@@ -196,9 +196,10 @@ Two failure modes worth telling apart:
   as *"the agent's language model is temporarily unavailable"*. Nothing is benched: a 429
   means busy, not gone.
 - **`404 No endpoints found` / `unavailable for free`.** The slug has been withdrawn from the
-  free tier. These rot regularly. The agent benches the slug for 30 minutes and walks its
-  fallback chain; if the whole chain has rotted, re-run discovery and paste the result into
-  `model_registry.TOOL_MODEL_CHAIN`:
+  free tier. These rot regularly. The slug is benched for 30 minutes — across *every*
+  example app, since a withdrawn model is withdrawn for all of them — and the request walks
+  the rest of the chain. If the whole chain has rotted, re-run discovery and paste the
+  result into `model_registry.TOOL_MODEL_CHAIN`:
 
   ```shell
   uv run python -m backend.app.services.discover_models
@@ -208,6 +209,13 @@ Two failure modes worth telling apart:
   emits well-formed tool calls and consumes tool results — the catalogue's own `tools` flag
   only means the endpoint accepts a `tools` array. Note that a full discovery run costs
   roughly 30 requests against the same daily cap, so run it once, not in a loop.
+
+  Discovery probes for *tool calling*. `model_registry.GENERATION_MODEL_CHAIN` — the chain
+  behind the RAG example's answers — needs a different check: that the model returns
+  schema-valid JSON and emits no citation markers when it declines to answer. A model that
+  passes one probe can fail the other (`groq/openai/gpt-oss-20b` is excluded from the tool
+  chain and shipped in the generation chain), so don't move slugs between the two chains
+  without re-verifying.
 
 ## Deployment
 

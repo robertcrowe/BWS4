@@ -10,9 +10,14 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from backend.app.rag.answer import GeneratedAnswer
 from backend.app.rag.citations import audit_citations
 from backend.app.rag.retriever import SIMILARITY_THRESHOLD, RetrievedPassage
 from backend.app.rag.service import build_answer
+
+#: A stand-in for whichever chain model served the answer. Real runs walk
+#: a fallback chain, so the served model is data, not a constant.
+SERVED_MODEL = "openrouter/nvidia/nemotron-3-super-120b-a12b:free"
 
 
 def _passage(passage_id: str) -> RetrievedPassage:
@@ -74,7 +79,7 @@ def test_audit_treats_zero_as_unresolved() -> None:
 def test_build_answer_marks_a_cited_answer_grounded() -> None:
     with patch(
         "backend.app.rag.service.generate_answer",
-        return_value="Voyager 1 launched in 1977 [1].",
+        return_value=GeneratedAnswer(text="Voyager 1 launched in 1977 [1].", model=SERVED_MODEL),
     ):
         result = build_answer("When did Voyager 1 launch?", [_passage("voyager-1-1")])
 
@@ -89,7 +94,7 @@ def test_build_answer_marks_an_uncited_answer_unsupported_despite_clearing_the_t
     what the model said."""
     with patch(
         "backend.app.rag.service.generate_answer",
-        return_value="These passages do not say who the first woman in space was.",
+        return_value=GeneratedAnswer(text="These passages do not say who the first woman in space was.", model=SERVED_MODEL),
     ):
         result = build_answer("Who was the first woman in space?", [_passage("yuri-gagarin-1")])
 
@@ -100,7 +105,7 @@ def test_build_answer_marks_an_uncited_answer_unsupported_despite_clearing_the_t
 def test_build_answer_surfaces_an_invented_citation() -> None:
     with patch(
         "backend.app.rag.service.generate_answer",
-        return_value="It launched in 1977 [4].",
+        return_value=GeneratedAnswer(text="It launched in 1977 [4].", model=SERVED_MODEL),
     ):
         result = build_answer("When did Voyager 1 launch?", [_passage("voyager-1-1")])
 

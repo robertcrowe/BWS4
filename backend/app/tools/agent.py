@@ -27,9 +27,8 @@ from dataclasses import dataclass, field
 import litellm
 import structlog
 
-from backend.app.core.config import get_settings
 from backend.app.services import model_registry
-from backend.app.tools.exa_client import ExaClientError, ExaRateLimitError, ExaResult
+from backend.app.services.web_search import ExaClientError, ExaRateLimitError, ExaResult
 from backend.app.tools.prompt_loader import load_prompt
 
 logger = structlog.get_logger()
@@ -175,7 +174,7 @@ async def _complete(messages: list[dict], *, pinned: str | None, force_answer: b
     Raises:
         AgentError: If every model in the chain fails.
     """
-    chain = model_registry.active_chain()
+    chain = model_registry.active_chain(model_registry.TOOL_MODEL_CHAIN)
     if pinned and pinned in chain:
         chain = [pinned] + [model for model in chain if model != pinned]
 

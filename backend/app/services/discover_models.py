@@ -54,9 +54,16 @@ _GROQ_NON_CHAT_MARKERS = ("whisper", "orpheus", "prompt-guard", "safeguard", "co
 STAGGER_SECONDS = 4.0
 RATE_LIMIT_BACKOFF_SECONDS = 25
 
-#: Models to keep out of the chain regardless of how they probe, with the
-#: reason, so a future run doesn't silently re-adopt a known-bad slug.
-KNOWN_BAD = {
+#: Models to keep out of the **tool** chain regardless of how they probe, with
+#: the reason, so a future run doesn't silently re-adopt a known-bad slug.
+#:
+#: Scoped to tool calling, and named accordingly: every entry here failed at
+#: *using tools*, which says nothing about whether the model can produce
+#: structured output. `groq/openai/gpt-oss-20b` is the live proof -- it 400s
+#: on the agent loop's termination path, yet returns clean, correctly-cited
+#: answer_v2 JSON, so it ships in model_registry.GENERATION_MODEL_CHAIN.
+#: Don't reuse this list to filter any other capability's chain.
+TOOL_KNOWN_BAD = {
     "openrouter/openai/gpt-oss-20b:free": (
         "returns the final answer in `reasoning` with empty `content`, so the "
         "loop can never terminate"
@@ -66,7 +73,8 @@ KNOWN_BAD = {
         "called a tool'), which is the agent loop's termination path"
     ),
     "groq/qwen/qwen3.6-27b": (
-        "returns empty content when asked to stop searching and answer"
+        "returns empty content when asked to stop searching and answer; also "
+        "fails the generation probe, emitting trailing junk after its JSON"
     ),
     "groq/allam-2-7b": "'tool calling is not supported with this model'",
 }
@@ -389,8 +397,8 @@ async def main() -> int:
     model_registry.ensure_provider_credentials()
 
     discovered = await fetch_free_tool_models() + await fetch_groq_chat_models()
-    excluded = [model for model in discovered if model in KNOWN_BAD]
-    candidates = [model for model in discovered if model not in KNOWN_BAD]
+    excluded = [model for model in discovered if model in TOOL_KNOWN_BAD]
+    candidates = [model for model in discovered if model not in TOOL_KNOWN_BAD]
 
     if not get_settings().groq_api_key:
         print("GROQ_API_KEY is unset -- probing OpenRouter only.\n")
@@ -418,7 +426,7 @@ async def main() -> int:
         )
 
     for model in excluded:
-        print(f"{model:<58} {'skip':<6} {'skip':<6} excluded: {KNOWN_BAD[model]}")
+        print(f"{model:<58} {'skip':<6} {'skip':<6} excluded: {TOOL_KNOWN_BAD[model]}")
 
     passing = [e for e in results if e["emits_call"] and e["completes_loop"]]
     if not passing:

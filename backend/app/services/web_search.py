@@ -1,5 +1,16 @@
 # Built with Spec4 AI - https://spec4.ai
-"""Async Exa Search API client, per Exa's documented REST search endpoint."""
+"""Framework web-search capability: an async Exa Search API client, per Exa's
+documented REST search endpoint.
+
+This lives in services/ rather than inside the tool-use example because search
+is a *framework* capability, not that app's private helper: a second example
+app that needs the web should call this module, not import from a sibling
+example. Its usage cap is CAPABILITY_SEARCH in services/shared.py.
+
+The module name states the capability and the symbols state the provider --
+there is exactly one implementation, and wrapping it in a provider-neutral
+facade would only hide which service the demo actually calls.
+"""
 
 from __future__ import annotations
 
