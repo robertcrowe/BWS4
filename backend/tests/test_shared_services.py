@@ -2,6 +2,8 @@
 import asyncio
 from unittest.mock import patch
 
+import pytest
+
 from backend.app.db.models import (
     LanguageGenerationRequest,
     ServiceLogEntry,
@@ -92,8 +94,15 @@ def test_generate_text_through_shared_interface_records_log_and_usage_rows() -> 
     assert session.commit_count >= 1
 
 
-def test_represent_text_through_shared_interface_records_log_and_usage_rows() -> None:
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=None)])
+def test_represent_text_logs_but_never_meters_the_local_embedding_model() -> None:
+    """Embedding is logged and never capped.
+
+    No usage_limits row is queued for this call, so a fake session with an
+    empty result queue is itself part of the assertion: if represent_text
+    ever reserves a capability again, the reservation's SELECT raises rather
+    than silently passing.
+    """
+    session = _FakeSession(queued_results=[])
 
     with patch(
         "backend.app.services.embedding.embed_text", return_value=[0.1, 0.2, 0.3]
@@ -107,11 +116,26 @@ def test_represent_text_through_shared_interface_records_log_and_usage_rows() ->
     representation_rows = [obj for obj in session.added if isinstance(obj, TextRepresentation)]
     log_rows = [obj for obj in session.added if isinstance(obj, ServiceLogEntry)]
 
-    assert usage_rows[0].capability == "representation"
-    assert usage_rows[0].used == 1
+    assert usage_rows == [], "the local embedding model must not consume a usage cap"
     assert len(representation_rows) == 1
     assert representation_rows[0].dimensions == 3
     assert log_rows[0].capability == "representation"
+
+
+def test_representation_cannot_be_metered_by_accident() -> None:
+    """Re-capping the local model fails loudly, with the reason.
+
+    The cheapest way this regresses is someone 'restoring consistency' by
+    adding representation back to the cap table, so the lookup refuses it.
+    """
+    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=None)])
+
+    with pytest.raises(ValueError, match="deliberately unmetered"):
+        asyncio.run(
+            shared.reserve_capability(
+                session, shared.CAPABILITY_REPRESENTATION, app_name="Test App"
+            )
+        )
 
 
 def test_set_record_through_shared_interface_records_log_and_usage_rows() -> None:

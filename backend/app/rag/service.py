@@ -67,10 +67,15 @@ class AnswerResult:
 async def answer_question(session: AsyncSession, question: str) -> AnswerResult:
     """Retrieve passages for a question, then generate a grounded answer.
 
-    Routes the representation (query embedding) and generation capabilities
-    through the shared_framework_services interface for usage-limit
-    enforcement and cross-app request logging, without changing the
-    underlying retrieval/generation logic in retriever.py/answer.py.
+    Routes both steps through the shared_framework_services interface for
+    cross-app request logging, and the generation step additionally for
+    usage-limit enforcement, without changing the underlying
+    retrieval/generation logic in retriever.py/answer.py.
+
+    Query embedding is logged but *not* capped -- see the comment below.
+    Generation is the only capability here that can be exhausted, which is
+    what lets api/rag.py report a cap failure as a generation failure
+    without misdiagnosing it.
 
     Google-style docstring per project convention.
 
@@ -82,18 +87,18 @@ async def answer_question(session: AsyncSession, question: str) -> AnswerResult:
         The generated (or below-threshold graceful) answer result.
 
     Raises:
-        RagServiceError: If a shared capability needed to answer this
-            question (representation, or generation once retrieval clears
-            the similarity threshold) is unavailable, or if retrieval found
-            strong matches but generation itself then failed.
+        RagServiceError: If the shared generation capability is unavailable
+            once retrieval clears the similarity threshold, or if retrieval
+            found strong matches but generation itself then failed.
     """
-    try:
-        await shared.reserve_capability(
-            session, shared.CAPABILITY_REPRESENTATION, app_name=RAG_APP_NAME
-        )
-    except shared.ServiceUnavailableError as exc:
-        raise RagServiceError(str(exc)) from exc
-
+    # Deliberately unmetered: embedding runs on the in-process
+    # sentence-transformers model, so a question costs local CPU and no
+    # third-party quota. This used to reserve CAPABILITY_REPRESENTATION,
+    # which made a *local* model the app's binding constraint -- every
+    # question spent a representation unit against a cap of 50, while only
+    # above-threshold questions spent a generation unit against a cap of
+    # 100, so the embedder always took the demo dark first. Logged but not
+    # capped; the caps below guard the metered external services.
     passages = await retrieve_passages(session, question)
     await shared.log_invocation(
         session,

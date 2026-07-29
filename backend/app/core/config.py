@@ -40,8 +40,11 @@ class Settings(BaseSettings):
 
     #: Per-capability daily usage caps for shared_framework_services, chosen
     #: to comfortably fit inside OpenRouter's/Neon's/Exa's free tiers.
+    #:
+    #: There is deliberately no embedding/representation cap: that model runs
+    #: in-process, so it spends local CPU and nobody's quota. See
+    #: services/shared.UNMETERED_CAPABILITIES for the full reasoning.
     generation_daily_limit: int = 100
-    embedding_daily_limit: int = 50
     storage_daily_limit: int = 300
     search_daily_limit: int = 30
 

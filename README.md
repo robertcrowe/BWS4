@@ -153,7 +153,7 @@ platform's secrets manager.
 | `PORT` | — | Defaults to `8000`; supplied automatically by Render. Don't leave it blank in `.env` — an empty value fails `int` parsing at startup. |
 | `EMBEDDING_MODEL_NAME` | — | Defaults to `sentence-transformers/all-MiniLM-L6-v2`. |
 | `GENERATION_DAILY_LIMIT` | — | Daily cap on generation calls (free-tier guardrail, default 100). |
-| `EMBEDDING_DAILY_LIMIT` | — | Daily cap on embedding calls (default 50). |
+| *(no embedding cap)* | — | Embedding is deliberately **uncapped** — the model runs in-process, so it spends local CPU and no third-party quota. It is still logged to `service_log_entries`. |
 | `STORAGE_DAILY_LIMIT` | — | Daily cap on storage calls (default 300). |
 | `SEARCH_DAILY_LIMIT` | — | Daily cap on Exa search calls (default 30). One tool-use request may run up to 3 searches, so 30 is a floor of ~10 agent runs per day. |
 

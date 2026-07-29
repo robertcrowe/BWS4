@@ -1,9 +1,10 @@
 // Built with Spec4 AI - https://spec4.ai
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ThemeToggle } from '../src/components/ThemeToggle'
+import { useIsDarkTheme } from '../src/useIsDarkTheme'
 import { THEME_STORAGE_KEY } from '../src/useTheme'
 
 /** Pin the OS preference so tests exercise the stored-value path deterministically. */
@@ -70,5 +71,27 @@ describe('theme toggle', () => {
 
     expect(document.documentElement.classList.contains('dark')).toBe(false)
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
+  })
+})
+
+describe('useIsDarkTheme', () => {
+  beforeEach(() => {
+    document.documentElement.classList.remove('dark')
+  })
+
+  it('tracks the root class so canvas-drawn content recolours with the toggle', async () => {
+    function Probe() {
+      return <span data-testid="probe">{useIsDarkTheme() ? 'dark' : 'light'}</span>
+    }
+
+    document.documentElement.classList.add('dark')
+    render(<Probe />)
+    expect(screen.getByTestId('probe')).toHaveTextContent('dark')
+
+    // Simulates what ThemeToggle -> applyTheme does to the root element. The
+    // plot cannot use `useTheme()` for this: that hook holds its own state,
+    // so a second caller would never hear about the NavBar's toggle.
+    document.documentElement.classList.remove('dark')
+    await waitFor(() => expect(screen.getByTestId('probe')).toHaveTextContent('light'))
   })
 })

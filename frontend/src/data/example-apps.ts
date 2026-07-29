@@ -45,4 +45,15 @@ export const exampleApps: ExampleApp[] = [
     status: 'live',
     route: '/tool-use',
   },
+  {
+    id: 'embeddings_example_app',
+    name: 'Embeddings Example App',
+    description:
+      'Watch 24 curated texts arrange themselves by meaning alone, then drop in your own words and see where they land.',
+    patternTag: 'Embeddings / Vector Representation',
+    patternSummary:
+      'Text is turned into a vector whose position encodes meaning, and everything downstream is arithmetic on those vectors — nearest-neighbour search, clustering, deduplication, topic routing. No tokens are generated and there is no answer to read, only items ranked or grouped by proximity, which is what makes this the cheapest and fastest tier that still understands paraphrase. It is the retrieval half of RAG standing on its own, and its limit is the flip side of its strength: a distance tells you two things are close, never why.',
+    status: 'live',
+    route: '/embeddings',
+  },
 ]

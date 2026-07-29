@@ -32,6 +32,20 @@ CAPABILITY_REPRESENTATION = "representation"
 CAPABILITY_STORAGE = "storage"
 CAPABILITY_SEARCH = "search"
 
+#: Capabilities that are logged but never capped.
+#:
+#: Representation runs on the in-process sentence-transformers model, so it
+#: consumes local CPU and no third-party quota -- there is no free tier to
+#: protect and nothing to run out of. It was metered once, at a cap of 50
+#: against generation's 100, and because the RAG app spends a representation
+#: unit on *every* question but a generation unit only on above-threshold
+#: ones, the local model was mathematically guaranteed to take the whole
+#: showcase dark first. A daily cap is also the wrong instrument for the one
+#: real cost (CPU on a free dyno): it bounds the day, not the burst, and it
+#: disables the app until 00:00 UTC instead of shedding load. That job
+#: belongs to a rate limit.
+UNMETERED_CAPABILITIES = frozenset({CAPABILITY_REPRESENTATION})
+
 _EXCERPT_MAX_LENGTH = 1000
 
 #: Recorded when a caller couldn't determine which chain model served a
@@ -58,22 +72,34 @@ class ServiceUnavailableError(Exception):
 
 
 def _default_cap(capability: str) -> int:
-    """Look up the configured daily cap for a capability.
+    """Look up the configured daily cap for a metered capability.
 
     Args:
-        capability: One of CAPABILITY_GENERATION, CAPABILITY_REPRESENTATION,
-            CAPABILITY_STORAGE, or CAPABILITY_SEARCH.
+        capability: One of CAPABILITY_GENERATION, CAPABILITY_STORAGE, or
+            CAPABILITY_SEARCH. Each guards a real external quota.
 
     Returns:
         The configured free-tier default cap for that capability.
+
+    Raises:
+        ValueError: If the capability is unmetered or unknown. Explicit
+            rather than a bare KeyError, so an attempt to re-cap a local
+            capability fails with the reason instead of a lookup trace.
     """
     settings = get_settings()
-    return {
+    caps = {
         CAPABILITY_GENERATION: settings.generation_daily_limit,
-        CAPABILITY_REPRESENTATION: settings.embedding_daily_limit,
         CAPABILITY_STORAGE: settings.storage_daily_limit,
         CAPABILITY_SEARCH: settings.search_daily_limit,
-    }[capability]
+    }
+    if capability in UNMETERED_CAPABILITIES:
+        raise ValueError(
+            f"'{capability}' is deliberately unmetered -- it consumes no third-party "
+            "quota. See UNMETERED_CAPABILITIES for why capping it is the wrong tool."
+        )
+    if capability not in caps:
+        raise ValueError(f"'{capability}' is not a known metered capability")
+    return caps[capability]
 
 
 def utc_today() -> date:
@@ -225,22 +251,22 @@ async def generate_text(
 
 
 async def represent_text(session: AsyncSession, *, text: str, app_name: str) -> list[float]:
-    """Represent text through the shared interface: enforce, embed, log.
+    """Represent text through the shared interface: embed and log.
+
+    Unlike generate_text/get_record/set_record, this reserves nothing. The
+    embedding model runs in-process, so there is no third-party quota to
+    protect -- see UNMETERED_CAPABILITIES. It never raises
+    ServiceUnavailableError, which means callers embedding a visitor's text
+    do not need a cap-exhausted branch.
 
     Args:
-        session: An async SQLAlchemy session for usage/logging bookkeeping.
+        session: An async SQLAlchemy session for logging bookkeeping.
         text: The text to represent.
         app_name: The name of the requesting app.
 
     Returns:
         The text's embedding vector.
-
-    Raises:
-        ServiceUnavailableError: If the representation capability's usage
-            cap has been reached.
     """
-    await reserve_capability(session, CAPABILITY_REPRESENTATION, app_name=app_name)
-
     vector = embedding.embed_text(text)
 
     session.add(
