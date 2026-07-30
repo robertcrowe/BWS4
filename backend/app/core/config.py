@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     #: Optional second LLM provider for the tool-use agent's model chain.
     #: Groq's free tier is metered per model (e.g. 1,000 requests/day on
     #: gpt-oss-120b) rather than as one account-wide pool like OpenRouter's
-    #: 50/day, so it carries most of the traffic when configured. Unset is
+    #: (50/day unfunded, 1,000/day funded), so it carries most of the traffic
+    #: when configured. Unset is
     #: fine: model_registry drops every groq/ slug from the chain and the
     #: OpenRouter entries serve alone.
     groq_api_key: str | None = None

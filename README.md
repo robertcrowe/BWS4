@@ -1,17 +1,23 @@
 # Built with Spec4 (BWS4)
 
 ## Overview
+<a href='https://spec4.ai' style='float:right'><img src='BWS4-white-100.png'></a>
+Built with Spec4 (BWS4) is a living showcase of common AI application patterns, presented as a collection of small, self-contained example apps behind a single landing page. Each example demonstrates one pattern end-to-end: how it's built, what it depends on, and how it behaves, so that visitors unfamiliar with the underlying technique can understand it by seeing it work rather than by reading about it abstractly.
 
-Built with Spec4 (BWS4) is a living showcase of common AI application patterns, presented as a collection of small, self-contained example apps behind a single landing page. Each example — starting with Retrieval-Augmented Generation (RAG) and tool-use via web search — demonstrates one pattern end-to-end: how it's built, what it depends on, and how it behaves, so that visitors unfamiliar with the underlying technique can understand it by seeing it work rather than by reading about it abstractly.
+Five examples ship today. Four are listed in order of how much machinery each pattern needs — **embeddings** (turn text into a position and compare positions), **single-call** (one prompt in, one response out), **RAG** (retrieve first, then answer from what you retrieved), and **tool use** (let the model decide what to call) — followed by the newest addition, **chained calls** (one call's output becomes the next call's input), which by machinery alone would sit just after single-call. Seeing them side by side is the point: each one exists partly to show what the cheaper tier below it cannot do.
 
-The gallery is designed to grow. New example apps can be added over time without disrupting the availability of existing ones, thanks to per-example code-splitting on the frontend and a shared set of backend framework services (generation, embedding, storage) that every example app draws on. Every example runs entirely within free, no-cost usage limits, making the whole project easy to fork, run locally, and deploy without a billing surprise.
+The gallery is designed to grow. New example apps can be added over time without disrupting the availability of existing ones, thanks to per-example code-splitting on the frontend and a shared set of backend framework services (generation, embedding, web search, storage) that every example app draws on. Adding an app to the landing page, the header menu, and the router is a single entry in one file. Every example runs entirely within free, no-cost usage limits, making the whole project easy to fork, run locally, and deploy without a billing surprise.
 
 ## Key Features
 
 - **Landing page & example app directory** — a consistent entry point listing every example app in the gallery, with a uniform look, feel, and navigation pattern across all of them.
-- **RAG example app** — a full retrieval-augmented generation pipeline: a curated reference dataset is chunked, embedded, and indexed; user questions are answered by retrieving the most relevant passages and grounding a generated response in them.
-- **Tool-use example app** — a live web-search integration (via Exa) demonstrating how an LLM can call out to an external tool mid-conversation to answer questions beyond its own knowledge.
-- **Shared framework services** — common generation, representation, and storage capabilities reused across example apps, so each new pattern only needs to add what's unique to it.
+- **Embeddings example app** — 24 curated texts across four categories, embedded by the shared model and projected into 2D so semantically similar texts land near each other. Visitors can drop in their own text and watch it place; the existing points never move, because the projection is fitted once and only ever applied afterwards.
+- **Single-call example app** — the baseline pattern, in both modes. **Simple** returns plain prose; **Structured** attaches a JSON Schema to the same single request and validates the response against it server-side, showing the submitted request and the returned response side by side. When a response doesn't conform, that's reported with the raw output rather than dressed up as a success — which happens for real, because 2 of the 8 free models in the chain don't honour a schema directive.
+- **RAG example app** — a full retrieval-augmented generation pipeline: a curated reference dataset is chunked, embedded, and indexed; user questions are answered by retrieving the most relevant passages and grounding a generated response in them. Every answer's citations are audited against the passages actually retrieved, so "grounded" is a checked claim rather than a hopeful label.
+- **Tool-use example app** — a real function-calling loop (searching the live web via Exa): the model is handed a tool *schema* and decides for itself whether to call it, what query to write, and when it has enough to answer. The trace shown is what it actually did.
+- **Chained-calls example app** — exactly two sequential model calls, where the second one's input is literally the first one's output: a "struggling writer" persona drafts a short story, then an independent "harsh critic" persona critiques that exact draft. Both blocks stay on screen, and the phrase the critic quoted is checked against the story it came from — so "the critic actually read it" is a measured claim, not a hopeful one. If the critic call fails, the story survives and only the second call is retried.
+- **Shared framework services** — common generation, representation, and storage capabilities reused across example apps, so each new pattern only needs to add what's unique to it. Every model call in the gallery, whichever app makes it, goes through one registry with one fallback chain, one set of provider credentials, and one shared bench of withdrawn models.
+- **Free-tier guardrails** — per-UTC-day usage caps on every metered capability, enforced *before* a provider is called, so an unauthenticated demo can't drain a shared quota. The one capability that spends no third-party quota (in-process embedding) is deliberately uncapped and still logged.
 - **Route-based code-splitting** — each example app is lazy-loaded independently, keeping the initial page load light as the gallery grows.
 - **Light/dark theming** — a visitor's theme preference is remembered locally across visits.
 - **Built-in observability** — optional, zero-config error tracking and model-call observability that no-ops cleanly when not configured, so the project runs the same whether or not monitoring is wired up.
@@ -21,7 +27,9 @@ The gallery is designed to grow. New example apps can be added over time without
 **Frontend (`web_client`)**
 - TypeScript
 - React Router (client-side routing, per-example lazy-loaded chunks)
-- Tailwind CSS (consistent styling across all example apps)
+- TanStack Query (server state, loading/error states, and no automatic retries on calls that spend quota)
+- Tailwind CSS (consistent styling across all example apps, with a class-based light/dark strategy)
+- Plotly (`plotly-basic` build only — the scatter plot for the embeddings example, ~1 MB rather than the full ~4.7 MB bundle, and confined to that route's lazy chunk)
 - Vite (build tool, producing a hashed static bundle)
 
 **Backend (`api`)**
@@ -29,7 +37,9 @@ The gallery is designed to grow. New example apps can be added over time without
 - FastAPI (REST API, with an auto-generated OpenAPI schema)
 - SQLAlchemy (data access, including pgvector cosine-distance queries)
 - sentence-transformers (`all-MiniLM-L6-v2`) for embeddings, run in-process
-- LiteLLM, routing to OpenRouter and Groq — every example app calls models through one shared registry (`backend/app/services/model_registry.py`), which walks an ordered chain of free-tier models on failure and benches any slug a provider has withdrawn. The chains are per capability (tool calling vs. structured generation) because the two are verified separately; both rot as providers retire free slugs, so expect to refresh them
+- LiteLLM, routing to OpenRouter and Groq — every example app calls models through one shared registry (`backend/app/services/model_registry.py`), which walks an ordered chain of free-tier models on failure and benches any slug a provider has withdrawn. The chains are per capability (tool calling vs. text generation) because the two are verified separately; both rot as providers retire free slugs, so expect to refresh them
+- PydanticAI, routing to Groq and OpenRouter — the second model lane (`backend/app/services/agent_runtime.py`), used where an app wants the framework to bind and validate typed output rather than parsing JSON out of prose. It reads its slugs from that *same* registry and passes through the same usage-limit gate, so the two lanes cannot disagree about which models exist or spend budget the other doesn't see. Providers are pluggable: most expose an OpenAI-shaped endpoint, so adding one is a base URL and a credential entry rather than a new SDK
+- scikit-learn (PCA), used only to project embeddings to 2D for the embeddings example's plot — fitted once at startup over the curated preset set and never re-fitted
 - Exa (web search API), exposed as a shared framework capability in `backend/app/services/web_search.py` and used today by the tool-use example app
 
 **Data & storage**
@@ -120,18 +130,27 @@ npm run dev --prefix frontend
 
 The app will be available at `http://localhost:5173` (or the port Vite reports), and will talk to the backend at the URL configured in `VITE_API_BASE_URL`.
 
-**Tests:**
+**Tests, lint, and typecheck:**
 
 ```shell
-uv run pytest backend/tests
-npm run test --prefix frontend
+uv run pytest backend/tests          # 161 tests, no database or provider required
+npm run test --prefix frontend       # 93 tests
+npm run lint --prefix frontend
+npm run build --prefix frontend      # `tsc -b` runs here, so this is also the typecheck
 ```
+
+The backend suite needs neither a live Postgres nor a live model provider: `conftest.py` supplies
+fake-but-valid config so `Settings` validates, DB-touching routes are exercised through an
+in-memory fake session, and provider calls are stubbed at their point of use.
 
 ### Using the app
 
 - Open the landing page to see every available example app.
+- Select **Embeddings** to see the same 24 curated texts arranged by meaning alone, then add your own word or phrase. Notice that whole sentences land beside single words (`joy` sits near `grief` — opposite sentiments, both about feeling), that the axes are deliberately unlabelled because only ~19% of the original detail survives the squeeze to 2D, and that nothing already on the plot moves when your text is added.
+- Select **Single-Call** for the baseline: one prompt, one response, nothing in between. Start with a preset chip (each labelled by intent — summarize, classify, extract) and note that the full prompt appears in the box, so you can see exactly what will be sent before spending a call. Then flip the toggle to **Structured** and run the same preset again: the request now carries a JSON Schema, and you get the submitted request and the schema-checked response side by side. If the model returns something that doesn't match, the screen says so and shows you the raw output — worth seeing, because it's the honest half of the pattern.
 - Select **RAG** to ask questions against the curated reference dataset — the app retrieves relevant passages and generates an answer from them, showing every passage it retrieved and marking which ones the answer actually cited. Two different failure modes are worth trying: `What's the best pizza topping?` is rejected by the retriever before any model runs, while `Who was the first woman in space?` scores *above* the similarity threshold on the dataset's Gagarin passages and is caught only by the citation audit — a reminder that a good similarity score is not evidence the dataset contains the answer.
 - Select **Tool-Use** to watch a real function-calling loop. The model is given a `web_search` tool schema and decides for itself whether to call it, writes its own search query, reads the results, and may search again before answering. The trace shown under each run is what the model actually did — including choosing *not* to search, which you can see by asking it something like `What is 17 times 24?`.
+- Select **Chained-Calls** and give it a story idea. Both calls are described before you submit, so you know what each one is for. The draft comes back labelled *Step 1 · Struggling Writer* and the critique *Step 2 · Harsh Critic*, with the exact phrase the critic pulled out of the story quoted above its verdict — that phrase is checked server-side against the story text, so you can tell a critique that read the draft from one that didn't. The progress indicator deliberately does *not* animate a hand-off between the two calls: they run in one round trip, so the browser learns they both finished at the same moment.
 - Toggle light/dark mode from the header; your preference is remembered on your device.
 
 ## Configuration
@@ -147,12 +166,12 @@ platform's secrets manager.
 | --- | --- | --- |
 | `DATABASE_URL` | ✅ | Neon pooled Postgres connection string. Must be asyncpg-style: `postgresql+asyncpg://…?ssl=require` — *not* the `postgresql://…?sslmode=require` form Neon shows by default. |
 | `CORS_ORIGIN` | ✅ | The deployed frontend's exact origin. The API allows this single origin and never `*`. |
-| `OPENROUTER_API_KEY` | ✅ | Answer generation via LiteLLM → OpenRouter. Used by the RAG example app and as the tool-use agent's fallback provider. |
-| `GROQ_API_KEY` | — | Optional second LLM provider for the tool-use agent. Groq's free tier is metered **per model** (1,000+ requests/day each) rather than as one account-wide pool, so it leads the chain when set. Unset → `groq/` entries are dropped and OpenRouter serves alone. |
+| `OPENROUTER_API_KEY` | ✅ | Text generation via OpenRouter, reached by both model lanes — LiteLLM for the RAG, tool-use, and single-call apps, PydanticAI for the chained-calls app. Serves as the deep fallback in both model chains. |
+| `GROQ_API_KEY` | — | Optional second LLM provider, used by **both** model chains (tool calling and text generation) and by **both** lanes (LiteLLM and PydanticAI). Groq's free tier is metered **per model** (1,000+ requests/day each) rather than as one account-wide pool, so it leads both chains when set. Unset → `groq/` entries are dropped everywhere and OpenRouter serves alone. |
 | `EXA_API_KEY` | ✅ | Live web search, called by the tool-use agent when *it* decides to search. |
 | `PORT` | — | Defaults to `8000`; supplied automatically by Render. Don't leave it blank in `.env` — an empty value fails `int` parsing at startup. |
 | `EMBEDDING_MODEL_NAME` | — | Defaults to `sentence-transformers/all-MiniLM-L6-v2`. |
-| `GENERATION_DAILY_LIMIT` | — | Daily cap on generation calls (free-tier guardrail, default 100). |
+| `GENERATION_DAILY_LIMIT` | — | Daily cap on generation calls (free-tier guardrail, default 100). Shared by the RAG, tool-use, single-call, and chained-calls apps — they draw on one counter, because they draw on one provider quota. Note that one chained-calls submission reserves **2** units up front, so a chain that can't be finished is never started. |
 | *(no embedding cap)* | — | Embedding is deliberately **uncapped** — the model runs in-process, so it spends local CPU and no third-party quota. It is still logged to `service_log_entries`. |
 | `STORAGE_DAILY_LIMIT` | — | Daily cap on storage calls (default 300). |
 | `SEARCH_DAILY_LIMIT` | — | Daily cap on Exa search calls (default 30). One tool-use request may run up to 3 searches, so 30 is a floor of ~10 agent runs per day. |
@@ -182,17 +201,26 @@ changing either of them.
 
 ### Free-model troubleshooting
 
-The tool-use agent walks an ordered model chain that spans **two providers** — Groq first,
-OpenRouter behind it — so an outage or a quota wall at either still leaves working entries.
-LiteLLM walks the chain on the real request; nothing is probed in the request path. (The RAG
-example's answer generation is separate and still OpenRouter-only.)
+Every model call walks an ordered chain that spans **two providers** — Groq first, OpenRouter
+behind it — so an outage or a quota wall at either still leaves working entries. LiteLLM walks
+the chain on the real request; nothing is probed in the request path.
+
+There are **two chains**, and which one you're looking at matters. `TOOL_MODEL_CHAIN` serves the
+tool-use agent; `GENERATION_MODEL_CHAIN` serves RAG's answers and the single-call app's plain and
+structured modes. They're separate because the two capabilities are verified separately (see the
+note at the end of this section), but they share everything else: credentials, and one bench of
+withdrawn slugs, since a model a provider has retired is retired for every app at once.
 
 Two failure modes worth telling apart:
 
-- **`429 Rate limit exceeded: free-models-per-day`.** OpenRouter's free tier is an
-  account-wide daily cap (50 requests on an unfunded account) shared with the RAG app, reset
-  at midnight UTC — not a code problem and not specific to any model. Groq's limits are
-  per-model instead, which is why it leads the chain. The agent surfaces an exhausted chain
+- **`429 Rate limit exceeded: free-models-per-day`.** OpenRouter's free-model allowance is
+  an account-wide cap shared by every example app, reset at midnight UTC — not a code problem
+  and not specific to any model. It is **50 requests/day on an unfunded account and 1,000/day
+  once $10 of credits has been purchased**, and separately **20 requests/minute** either way,
+  so a burst can 429 long before the day's budget is spent. Check which situation you are in
+  without spending anything: `curl -H "Authorization: Bearer $OPENROUTER_API_KEY"
+  https://openrouter.ai/api/v1/key` reports `is_free_tier`, and `/api/v1/credits` reports the
+  balance. Groq's limits are per-model instead, which is why it leads the chain. The agent surfaces an exhausted chain
   as *"the agent's language model is temporarily unavailable"*. Nothing is benched: a 429
   means busy, not gone.
 - **`404 No endpoints found` / `unavailable for free`.** The slug has been withdrawn from the
@@ -211,11 +239,21 @@ Two failure modes worth telling apart:
   roughly 30 requests against the same daily cap, so run it once, not in a loop.
 
   Discovery probes for *tool calling*. `model_registry.GENERATION_MODEL_CHAIN` — the chain
-  behind the RAG example's answers — needs a different check: that the model returns
+  behind RAG's answers and the single-call app — needs a different check: that the model returns
   schema-valid JSON and emits no citation markers when it declines to answer. A model that
   passes one probe can fail the other (`groq/openai/gpt-oss-20b` is excluded from the tool
   chain and shipped in the generation chain), so don't move slugs between the two chains
   without re-verifying.
+
+- **Structured mode returns "Schema mismatch detected".** Not a bug, and not necessarily worth
+  fixing. Support for provider-native constrained decoding is uneven across the free tier: of
+  the eight models in the generation chain, five return conforming JSON under a strict
+  `json_schema` directive, one rejects the parameter outright (its 400 trips the fallback, so
+  the request still succeeds), and one accepts the directive and returns a different shape
+  anyway. That's why the response is validated server-side after the model answers, and why a
+  mismatch is shown with its raw output instead of being retried — the single-call app exists
+  partly to make this behaviour visible. If *every* structured call is mismatching, suspect the
+  chain has rotted rather than the schema.
 
 ## Deployment
 
@@ -280,7 +318,9 @@ Other deployment notes:
 
 ## Roadmap
 
-- **Playwright** — end-to-end browser testing is planned but not yet part of this project's test suite or CI pipeline.
+- **Playwright** — end-to-end browser testing is planned but not yet part of this project's test suite or CI pipeline. Worth knowing that this is currently the widest gap in coverage: the app is verified by component tests and by calls against the live API, but no browser has been driven against it.
+- **A rate limit.** The daily caps bound the day, not the burst, and two costs are exposed to that. In-process embedding spends local CPU rather than third-party quota, so it is deliberately uncapped — but on a free dyno the burst is the real cost. And OpenRouter enforces **20 requests/minute** on free models regardless of the daily allowance, so a burst can 429 with the daily budget barely touched. A rate limit is the right instrument for both; nothing has been built.
+- **An authenticated operator view of `usage_limits` / `service_log_entries`.** Both tables are written on every call and there is currently no in-app reader; an earlier public one was removed for spending real quota and echoing visitors' text. Any replacement needs authentication that fails closed and must not echo visitor input.
 - Additional example apps demonstrating further AI patterns, added incrementally without affecting existing ones.
 
 ## Contributing

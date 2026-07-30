@@ -67,6 +67,9 @@ class LanguageGenerationRequest(Base):
     Maps to the stack spec's `language_generation_requests` collection
     (LanguageGenerationRequest entity): one row per successful shared-service
     generation call, tagged with the requesting app's name.
+
+    Carries the design entity's three fields -- prompt, requestingApp, mode --
+    as `prompt_excerpt`, `app_name`, and `mode`.
     """
 
     __tablename__ = "language_generation_requests"
@@ -76,6 +79,12 @@ class LanguageGenerationRequest(Base):
     prompt_excerpt: Mapped[str] = mapped_column(Text)
     response_excerpt: Mapped[str] = mapped_column(Text)
     model_name: Mapped[str] = mapped_column(String(255))
+    #: "plain" or "structured" -- whether a schema was demanded of the
+    #: response. Recorded rather than inferred: the same app, the same model,
+    #: and the same prompt length look identical in this table otherwise, so
+    #: without it there is no way to tell a free-text call from a
+    #: schema-constrained one when investigating why one of them is failing.
+    mode: Mapped[str] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

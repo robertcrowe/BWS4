@@ -32,6 +32,13 @@ CAPABILITY_REPRESENTATION = "representation"
 CAPABILITY_STORAGE = "storage"
 CAPABILITY_SEARCH = "search"
 
+#: The two kinds of generation call, as recorded on
+#: language_generation_requests.mode. "structured" means a schema was demanded
+#: of the response and validated after it came back -- whether that schema was
+#: enforced by provider-native constrained decoding or only by the prompt.
+MODE_PLAIN = "plain"
+MODE_STRUCTURED = "structured"
+
 #: Capabilities that are logged but never capped.
 #:
 #: Representation runs on the in-process sentence-transformers model, so it
@@ -114,7 +121,9 @@ def utc_today() -> date:
     return datetime.now(timezone.utc).date()
 
 
-async def reserve_capability(session: AsyncSession, capability: str, *, app_name: str) -> None:
+async def reserve_capability(
+    session: AsyncSession, capability: str, *, app_name: str, units: int = 1
+) -> None:
     """Check a capability's daily usage_limits row and increment it, or reject.
 
     The cap is a per-UTC-day budget. When the stored `window_start` predates
@@ -130,10 +139,19 @@ async def reserve_capability(session: AsyncSession, capability: str, *, app_name
         app_name: The name of the app making the request (unused for the
             check itself, kept for symmetry with the other shared functions
             and future per-app quota breakdowns).
+        units: How many units this one reservation spends. Defaults to 1, which
+            is what every single-call app wants and leaves the existing callers
+            unchanged -- `used >= cap` and `used + 1 > cap` are the same test.
+            A caller that will make N provider calls passes N so the check and
+            the increment happen **once**, before any of them run: the
+            chained-calls app must not start a two-call chain it cannot
+            finish, and reserving twice in a row would leave a gap where the
+            first unit is committed and the second is refused.
 
     Raises:
         ServiceUnavailableError: If the capability's usage counter has
-            already reached its configured cap *for today*.
+            already reached its configured cap *for today*, or if `units`
+            would take it past the cap.
     """
     del app_name  # not yet used to partition usage, kept for interface symmetry
     today = utc_today()
@@ -156,10 +174,10 @@ async def reserve_capability(session: AsyncSession, capability: str, *, app_name
         limit.used = 0
         limit.window_start = today
 
-    if limit.used >= limit.cap:
+    if limit.used + units > limit.cap:
         raise ServiceUnavailableError(capability)
 
-    limit.used += 1
+    limit.used += units
     await session.commit()
 
 
@@ -185,6 +203,7 @@ async def record_generation_request(
     prompt_excerpt: str,
     response_excerpt: str,
     model_name: str,
+    mode: str,
 ) -> None:
     """Record a language_generation_requests row for a successful generation call.
 
@@ -197,6 +216,11 @@ async def record_generation_request(
             defaulted: every caller here walks a fallback chain and knows what
             answered, so defaulting to the chain's first entry would log a
             model that may never have been called.
+        mode: MODE_PLAIN or MODE_STRUCTURED -- whether a schema was demanded of
+            the response. Required for the same reason as `model_name`: every
+            caller knows which kind of call it made, and a default would
+            record "plain" for schema-constrained calls, reintroducing exactly
+            the ambiguity the column was added to remove.
     """
     session.add(
         LanguageGenerationRequest(
@@ -204,6 +228,7 @@ async def record_generation_request(
             prompt_excerpt=prompt_excerpt[:_EXCERPT_MAX_LENGTH],
             response_excerpt=response_excerpt[:_EXCERPT_MAX_LENGTH],
             model_name=model_name or _UNKNOWN_MODEL,
+            mode=mode,
         )
     )
     await session.commit()
@@ -240,6 +265,9 @@ async def generate_text(
         prompt_excerpt=user_prompt,
         response_excerpt=result.text,
         model_name=result.model,
+        # This entry point takes no response_format, so it is plain by
+        # construction -- not by assumption.
+        mode=MODE_PLAIN,
     )
     await log_invocation(
         session,

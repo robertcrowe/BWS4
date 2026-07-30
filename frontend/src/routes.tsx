@@ -29,6 +29,16 @@ const EmbeddingsScreen = lazy(() =>
     default: module.EmbeddingsScreen,
   })),
 )
+const SingleCallScreen = lazy(() =>
+  import('./screens/single-call/SingleCallScreen').then((module) => ({
+    default: module.SingleCallScreen,
+  })),
+)
+const ChainedCallsScreen = lazy(() =>
+  import('./screens/chained-calls/ChainedCallsScreen').then((module) => ({
+    default: module.ChainedCallsScreen,
+  })),
+)
 
 /** Wraps a lazy-loaded route element in the fallback every route shares while its chunk loads. */
 function withSuspense(element: ReactNode) {
@@ -59,6 +69,14 @@ export const router = createBrowserRouter([
   {
     path: '/embeddings',
     element: withSuspense(<EmbeddingsScreen />),
+  },
+  {
+    path: '/single-call',
+    element: withSuspense(<SingleCallScreen />),
+  },
+  {
+    path: '/chained-calls',
+    element: withSuspense(<ChainedCallsScreen />),
   },
   ...exampleApps
     .filter((app) => app.status === 'coming-soon')

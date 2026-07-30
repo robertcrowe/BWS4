@@ -11,6 +11,7 @@ here directly.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import litellm
 import structlog
@@ -39,7 +40,12 @@ class GenerationResult:
     model: str
 
 
-def generate_text(*, system_prompt: str, user_prompt: str) -> GenerationResult:
+def generate_text(
+    *,
+    system_prompt: str,
+    user_prompt: str,
+    response_format: dict[str, Any] | None = None,
+) -> GenerationResult:
     """Generate text over the shared free-model generation chain.
 
     Hands the whole chain to LiteLLM's `fallbacks`, which walks it on failure
@@ -55,6 +61,26 @@ def generate_text(*, system_prompt: str, user_prompt: str) -> GenerationResult:
             output contract it must follow.
         user_prompt: The request-specific content (e.g. grounding passages
             and the visitor's question).
+        response_format: Optional provider-native constrained-decoding
+            directive, e.g. a `json_schema` block. Passed straight through
+            when supplied and omitted entirely otherwise, so callers that
+            don't want constrained decoding are unaffected.
+
+            **Support across the chain is uneven, measured rather than
+            assumed.** Of the eight entries, five return conforming JSON under
+            a strict `json_schema`, one (`inclusionai/ling-3.0-flash:free`)
+            rejects the parameter with an upstream 400, and one
+            (`poolside/laguna-s-2.1:free`) accepts it and returns a *different*
+            shape regardless. So this parameter reduces the odds of
+            non-conformance -- it does not remove the need for the caller to
+            validate what comes back.
+
+            `drop_params=True` is deliberately NOT set. It does not help: the
+            400 above comes from the upstream provider, not from LiteLLM's
+            parameter check, so nothing gets dropped. What it would do is
+            silently turn a constrained request into an unconstrained one, and
+            a caller that asked for a schema is better served by a failure
+            that trips the fallback chain than by a quiet downgrade.
 
     Returns:
         The model's raw text response and the slug that served it.
@@ -70,6 +96,10 @@ def generate_text(*, system_prompt: str, user_prompt: str) -> GenerationResult:
     # every fallback, including ones belonging to a different provider.
     model_registry.ensure_provider_credentials()
 
+    optional: dict[str, Any] = {}
+    if response_format is not None:
+        optional["response_format"] = response_format
+
     try:
         response = litellm.completion(
             model=chain[0],
@@ -80,6 +110,7 @@ def generate_text(*, system_prompt: str, user_prompt: str) -> GenerationResult:
             fallbacks=chain[1:],
             num_retries=1,
             timeout=REQUEST_TIMEOUT_SECONDS,
+            **optional,
         )
     except Exception as exc:  # noqa: BLE001 - any provider/transport failure
         model_registry.note_failure(exc)

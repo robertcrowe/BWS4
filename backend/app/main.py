@@ -6,9 +6,11 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.api.chained_calls import router as chained_calls_router
 from backend.app.api.embeddings import router as embeddings_router
 from backend.app.api.health import router as health_router
 from backend.app.api.rag import router as rag_router
+from backend.app.api.single_call import router as single_call_router
 from backend.app.api.tools import router as tools_router
 from backend.app.core.config import get_settings
 from backend.app.core.logging import configure_logging
@@ -63,3 +65,5 @@ app.include_router(health_router)
 app.include_router(rag_router)
 app.include_router(tools_router)
 app.include_router(embeddings_router)
+app.include_router(single_call_router)
+app.include_router(chained_calls_router)

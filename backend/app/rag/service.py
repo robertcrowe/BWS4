@@ -127,6 +127,10 @@ async def answer_question(session: AsyncSession, question: str) -> AnswerResult:
             prompt_excerpt=question,
             response_excerpt=result.answer,
             model_name=result.model,
+            # RAG's answers are validated against rag.schemas.LlmAnswer, so
+            # this is a structured call even though the schema is carried by
+            # the answer_v2 prompt rather than by a response_format directive.
+            mode=shared.MODE_STRUCTURED,
         )
         await shared.log_invocation(
             session,

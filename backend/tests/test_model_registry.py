@@ -238,7 +238,7 @@ def test_discovery_handles_a_single_vendor_without_dropping_entries() -> None:
 
 
 def test_discovery_puts_groq_ahead_of_openrouter() -> None:
-    """Groq meters per model; OpenRouter free is one 50/day account-wide pool.
+    """Groq meters per model; OpenRouter free is one account-wide pool.
 
     Ordering by raw model quality alone would invert this, so the priority is
     pinned rather than left to chance.

@@ -133,6 +133,9 @@ async def run_search(session: AsyncSession, search_query: str) -> AgentSearchRun
         prompt_excerpt=search_query,
         response_excerpt=run.answer,
         model_name=run.model,
+        # The agent loop constrains the model's *tool calls* with schemas, but
+        # its final answer is free prose against no schema at all.
+        mode=shared.MODE_PLAIN,
     )
     await shared.log_invocation(
         session,

@@ -312,8 +312,9 @@ async def probe_with_backoff(model: str, delay: float) -> dict:
 
 #: Providers in serving order. Groq leads because its free tier is metered
 #: per model (1,000+ requests/day each) while OpenRouter's is a single
-#: account-wide 50/day pool shared with the RAG app -- so OpenRouter is worth
-#: far more as a fallback than as a primary.
+#: account-wide pool shared by every example app (50/day unfunded, 1,000/day
+#: once $10 of credits has been purchased) -- so OpenRouter is worth more as a
+#: fallback than as a primary.
 _PROVIDER_PRIORITY = ["groq", "openrouter"]
 
 

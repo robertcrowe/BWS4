@@ -21,8 +21,41 @@ export interface ExampleApp {
  * links to its `route` — mark an app 'coming-soon' until its screen and
  * backend support actually exist, so the directory never links to a
  * broken route.
+ *
+ * **Array order is display order**, and it is deliberate. The first four run
+ * from the least machinery to the most — embeddings (compare positions,
+ * generate nothing), single call (one prompt, one response), RAG (retrieve
+ * first, then answer from what you retrieved), tool use (let the model decide
+ * what to call) — so a visitor reading top to bottom meets each pattern after
+ * the cheaper one it builds on. Chained calls sits at the end as the newest
+ * addition rather than at its place in that progression, which would be
+ * directly after single call. Newest-last is the rule to follow when adding
+ * the sixth. Reordering here reorders the landing cards *and* the header menu,
+ * since `NavMenu` maps the same array.
  */
 export const exampleApps: ExampleApp[] = [
+  {
+    id: 'embeddings_example_app',
+    name: 'Embeddings Example App',
+    description:
+      'Watch 24 curated texts arrange themselves by meaning alone, then drop in your own words and see where they land.',
+    patternTag: 'Embeddings / Vector Representation',
+    patternSummary:
+      'Text is turned into a vector whose position encodes meaning, and everything downstream is arithmetic on those vectors — nearest-neighbour search, clustering, deduplication, topic routing. No tokens are generated and there is no answer to read, only items ranked or grouped by proximity, which is what makes this the cheapest and fastest tier that still understands paraphrase. It is the retrieval half of RAG standing on its own, and its limit is the flip side of its strength: a distance tells you two things are close, never why.',
+    status: 'live',
+    route: '/embeddings',
+  },
+  {
+    id: 'single_call_example_app',
+    name: 'Single-Call Example App',
+    description:
+      'See the simplest agentic pattern — one prompt in, one model response out, with nothing in between.',
+    patternTag: 'Single-Call Pattern',
+    patternSummary:
+      'One request carries the whole task: the prompt goes to the model and the completion comes back, with no retrieval step before it, no tool call during it, and no second call after it. That makes it the baseline every other pattern is measured against — it is the cheapest and lowest-latency way to use a model, and the right choice whenever the work is a transformation of text the caller already has, such as summarising, classifying, or extracting fields. Its limit is exactly what the other tiers exist to fix: the model can only work from the prompt and its training, so anything depending on private data or current facts is out of reach. The Structured mode below shows the one common extension that stays within a single call: the request carries a JSON Schema, so the response comes back as data your code can use rather than prose it has to parse.',
+    status: 'live',
+    route: '/single-call',
+  },
   {
     id: 'rag_example_app',
     name: 'RAG Example App',
@@ -46,14 +79,14 @@ export const exampleApps: ExampleApp[] = [
     route: '/tool-use',
   },
   {
-    id: 'embeddings_example_app',
-    name: 'Embeddings Example App',
+    id: 'chained_calls_example_app',
+    name: 'Chained-Calls Example App',
     description:
-      'Watch 24 curated texts arrange themselves by meaning alone, then drop in your own words and see where they land.',
-    patternTag: 'Embeddings / Vector Representation',
+      'Watch a story idea pass through exactly two sequential model calls — a "struggling writer" then a "harsh critic" — with both steps visible.',
+    patternTag: 'Chained Calls',
     patternSummary:
-      'Text is turned into a vector whose position encodes meaning, and everything downstream is arithmetic on those vectors — nearest-neighbour search, clustering, deduplication, topic routing. No tokens are generated and there is no answer to read, only items ranked or grouped by proximity, which is what makes this the cheapest and fastest tier that still understands paraphrase. It is the retrieval half of RAG standing on its own, and its limit is the flip side of its strength: a distance tells you two things are close, never why.',
+      'One call’s output becomes the next call’s input, so a job which is too broad for a single request is split into steps for different agents, each designed to do one narrow thing well. The steps are fixed and known in advance — that is what separates this from a tool use or planning agent, where a model chooses what happens next. What each step buys you is isolation: the second call here receives a finished story and nothing else, so it cannot be coloured by how the first call went about writing it, which is exactly what a single call asking for both a story and a critique of it cannot guarantee. The costs are the obvious ones: every link multiplies latency and spend, and an error in an early step is inherited by every step after it. This demo runs exactly two calls to conserve a shared free-tier budget; the pattern itself supports chains of any length.',
     status: 'live',
-    route: '/embeddings',
+    route: '/chained-calls',
   },
 ]

@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import os
 import time
+from dataclasses import dataclass
 
 import structlog
 
@@ -44,14 +45,54 @@ from backend.app.core.config import get_settings
 
 logger = structlog.get_logger()
 
+
+@dataclass(frozen=True)
+class ProviderCredential:
+    """Where one provider's API key lives, on both sides of the fence.
+
+    Attributes:
+        settings_attr: The `Settings` field holding the key. Settings has
+            already resolved precedence (a real environment variable beats
+            `.env`), so this is the authoritative reading.
+        env_var: The environment variable LiteLLM expects to find it in.
+            PydanticAI does not need this -- it takes the key directly on the
+            provider object -- but LiteLLM resolves per-provider keys from the
+            environment, so the value has to be published there for that lane.
+    """
+
+    settings_attr: str
+    env_var: str
+
+
+#: Every provider this deployment can route to, keyed by the routing prefix its
+#: chain slugs carry. **This table is the one place a provider is declared.**
+#: Adding a third means one entry here, one optional field on `Settings`, and
+#: (for the PydanticAI lane) one `register_provider()` call in
+#: `services/agent_runtime.py` -- nothing else in the codebase names a provider.
+#:
+#: A slug whose prefix is absent from this table is treated as unconfigured and
+#: silently dropped from every chain, which is the fail-closed direction: better
+#: to route around a provider nobody supplied credentials for than to spend the
+#: first attempt of every request on a 401.
+PROVIDER_CREDENTIALS: dict[str, ProviderCredential] = {
+    "openrouter": ProviderCredential(
+        settings_attr="openrouter_api_key", env_var="OPENROUTER_API_KEY"
+    ),
+    "groq": ProviderCredential(settings_attr="groq_api_key", env_var="GROQ_API_KEY"),
+}
+
 #: Ordered chain of free-tier slugs that emit well-formed tool calls AND
 #: correctly consume tool results, verified by services/discover_models.py.
 #:
 #: **Groq first, OpenRouter behind it.** Groq meters its free tier per model
 #: (1,000 requests/day on gpt-oss-120b, 14,400 on llama-3.1-8b-instant),
-#: whereas OpenRouter's free tier is a single account-wide 50/day pool shared
-#: with the RAG app. Groq therefore carries the traffic and OpenRouter is the
-#: deep fallback -- the reverse of what raw model quality alone would suggest.
+#: whereas OpenRouter's is a single **account-wide** pool shared by every
+#: example app here: 50 requests/day on an unfunded account, 1,000/day once
+#: $10 of credits has been purchased, plus 20 requests/**minute** either way.
+#: Groq therefore carries the traffic and OpenRouter is the deep fallback --
+#: the reverse of what raw model quality alone would suggest. Note the margin
+#: is much narrower on a funded account (1,000 per model vs 1,000 shared) than
+#: on an unfunded one; the ordering still holds, but not overwhelmingly.
 #:
 #: The chain deliberately spans **two providers**, so an outage or a quota
 #: wall at either one still leaves working entries. Like
@@ -83,8 +124,9 @@ TOOL_MODEL_CHAIN = [
 ]
 
 #: Ordered chain of free-tier slugs for plain/structured text generation --
-#: the capability behind the RAG example's answer synthesis and shared.py's
-#: generate_text(). Separate from TOOL_MODEL_CHAIN because the requirement is
+#: the capability behind the RAG example's answer synthesis, the single-call
+#: example's plain mode, and shared.py's generate_text(). Separate from
+#: TOOL_MODEL_CHAIN because the requirement is
 #: different: these models are verified to return an answer_v2-shaped JSON
 #: object that validates against rag.schemas.LlmAnswer, cite the passage that
 #: actually supports the answer, and emit *no* citation markers when declining
@@ -94,9 +136,20 @@ TOOL_MODEL_CHAIN = [
 #: the answerable and the unanswerable case. Like TOOL_MODEL_CHAIN this list
 #: **is expected to rot**; re-probe when generation starts failing.
 #:
+#: The single-call example app's plain mode routes over this chain rather than
+#: getting one of its own, and that is sound rather than a shortcut: returning
+#: readable prose to a bare prompt is a *strictly weaker* requirement than the
+#: probe these entries already passed, which additionally demanded
+#: schema-valid JSON and correct citation discipline. A model that clears the
+#: harder bar clears this one. Note that the reverse does not hold, so a chain
+#: probed only for plain text could not be substituted here -- and if
+#: single-call's structured mode later needs provider-native json_schema
+#: decoding, that IS a separate requirement no probe here has established.
+#:
 #: Ordered **Groq first, OpenRouter behind it**, for the same quota reason as
 #: TOOL_MODEL_CHAIN: Groq meters its free tier per model, while OpenRouter's is
-#: one account-wide 50/day pool that both example apps draw from. Vendors
+#: one account-wide pool (50/day unfunded, 1,000/day once $10 of credits has
+#: been purchased) that every example app here draws from. Vendors
 #: alternate within each provider block so one vendor's withdrawal can't take
 #: out the head of the chain.
 #:
@@ -166,6 +219,31 @@ def provider_of(model: str) -> str:
     return model.split("/", 1)[0]
 
 
+def provider_api_key(provider: str) -> str | None:
+    """Return one provider's API key, or None if it has none configured.
+
+    Args:
+        provider: A routing prefix, e.g. "groq".
+
+    Returns:
+        The key from Settings, or None when the provider is unknown to
+        PROVIDER_CREDENTIALS or its Settings field is unset/empty.
+    """
+    credential = PROVIDER_CREDENTIALS.get(provider)
+    if credential is None:
+        return None
+    return getattr(get_settings(), credential.settings_attr, None) or None
+
+
+def configured_providers() -> frozenset[str]:
+    """Return every provider this deployment actually holds a key for.
+
+    Returns:
+        The subset of PROVIDER_CREDENTIALS whose keys are present.
+    """
+    return frozenset(name for name in PROVIDER_CREDENTIALS if provider_api_key(name))
+
+
 def ensure_provider_credentials() -> None:
     """Publish provider API keys into the environment for LiteLLM.
 
@@ -176,11 +254,15 @@ def ensure_provider_credentials() -> None:
 
     Settings has already applied the correct precedence (real environment
     variables beat .env), so assigning from Settings is not a downgrade.
+
+    The PydanticAI lane needs none of this: it attaches a provider object --
+    and therefore a key -- to each individual model, so a mixed chain there
+    carries the right credential per entry by construction.
     """
-    settings = get_settings()
-    os.environ["OPENROUTER_API_KEY"] = settings.openrouter_api_key
-    if settings.groq_api_key:
-        os.environ["GROQ_API_KEY"] = settings.groq_api_key
+    for provider, credential in PROVIDER_CREDENTIALS.items():
+        key = provider_api_key(provider)
+        if key:
+            os.environ[credential.env_var] = key
 
 
 def configured_chain(chain: list[str]) -> list[str]:
@@ -194,13 +276,14 @@ def configured_chain(chain: list[str]) -> list[str]:
             inherits another's model list.
 
     Returns:
-        The ordered chain with `groq/` slugs removed when GROQ_API_KEY is
-        unset, so an OpenRouter-only deployment keeps working rather than
-        burning its first attempts on 401s.
+        The ordered chain with every slug removed whose provider has no key --
+        so an OpenRouter-only deployment keeps working rather than burning its
+        first attempts on 401s. Driven by PROVIDER_CREDENTIALS rather than by a
+        hardcoded check for one provider, so a third provider needs no edit
+        here.
     """
-    if get_settings().groq_api_key:
-        return list(chain)
-    return [model for model in chain if provider_of(model) != "groq"]
+    available = configured_providers()
+    return [model for model in chain if provider_of(model) in available]
 
 
 def active_chain(chain: list[str]) -> list[str]:
