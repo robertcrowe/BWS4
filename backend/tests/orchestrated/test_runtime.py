@@ -23,7 +23,9 @@ import pytest
 
 from backend.app.orchestrated import runtime
 from backend.app.orchestrated.runtime import (
+    LOGICAL_CALLS_PER_RUN,
     MAX_PROVIDER_REQUESTS,
+    STEP_REQUEST_LIMIT,
     VISITOR_FACING_CALL_COUNT,
     RunBudget,
     RunBudgetExceededError,
@@ -33,12 +35,30 @@ from backend.app.orchestrated.runtime import (
 
 class TestRunBudget:
     def test_the_ceiling_matches_the_run_shape(self) -> None:
-        # Delegation, two specialists, and the coordinator's closing synthesis
-        # turn. The moderation gate is not counted: different provider, free of
-        # charge, no model allowance.
-        assert MAX_PROVIDER_REQUESTS == 4
+        """Four logical calls, each allowed one framework re-prompt.
 
-    def test_exactly_four_provider_requests_are_permitted(self) -> None:
+        The four are the delegation, the two specialists, and the coordinator's
+        closing synthesis turn; the moderation gate is not among them
+        (different provider, free of charge, no model allowance).
+
+        The doubling is not slack for its own sake. A logical call is not a
+        provider request: PydanticAI re-prompts when a model botches its output
+        tool, measured at 2 of 6 specialist steps. At a ceiling of four this run
+        had zero tolerance and lost a column on roughly half of all dispatches.
+        """
+        assert LOGICAL_CALLS_PER_RUN == 4
+        assert STEP_REQUEST_LIMIT == 2
+        assert MAX_PROVIDER_REQUESTS == LOGICAL_CALLS_PER_RUN * STEP_REQUEST_LIMIT == 8
+
+    def test_the_visitor_facing_count_does_not_follow_the_ceiling(self) -> None:
+        """A re-prompt is the framework fixing its own malformed request.
+
+        It is not a call the run chose to make, so raising the ceiling to
+        absorb re-prompts must not change what the visitor is told.
+        """
+        assert VISITOR_FACING_CALL_COUNT == 3
+
+    def test_exactly_the_ceiling_is_permitted(self) -> None:
         budget = RunBudget()
 
         for _ in range(MAX_PROVIDER_REQUESTS):

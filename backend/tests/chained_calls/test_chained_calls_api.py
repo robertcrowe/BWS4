@@ -38,6 +38,19 @@ from backend.app.chained_calls.service import (
 from backend.app.db.models import UsageLimit
 from backend.app.db.session import get_db_session
 from backend.app.main import app
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _gate_allows_everything(allow_all_moderation):
+    """Every request here carries free text, which the shared gate now checks.
+
+    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
+    test environment it fails closed and would refuse all of them. Overridden
+    per module rather than globally, so a test that *should* exercise the gate
+    cannot pass by accident.
+    """
+
 
 _STORY = (
     "The lighthouse keeper found a bottle wedged in the rocks. Inside was a "

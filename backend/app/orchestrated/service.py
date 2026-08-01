@@ -69,6 +69,7 @@ from backend.app.orchestrated import coordinator, merge, specialists, validator
 from backend.app.orchestrated.presets import CURATED_PRESETS
 from backend.app.orchestrated.runtime import (
     MAX_PROVIDER_REQUESTS,
+    STEP_REQUEST_LIMIT,
     VISITOR_FACING_CALL_COUNT,
     BranchOutcome,
     FanOut,
@@ -114,13 +115,17 @@ RUN_CALL_BUDGET = MAX_PROVIDER_REQUESTS
 #: its partner (1) reached the ceiling of four, and the merge was refused with
 #: three requests' worth of work already spent.
 #:
+#: One whole step's allowance, not one request: the merge is a step like any
+#: other and can re-prompt like any other.
+#:
 #: A specialist is not entitled to more than the run can afford, so the fan-out
-#: runs against a ceiling one lower. A branch that needs a request the reserve
-#: is holding fails *that column* -- which the partial-failure path already
+#: runs against a ceiling lower by exactly that reserve. A branch that needs a
+#: request the reserve is holding fails *that column* -- which the
+#: partial-failure path already
 #: shows honestly -- rather than silently costing the run its fan-in. The same
 #: lesson the planning app learned: without a reserve, retries spend a run down
 #: to raw material with nothing left to compose it.
-SYNTHESIS_RESERVE: Final[int] = 1
+SYNTHESIS_RESERVE: Final[int] = STEP_REQUEST_LIMIT
 
 #: Longest brief accepted on a dispatch request.
 #:
@@ -794,9 +799,13 @@ async def confirm_dispatch(
         )
         return
 
-    # The delegation call is already spent by the time a dispatch arrives.
+    # The delegation call is already spent by the time a dispatch arrives, and
+    # its true cost is unknowable here -- the client cannot be asked, and the
+    # delegation happened in a different request. Assuming it took its whole
+    # step allowance is the safe direction: the run under-spends rather than
+    # over-committing budget it does not have.
     checked = check.decision
-    run_budget = budget if budget is not None else RunBudget(used=1)
+    run_budget = budget if budget is not None else RunBudget(used=STEP_REQUEST_LIMIT)
     first_brief, second_brief = checked.briefs[0], checked.briefs[1]
 
     queue: asyncio.Queue[DispatchEvent | None] = asyncio.Queue()

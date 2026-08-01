@@ -3,6 +3,7 @@ import { type FormEvent, useState } from 'react'
 
 import type { AskRagResponse } from '../../api/rag'
 import { useAskRagMutation } from '../../api/useRag'
+import { Markdown } from '../../components/Markdown'
 
 // The last two are deliberately unanswerable, in the two different ways this
 // demo distinguishes: the pizza question is rejected by the retriever before
@@ -179,7 +180,14 @@ function AnswerCard({
         </div>
       )}
 
-      <p className="mb-5 text-[15px] text-gray-900 dark:text-gray-100">{response.answer}</p>
+      {/* Markdown, not plain text: the prompt asks for prose with bracketed
+          citations and says nothing about formatting, so models routinely
+          answer with lists and bold. A bare `[1]` has no link definition to
+          resolve against, so citation markers still render literally — which
+          the passage cards below depend on. */}
+      <Markdown className="mb-5" variant="lead">
+        {response.answer}
+      </Markdown>
 
       {response.retrieved_passages.length > 0 && (
         <div>

@@ -234,6 +234,39 @@ describe('SingleCallApp', () => {
     })
   })
 
+  it('renders a markdown response in plain mode as formatted elements', async () => {
+    // The summarize preset asks the model to "list its key points", so a
+    // markdown list is the shape of a *correct* answer here.
+    const user = userEvent.setup()
+    mockedRunSingleCall.mockResolvedValue({
+      ...RESULT,
+      plain_text: 'A **hash table** maps keys to slots.\n\n- O(1) average lookup\n- Collisions need handling',
+    })
+    renderApp()
+
+    await user.type(screen.getByLabelText('Prompt'), 'What is a hash table?')
+    await user.click(screen.getByRole('button', { name: /run single call/i }))
+
+    expect((await screen.findByText('hash table')).tagName).toBe('STRONG')
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+  })
+
+  it('leaves structured mode’s raw output as raw text, not markdown', async () => {
+    // `raw_output` is JSON the visitor is meant to read as JSON. Parsing it as
+    // markdown would mangle the very thing the schema-mismatch view exists to
+    // show.
+    const user = userEvent.setup()
+    mockedRunSingleCall.mockResolvedValue(MISMATCH)
+    renderApp()
+
+    await user.click(screen.getByRole('radio', { name: /Structured/i }))
+    await user.type(screen.getByLabelText('Prompt'), 'classify this')
+    await user.click(screen.getByRole('button', { name: /run single call/i }))
+
+    const raw = await screen.findByText(new RegExp(MISMATCH.raw_output!.slice(1, 25)))
+    expect(raw.closest('pre')).not.toBeNull()
+  })
+
   it('names the model that actually served the response', async () => {
     const user = userEvent.setup()
     mockedRunSingleCall.mockResolvedValue({ ...RESULT, model: 'openrouter/somebody-else:free' })

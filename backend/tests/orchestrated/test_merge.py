@@ -36,7 +36,7 @@ from unittest.mock import patch
 
 import pytest
 
-from backend.app.orchestrated import merge, validator
+from backend.app.orchestrated import merge, service, validator
 from backend.app.orchestrated.runtime import (
     MAX_PROVIDER_REQUESTS,
     VISITOR_FACING_CALL_COUNT,
@@ -168,22 +168,28 @@ def _run(
                 question=QUESTION,
                 decision=_decision(),
                 results=results if results is not None else _results(),
-                budget=budget if budget is not None else RunBudget(used=3),
+                budget=budget
+                if budget is not None
+                else RunBudget(used=MAX_PROVIDER_REQUESTS - 2),
             )
 
     return asyncio.run(go())
 
 
 class TestTheCallCount:
-    def test_a_complete_run_never_exceeds_four_provider_requests(self) -> None:
-        """The run's whole arithmetic, asserted end to end."""
-        budget = RunBudget(used=3)  # delegation plus two specialists
+    def test_a_complete_run_stays_inside_the_ceiling(self) -> None:
+        """The run's whole arithmetic, asserted end to end.
+
+        Six spent before the merge is the worst case the fan-out can leave:
+        the delegation and both specialists each taking their full allowance.
+        The merge's own reserve still fits on top.
+        """
+        budget = RunBudget(used=MAX_PROVIDER_REQUESTS - service.SYNTHESIS_RESERVE)
         synth = _Synth(_answer())
 
         _run(synth, budget=budget)
 
-        assert budget.used == MAX_PROVIDER_REQUESTS == 4
-        assert budget.remaining() == 0
+        assert budget.used <= MAX_PROVIDER_REQUESTS == 8
 
     def test_the_disagreement_note_costs_no_extra_call(self) -> None:
         """The note rides on the synthesis response, which is the entire point.
@@ -211,8 +217,9 @@ class TestTheCallCount:
         assert merged.disagreement_note.contradictions
 
     def test_the_visitor_facing_count_stays_three(self) -> None:
+        """It counts logical calls, not the framework's re-prompts."""
         assert VISITOR_FACING_CALL_COUNT == 3
-        assert MAX_PROVIDER_REQUESTS == VISITOR_FACING_CALL_COUNT + 1
+        assert MAX_PROVIDER_REQUESTS > VISITOR_FACING_CALL_COUNT
 
     def test_the_synthesis_runs_at_the_specified_temperature(self) -> None:
         synth = _Synth(_answer())
@@ -353,13 +360,13 @@ class TestTheBannedPhraseLint:
         """
         vacuous = _answer(summary="Both specialists broadly agree.")
         synth = _Synth(vacuous, vacuous)
-        budget = RunBudget(used=3)
+        budget = RunBudget(used=MAX_PROVIDER_REQUESTS - 1)
 
         merged, telemetry = _run(synth, budget=budget)
 
         assert synth.calls == 1
         assert telemetry["retries"] == 0
-        assert budget.used == 4
+        assert budget.used == MAX_PROVIDER_REQUESTS
         # The bland summary is still shown; it is not grounds to lose the merge.
         assert merged.text
 
@@ -444,7 +451,7 @@ class TestFailureHandling:
         )
 
         with pytest.raises(AgentLaneError):
-            _run(synth, budget=RunBudget(used=3))
+            _run(synth, budget=RunBudget(used=MAX_PROVIDER_REQUESTS - 1))
 
         assert synth.calls == 1
 
@@ -467,7 +474,7 @@ class TestFailureHandling:
         synth = _Synth(_answer(text=""))
 
         with pytest.raises(AgentLaneError):
-            _run(synth, budget=RunBudget(used=3))
+            _run(synth, budget=RunBudget(used=MAX_PROVIDER_REQUESTS - 1))
 
         assert synth.calls == 1
 
@@ -490,7 +497,7 @@ class TestFailureHandling:
                     question=QUESTION,
                     decision=_decision(),
                     results=results,
-                    budget=RunBudget(used=3),
+                    budget=RunBudget(used=MAX_PROVIDER_REQUESTS - 2),
                 )
 
         asyncio.run(go(_results(financial_ok=False)))

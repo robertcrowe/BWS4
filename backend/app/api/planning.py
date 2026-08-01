@@ -54,10 +54,37 @@ from backend.app.planning.service import (
     PlanUnavailableError,
     UsageLimitReachedError,
 )
+from backend.app.services import text_gate
+from backend.app.services.moderation import (
+    Moderator,
+    get_moderator,
+    get_stateless_moderator,
+)
 
 logger = structlog.get_logger()
 
 router = APIRouter()
+
+#: Tag on this app's moderation calls.
+PLANNING_APP_NAME = "Planning-Agent Example App"
+
+
+def goal_text(city: str, interests: str) -> str:
+    """Render the two goal fields as the one string the gate examines.
+
+    Checked together rather than separately: a goal is only meaningful as the
+    pair, and two calls would double the latency and the log rows to answer one
+    question.
+
+    Args:
+        city: The destination.
+        interests: What the visitor wants from the day.
+
+    Returns:
+        The combined goal.
+    """
+    return f"{city}: {interests}"
+
 
 #: What the planner call costs, assumed by `/run` rather than accepted from the
 #: client. A client that could set the starting count could reset its own
@@ -91,6 +118,7 @@ class RunRequest(PlanRequest):
 async def plan(
     payload: PlanRequest,
     session: AsyncSession = Depends(get_db_session),
+    moderator: Moderator = Depends(get_moderator),
 ) -> JSONResponse:
     """Produce a plan for the visitor to review. Executes nothing.
 
@@ -99,6 +127,10 @@ async def plan(
     Args:
         payload: The city and interests to plan around.
         session: An async DB session for usage/logging bookkeeping.
+        moderator: The shared safety gate. This app offers no presets, so the
+            city and the interests are both the visitor's own words and both
+            are checked -- as one string, since a goal is only meaningful as
+            the pair.
 
     Returns:
         200 with the validated plan, any trim note, and what it cost. Otherwise
@@ -109,6 +141,17 @@ async def plan(
         twice). Those stay distinguishable because they are different operator
         problems.
     """
+    gate = await text_gate.check_free_text(
+        goal_text(payload.city, payload.interests),
+        app_name=PLANNING_APP_NAME,
+        session=session,
+        moderator=moderator,
+    )
+    if not gate.allowed and gate.code is not None:
+        return _error_body(
+            text_gate.status_for(gate.code), gate.code, gate.message or ""
+        )
+
     try:
         outcome = await service.create_plan(
             session, city=payload.city, interests=payload.interests
@@ -149,6 +192,7 @@ class RetrySynthesisRequest(RunRequest):
 async def retry_synthesis(
     payload: RetrySynthesisRequest,
     session: AsyncSession = Depends(get_db_session),
+    moderator: Moderator = Depends(get_moderator),
 ) -> JSONResponse:
     """Re-run only the synthesis step, leaving the research alone.
 
@@ -168,10 +212,23 @@ async def retry_synthesis(
         200 with the composed itinerary, or 503 with `usage_limit_reached` or
         `plan_unavailable`.
     """
+    gate = await text_gate.check_free_text(
+        goal_text(payload.city, payload.interests),
+        app_name=PLANNING_APP_NAME,
+        session=session,
+        moderator=moderator,
+    )
+    if not gate.allowed and gate.code is not None:
+        return _error_body(
+            text_gate.status_for(gate.code), gate.code, gate.message or ""
+        )
+
     check = validator.check_plan(payload.plan)
     if not check.ok or check.plan is None:
         return _error_body(
-            422, "invalid_plan", "That plan is not executable, so it cannot be re-composed."
+            422,
+            "invalid_plan",
+            "That plan is not executable, so it cannot be re-composed.",
         )
 
     try:
@@ -189,7 +246,10 @@ async def retry_synthesis(
 
 
 @router.post("/api/planning/run")
-async def run(payload: RunRequest) -> EventSourceResponse:
+async def run(
+    payload: RunRequest,
+    moderator: Moderator = Depends(get_stateless_moderator),
+) -> EventSourceResponse:
     """Execute an approved plan, streaming each result as it lands.
 
     This request *is* the advance signal: no executor call exists anywhere that
@@ -203,6 +263,11 @@ async def run(payload: RunRequest) -> EventSourceResponse:
 
     Args:
         payload: The goal and the plan the visitor reviewed.
+        moderator: The shared safety gate. The **stateless** provider, for the
+            same reason there is no `Depends(get_db_session)` here: a
+            request-scoped dependency must not be bound to a response that
+            outlives the handler. The cost is the `moderation_log` row, and
+            `/plan` already recorded one for this goal.
 
     Returns:
         An SSE stream: one `plan` event, one `step_result` per step in plan
@@ -210,18 +275,35 @@ async def run(payload: RunRequest) -> EventSourceResponse:
         arrive as events rather than as a broken stream, so results already
         produced stay on the visitor's screen.
     """
-    return EventSourceResponse(_stream(payload))
+    return EventSourceResponse(_stream(payload, moderator))
 
 
-async def _stream(payload: RunRequest) -> AsyncGenerator[ServerSentEvent, None]:
+async def _stream(
+    payload: RunRequest, moderator: Moderator
+) -> AsyncGenerator[ServerSentEvent, None]:
     """Drive the orchestrator and translate its events onto the wire.
 
     Args:
         payload: The validated request body.
+        moderator: The safety gate to run over the goal.
 
     Yields:
         Server-sent events, in the order the run produces them.
     """
+    gate = await text_gate.check_free_text(
+        goal_text(payload.city, payload.interests),
+        app_name=PLANNING_APP_NAME,
+        moderator=moderator,
+    )
+    if not gate.allowed and gate.code is not None:
+        # The goal was already checked at `/plan`, but this request carries its
+        # own copy and is not obliged to match -- so it is checked again here
+        # rather than trusted. A refusal is an event on a 200 stream, following
+        # this endpoint's own convention: results already on screen stay there.
+        logger.info("planning_run_refused", code=gate.code)
+        yield _event("error", {"code": gate.code, "detail": gate.message})
+        return
+
     check = validator.check_plan(payload.plan)
     if not check.ok or check.plan is None:
         # Client-supplied and therefore not trusted. A plan that fails the same

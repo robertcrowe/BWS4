@@ -46,13 +46,40 @@ from backend.app.services import agent_runtime
 
 logger = structlog.get_logger()
 
+#: Provider requests one logical step may make.
+#:
+#: **Two, because one logical call is not one provider request.** PydanticAI
+#: binds typed output through a synthetic output tool and *re-prompts* when a
+#: model botches the call -- measured at 2 of 6 specialist steps against the
+#: chain's Groq-served head, with `result.usage.requests == 2` confirming the
+#: retry happened inside the step rather than as a walk down the fallback chain.
+#: (The slug is deliberately not named here: no model slug belongs in this
+#: package, and a test enforces it.)
+#:
+#: This is a per-step ceiling enforced by PydanticAI itself, which is what stops
+#: one greedy step from eating another's share of the run. A step that needs a
+#: third request loses its own column and nothing else.
+STEP_REQUEST_LIMIT = 2
+
+#: Logical model calls one run makes: the delegation, the two specialists, and
+#: the coordinator's closing synthesis turn. The moderation gate is **not**
+#: counted -- it reaches a different provider, is free of charge, and draws on
+#: no model allowance.
+LOGICAL_CALLS_PER_RUN = 4
+
 #: Provider requests a single run may make before it is aborted.
 #:
-#: Four, not three: the delegation call, the two specialist calls, and the
-#: coordinator's closing synthesis turn. The moderation gate is **not** counted
-#: -- it reaches a different provider, is free of charge, and draws on no model
-#: allowance, so charging the run for it would misreport what the run spent.
-MAX_PROVIDER_REQUESTS = 4
+#: Eight: four logical calls, each allowed one framework re-prompt. **This was
+#: four, and four was measurably wrong.** The specification's hard counter
+#: assumes one provider request per logical call; in practice a third of typed
+#: steps take two, so a run budgeted at four had zero tolerance and lost a
+#: specialist column on roughly half of all dispatches. Raising the ceiling is
+#: what makes the fan-out reliable; the per-step limit above is what keeps it
+#: bounded rather than merely larger.
+#:
+#: The visitor-facing count is untouched at three -- a re-prompt is the
+#: framework fixing its own malformed request, not a call the run chose to make.
+MAX_PROVIDER_REQUESTS = LOGICAL_CALLS_PER_RUN * STEP_REQUEST_LIMIT
 
 #: What the visitor is told a run costs.
 #:
@@ -246,6 +273,10 @@ async def run_agent_step[T: BaseModel](
         output_type=output_type,
         on_request=charge,
         model_settings=model_settings,
+        # Bounded per step, not only against the run's shared pool. Without
+        # this a step that re-prompts twice would spend its partner's share,
+        # which is exactly how a live run lost both specialist columns.
+        request_limit=STEP_REQUEST_LIMIT,
     )
 
 

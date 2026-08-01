@@ -34,9 +34,10 @@ from unittest.mock import patch
 import pytest
 
 from backend.app.db.models import AllowanceHold, ServiceLogEntry, UsageLimit
-from backend.app.orchestrated import merge, service, specialists
+from backend.app.orchestrated import merge, runtime, service, specialists
 from backend.app.orchestrated.runtime import (
     MAX_PROVIDER_REQUESTS,
+    STEP_REQUEST_LIMIT,
     VISITOR_FACING_CALL_COUNT,
     RunBudget,
 )
@@ -595,8 +596,8 @@ async def _short_timeout_fan_out(first, second, **_kwargs):  # type: ignore[no-u
 
 
 class TestTheArithmetic:
-    def test_the_fan_out_leaves_exactly_one_request_for_the_merge(self) -> None:
-        """One delegation plus two specialists, with the fourth held for the merge.
+    def test_the_fan_out_leaves_the_merge_its_whole_allowance(self) -> None:
+        """Every logical step gets its own allowance; none can take another's.
 
         Sampled at the moment `fan_out_complete` is emitted rather than after
         the stream ends, so it states what the fan-out itself cost -- which is
@@ -604,7 +605,8 @@ class TestTheArithmetic:
         """
         session = _Session()
         runner = _Runner()
-        budget = RunBudget(used=1)  # the delegation call already happened
+        # The delegation is assumed to have taken its whole step allowance.
+        budget = RunBudget(used=STEP_REQUEST_LIMIT)
         at_fan_out: list[int] = []
 
         async def go() -> None:
@@ -623,9 +625,10 @@ class TestTheArithmetic:
 
         asyncio.run(go())
 
-        assert at_fan_out == [3]
-        assert budget.used == MAX_PROVIDER_REQUESTS == 4
-        assert budget.remaining() == 0
+        # Two specialists, one request each in the happy path.
+        assert at_fan_out == [STEP_REQUEST_LIMIT + 2]
+        assert budget.remaining() >= service.SYNTHESIS_RESERVE
+        assert budget.used <= MAX_PROVIDER_REQUESTS
 
     def test_a_greedy_specialist_cannot_spend_the_merge_s_request(self) -> None:
         """Found live: a tool-less specialist step took two provider requests.
@@ -639,8 +642,12 @@ class TestTheArithmetic:
         run can still finish.
         """
         session = _Session()
-        runner = _Runner(extra_requests={"technical": 1})
-        budget = RunBudget(used=1)
+        # A runaway branch. In production PydanticAI's own `request_limit`
+        # stops a step at its allowance; the stub bypasses that, which is
+        # exactly what makes it useful here -- it tests the *second* guard, the
+        # lowered fan-out ceiling, in isolation.
+        runner = _Runner(extra_requests={"technical": 10})
+        budget = RunBudget(used=STEP_REQUEST_LIMIT)
 
         async def go() -> list[service.DispatchEvent]:
             await _reserved(session, "run-1")
@@ -665,11 +672,43 @@ class TestTheArithmetic:
         }
 
         assert statuses["technical"] == SpecialistStatus.FAILED.value
+        # Its partner kept its own allowance and answered.
         assert statuses["financial"] == SpecialistStatus.OK.value
-        # The merge still ran, which is the whole point of holding the request.
+        # And the merge still ran, which is the point of holding the reserve.
         assert events[-1].name == "merged_answer"
-        assert budget.used == MAX_PROVIDER_REQUESTS
+        assert budget.used <= MAX_PROVIDER_REQUESTS
         assert budget.ceiling == MAX_PROVIDER_REQUESTS  # restored after the fan-out
+
+    def test_every_step_is_bounded_by_its_own_request_limit(self) -> None:
+        """The first guard: PydanticAI stops a step at its own allowance.
+
+        The lowered fan-out ceiling is the backstop; this is what stops a
+        greedy step reaching it at all. Both exist because they fail
+        differently — one bounds the step, the other bounds the run — and a
+        live dispatch lost both specialist columns when only the second
+        existed.
+        """
+        captured: dict[str, object] = {}
+
+        async def fake_typed_step(**kwargs: object) -> StepResult[SpecialistAnswer]:
+            captured.update(kwargs)
+            return StepResult(
+                output=SpecialistAnswer(answer="x"), model="m", requests=1
+            )
+
+        async def go() -> None:
+            await runtime.run_agent_step(
+                label="specialist-technical",
+                instructions="i",
+                user_prompt="p",
+                output_type=SpecialistAnswer,
+                budget=RunBudget(),
+            )
+
+        with patch.object(runtime.agent_runtime, "run_typed_step", fake_typed_step):
+            asyncio.run(go())
+
+        assert captured["request_limit"] == STEP_REQUEST_LIMIT == 2
 
     def test_the_visitor_facing_count_stays_three(self) -> None:
         session = _Session()
@@ -706,7 +745,8 @@ class TestTheRetryGuard:
         """
         session = _Session()
         runner = _Runner(raise_once={"technical": AgentLaneError("s", "reset")})
-        budget = RunBudget(used=1)
+        # Both specialists have already taken their whole share.
+        budget = RunBudget(used=MAX_PROVIDER_REQUESTS - service.SYNTHESIS_RESERVE)
 
         async def go() -> None:
             await _reserved(session, "run-1")
@@ -724,13 +764,13 @@ class TestTheRetryGuard:
         asyncio.run(go())
 
         assert runner.calls.count("technical") == 1  # no retry
-        assert budget.used == MAX_PROVIDER_REQUESTS
+        assert budget.used <= MAX_PROVIDER_REQUESTS
 
     def test_a_retry_fires_once_when_the_run_has_slack(self) -> None:
         """The mechanism works; at the default ceiling it simply never has room."""
         session = _Session()
         runner = _Runner(raise_once={"technical": AgentLaneError("s", "reset")})
-        budget = RunBudget(ceiling=6, used=1)
+        budget = RunBudget(ceiling=16, used=1)
 
         async def go() -> list[service.DispatchEvent]:
             await _reserved(session, "run-1")
@@ -921,7 +961,7 @@ class TestTelemetry:
         assert len(summaries) == 1
         assert "technical=ok" in summaries[0]
         assert "skew" in summaries[0]
-        assert "4/4 provider requests" in summaries[0]
+        assert "provider requests" in summaries[0]
 
     def test_the_summary_carries_every_field_the_phase_names(self) -> None:
         """A field quietly dropped would leave the operator without it."""

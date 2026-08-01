@@ -52,10 +52,16 @@ export async function fetchDataset(): Promise<DatasetDocument[]> {
 /**
  * Ask a question via the RAG example app's retrieval-augmented generation endpoint.
  *
+ * The backend's own `detail` is surfaced rather than swallowed behind a status
+ * code. That mattered less when every failure here meant "the provider is
+ * down"; it matters now that a question can be refused by the shared safety
+ * gate, because the whole value of that refusal is the sentence telling the
+ * visitor they can reword and try again.
+ *
  * @param userQuestion - The visitor's natural-language question.
  * @returns The generated answer and the passages it was grounded in.
- * @throws Error if the backend responds with a non-2xx status (e.g. the
- * shared generation capability is unavailable).
+ * @throws Error carrying the backend's explanation, or a status-code fallback
+ * when it did not send one.
  */
 export async function askRag(userQuestion: string): Promise<AskRagResponse> {
   const response = await fetch(`${API_BASE_URL}/api/rag/ask`, {
@@ -65,7 +71,17 @@ export async function askRag(userQuestion: string): Promise<AskRagResponse> {
   })
 
   if (!response.ok) {
-    throw new Error(`Asking the RAG example app failed with status ${response.status}`)
+    const body: unknown = await response.json().catch(() => null)
+    const detail =
+      typeof body === 'object' && body !== null && 'detail' in body
+        ? (body as { detail: unknown }).detail
+        : null
+
+    throw new Error(
+      typeof detail === 'string' && detail
+        ? detail
+        : `Asking the RAG example app failed with status ${response.status}`,
+    )
   }
 
   return (await response.json()) as AskRagResponse

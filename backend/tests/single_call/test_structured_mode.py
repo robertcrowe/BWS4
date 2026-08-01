@@ -37,6 +37,19 @@ from backend.app.single_call.presets import (
     json_schema_for,
 )
 from backend.app.single_call.service import run_structured_call
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _gate_allows_everything(allow_all_moderation):
+    """Every request here carries free text, which the shared gate now checks.
+
+    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
+    test environment it fails closed and would refuse all of them. Overridden
+    per module rather than globally, so a test that *should* exercise the gate
+    cannot pass by accident.
+    """
+
 
 
 class _FakeResult:

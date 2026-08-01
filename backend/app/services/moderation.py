@@ -91,19 +91,24 @@ MAX_VISITOR_MESSAGE_CHARS = 140
 
 MESSAGE_OK = "Your question passed the safety check."
 
+# Visitor-facing copy. **App-neutral on purpose.** These were written for the
+# orchestrated-subagents app and named its specialists; once the gate went in
+# front of six apps, a refused RAG question told the visitor it "can't be sent
+# to the specialists" -- naming machinery that app does not have. Caught by a
+# live probe across every gated endpoint. Anything app-specific belongs in the
+# caller, not here.
 MESSAGE_MALFORMED = (
-    "Please write your question as a sentence or two so the specialists have "
-    "something to work with."
+    "Please write that as a sentence or two, so there's something to work with."
 )
 
 MESSAGE_UNSAFE = (
-    "That question can't be sent to the specialists. Try rephrasing it, or pick "
-    "one of the curated questions."
+    "That can't be sent to the model. Try rephrasing it, or pick one of the "
+    "examples on this page."
 )
 
 MESSAGE_UNAVAILABLE = (
-    "The safety check couldn't run just now, so nothing was sent. Try again in a "
-    "moment — this didn't use a run."
+    "The safety check couldn't run, so nothing was sent and nothing was used "
+    "up — try again, or pick one of the examples on this page."
 )
 
 
@@ -553,6 +558,25 @@ async def _record(
 #: in, a verdict out. A callable rather than a class so a test can substitute a
 #: plain function.
 Moderator = Callable[[str, str], Awaitable[ModerationVerdict]]
+
+
+async def get_stateless_moderator() -> Moderator:
+    """Provide the moderation service with no database behind it.
+
+    For the one endpoint that deliberately takes no session -- the embeddings
+    placement route, which is pure computation and reaches no datastore. The
+    cost is the `moderation_log` row: the verdict is still enforced, it is just
+    not recorded. A provider rather than a bare callable so a test can replace
+    it through `app.dependency_overrides` and stay offline.
+
+    Returns:
+        A callable taking text and a caller label and returning a verdict.
+    """
+
+    async def _moderate(text: str, calling_context: str) -> ModerationVerdict:
+        return await moderate(text, calling_context)
+
+    return _moderate
 
 
 async def get_moderator(

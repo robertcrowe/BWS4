@@ -5,6 +5,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db.session import get_db_session
+from backend.app.services import text_gate
+from backend.app.services.moderation import Moderator, get_moderator
+from backend.app.tools.examples import EXAMPLE_QUERIES
 from backend.app.tools.schemas import (
     AgentStepOut,
     SearchRequest,
@@ -17,11 +20,15 @@ logger = structlog.get_logger()
 
 router = APIRouter()
 
+#: Tag on this app's moderation-log rows.
+TOOLS_APP_NAME = "Tool-Use Example App"
+
 
 @router.post("/api/tools/search")
 async def search_tool(
     payload: SearchRequest,
     session: AsyncSession = Depends(get_db_session),
+    moderator: Moderator = Depends(get_moderator),
 ) -> JSONResponse:
     """Run the tool-use agent loop and return its answer, trace, and results.
 
@@ -38,6 +45,19 @@ async def search_tool(
         message if a usage cap is reached, the Exa Search API call fails, or
         the free-model chain is exhausted.
     """
+    gate = await text_gate.check_free_text(
+        payload.search_query,
+        app_name=TOOLS_APP_NAME,
+        curated=EXAMPLE_QUERIES,
+        session=session,
+        moderator=moderator,
+    )
+    if not gate.allowed and gate.code is not None:
+        return JSONResponse(
+            status_code=text_gate.status_for(gate.code),
+            content={"status": "error", "code": gate.code, "detail": gate.message},
+        )
+
     try:
         run = await run_search(session, payload.search_query)
     except ToolServiceError as exc:
@@ -58,7 +78,9 @@ async def search_tool(
     response = SearchResponse(
         answer=run.answer,
         results=[
-            SearchResultOut(title=r.title, summary=r.summary, source=r.source, rank=r.rank)
+            SearchResultOut(
+                title=r.title, summary=r.summary, source=r.source, rank=r.rank
+            )
             for r in run.results
         ],
         steps=[

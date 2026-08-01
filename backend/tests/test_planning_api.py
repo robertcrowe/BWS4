@@ -31,6 +31,31 @@ from backend.app.planning import service
 from backend.app.planning.schemas import Itinerary, ItineraryBlock, Plan, StepResult
 from backend.app.planning.service import ExecutionEvent, PlanOutcome
 from backend.app.services import shared
+from backend.app.services.moderation import ModerationCategory, ModerationVerdict
+
+
+async def _allow_moderation(_text: str, _context: str) -> ModerationVerdict:
+    """Stand in for the safety gate where it is called directly, not injected.
+
+    `_stream` takes the moderator as an argument rather than reading a module
+    global, because a response that outlives its handler must not hold a
+    request-scoped dependency. That makes it a positional argument here.
+    """
+    return ModerationVerdict(
+        allowed=True, category=ModerationCategory.OK, visitor_message="allowed"
+    )
+
+
+@pytest.fixture(autouse=True)
+def _gate_allows_everything(allow_all_moderation):
+    """Every request here carries free text, which the shared gate now checks.
+
+    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
+    test environment it fails closed and would refuse all of them. Overridden
+    per module rather than globally, so a test that *should* exercise the gate
+    cannot pass by accident.
+    """
+
 
 client = TestClient(app)
 
@@ -116,7 +141,7 @@ class _Session:
     async def commit(self) -> None:
         pass
 
-    async def __aenter__(self) -> "_Session":
+    async def __aenter__(self) -> _Session:
         return self
 
     async def __aexit__(self, *_exc: object) -> None:
@@ -627,7 +652,7 @@ class TestDisconnect:
                 closed.append("orchestrator closed")
 
         async def drive() -> None:
-            stream = api._stream(api.RunRequest.model_validate(_run_body()))
+            stream = api._stream(api.RunRequest.model_validate(_run_body()), _allow_moderation)
             await stream.__anext__()  # plan
             await stream.__anext__()  # step 1
             with pytest.raises(asyncio.CancelledError):

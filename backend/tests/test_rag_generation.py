@@ -14,6 +14,19 @@ from backend.app.rag.service import (
     build_answer,
 )
 from backend.app.services.generation import GenerationServiceError
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _gate_allows_everything(allow_all_moderation):
+    """Every request here carries free text, which the shared gate now checks.
+
+    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
+    test environment it fails closed and would refuse all of them. Overridden
+    per module rather than globally, so a test that *should* exercise the gate
+    cannot pass by accident.
+    """
+
 
 #: A stand-in for whichever chain model served the answer. Real runs walk
 #: a fallback chain, so the served model is data, not a constant.

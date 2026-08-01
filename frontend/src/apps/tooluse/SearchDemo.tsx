@@ -3,6 +3,7 @@ import { type FormEvent, useState } from 'react'
 
 import type { AgentStep, SearchResult } from '../../api/tools'
 import { useSearchMutation } from '../../api/useTools'
+import { Markdown } from '../../components/Markdown'
 
 const EXAMPLE_QUERIES = [
   'What is the latest Spec4 release?',
@@ -207,9 +208,13 @@ function AnswerPanel({
         </p>
       )}
 
-      <p className="mb-5 whitespace-pre-wrap text-[15px] text-gray-900 dark:text-gray-100">
+      {/* `agent_v1.md` tells the model to write plain prose with no markdown,
+          and models disregard that often enough to be worth rendering for.
+          When they comply this is a no-op — the renderer keeps `pre-wrap`, so
+          unformatted prose lays out exactly as it did before. */}
+      <Markdown className="mb-5" variant="lead">
         {answer}
-      </p>
+      </Markdown>
 
       {results.length > 0 && (
         <div>

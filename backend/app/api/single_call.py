@@ -13,11 +13,12 @@ the signal, and the frontend branches on it.
 import structlog
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db.session import get_db_session
-from pydantic import BaseModel
-
+from backend.app.services import text_gate
+from backend.app.services.moderation import Moderator, get_moderator
 from backend.app.single_call.presets import (
     DEFAULT_SCHEMA_MODEL,
     PRESET_PROMPTS,
@@ -46,6 +47,9 @@ from backend.app.single_call.service import (
 logger = structlog.get_logger()
 
 router = APIRouter()
+
+#: Tag on this app's moderation calls.
+SINGLE_CALL_APP_NAME = "Single-Call Example App"
 
 
 @router.get("/api/single-call/presets")
@@ -83,6 +87,7 @@ async def get_presets() -> JSONResponse:
 async def generate(
     payload: SingleCallRequest,
     session: AsyncSession = Depends(get_db_session),
+    moderator: Moderator = Depends(get_moderator),
 ) -> JSONResponse:
     """Run one direct model call and return its response.
 
@@ -93,6 +98,9 @@ async def generate(
             the target schema for structured mode.
         session: An async DB session injected per-request, used for the shared
             usage-limit and request-logging bookkeeping.
+        moderator: The shared safety gate, run over free text only. A preset is
+            resolved to its canonical server-side wording by `get_preset`, so
+            there is no claim to verify and nothing to moderate.
 
     Returns:
         A 200 JSON response carrying the response, the mode served, and the
@@ -119,6 +127,21 @@ async def generate(
         prompt = resolve_prompt(prompt_text=payload.prompt_text, preset=preset)
     except InvalidPromptError as exc:
         return _error(422, exc.code, str(exc))
+
+    # A preset outranks free text server-side, so `prompt` is already the
+    # canonical wording when one was named -- and canonical wording is
+    # pre-vetted. Only a genuinely free-form prompt reaches the gate.
+    if preset is None:
+        gate = await text_gate.check_free_text(
+            prompt,
+            app_name=SINGLE_CALL_APP_NAME,
+            session=session,
+            moderator=moderator,
+        )
+        if not gate.allowed and gate.code is not None:
+            return _error(
+                text_gate.status_for(gate.code), gate.code, gate.message or ""
+            )
 
     try:
         if payload.mode == "structured":

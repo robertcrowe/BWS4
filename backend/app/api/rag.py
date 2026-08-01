@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.db.models import RagInteraction
 from backend.app.db.session import get_db_session
 from backend.app.rag.dataset_loader import load_dataset_documents
+from backend.app.rag.examples import EXAMPLE_QUESTIONS
 from backend.app.rag.schemas import (
     DatasetDocumentOut,
     RagAskRequest,
@@ -14,10 +15,15 @@ from backend.app.rag.schemas import (
     RetrievedPassageOut,
 )
 from backend.app.rag.service import RagServiceError, answer_question
+from backend.app.services import text_gate
+from backend.app.services.moderation import Moderator, get_moderator
 
 logger = structlog.get_logger()
 
 router = APIRouter()
+
+#: Tag on this app's moderation-log rows.
+RAG_APP_NAME = "RAG Example App"
 
 
 @router.get("/api/rag/dataset")
@@ -30,7 +36,8 @@ async def get_dataset() -> JSONResponse:
         A 200 JSON response with every document's title and full text.
     """
     documents = [
-        DatasetDocumentOut(title=doc.title, text=doc.text) for doc in load_dataset_documents()
+        DatasetDocumentOut(title=doc.title, text=doc.text)
+        for doc in load_dataset_documents()
     ]
     return JSONResponse(
         status_code=200,
@@ -42,6 +49,7 @@ async def get_dataset() -> JSONResponse:
 async def ask(
     payload: RagAskRequest,
     session: AsyncSession = Depends(get_db_session),
+    moderator: Moderator = Depends(get_moderator),
 ) -> JSONResponse:
     """Answer a visitor's question via retrieval-augmented generation.
 
@@ -59,6 +67,19 @@ async def ask(
         A 200 JSON response with the answer and retrieved passages, or 503
         if the shared generation capability is unavailable.
     """
+    gate = await text_gate.check_free_text(
+        payload.user_question,
+        app_name=RAG_APP_NAME,
+        curated=EXAMPLE_QUESTIONS,
+        session=session,
+        moderator=moderator,
+    )
+    if not gate.allowed and gate.code is not None:
+        return JSONResponse(
+            status_code=text_gate.status_for(gate.code),
+            content={"status": "error", "code": gate.code, "detail": gate.message},
+        )
+
     try:
         result = await answer_question(session, payload.user_question)
     except RagServiceError as exc:
@@ -80,7 +101,8 @@ async def ask(
             user_question=payload.user_question,
             answer=result.answer,
             retrieved_passages=[
-                RetrievedPassageOut(**vars(p)).model_dump() for p in result.retrieved_passages
+                RetrievedPassageOut(**vars(p)).model_dump()
+                for p in result.retrieved_passages
             ],
             status=result.status,
         )

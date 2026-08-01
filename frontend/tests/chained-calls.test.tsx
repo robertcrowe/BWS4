@@ -1,6 +1,6 @@
 // Built with Spec4 AI - https://spec4.ai
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -196,6 +196,54 @@ describe('a successful chain', () => {
       screen.getByRole('heading', { name: /Step 2 · Harsh Critic \(final output\)/i }),
     ).toBeInTheDocument()
     expect(screen.getByText(COMPLETE.final_output!.text)).toBeInTheDocument()
+  })
+
+  it('renders markdown in both the story and the critique', async () => {
+    const user = userEvent.setup()
+    mockedRunChain.mockResolvedValue({
+      ...COMPLETE,
+      intermediate_output: {
+        ...COMPLETE.intermediate_output!,
+        text: 'He read it *twice* and threw it back.',
+      },
+      final_output: {
+        ...COMPLETE.final_output!,
+        text: 'Two problems:\n\n- The image is abandoned\n- The ending flinches',
+      },
+    })
+    await renderAppWithPlan()
+
+    await submitIdea(user)
+
+    // Emphasis a model chose inside a story is meaningful, not decoration.
+    expect((await screen.findByText('twice')).tagName).toBe('EM')
+
+    // Scoped to step 2: the screen's own step indicator is also a list, so an
+    // unscoped count would pass without the critique rendering at all.
+    const step2 = screen
+      .getByRole('heading', { name: /Step 2 · Harsh Critic/i })
+      .closest('section')!
+    expect(within(step2).getAllByRole('listitem')).toHaveLength(2)
+  })
+
+  it('keeps a line break the writer put inside a paragraph', async () => {
+    // Markdown collapses a single newline into a space. A story's own line
+    // breaks are the writer's, so the renderer keeps them.
+    const user = userEvent.setup()
+    mockedRunChain.mockResolvedValue({
+      ...COMPLETE,
+      intermediate_output: {
+        ...COMPLETE.intermediate_output!,
+        text: 'He opened the door.\nThe cold came in.',
+      },
+    })
+    await renderAppWithPlan()
+
+    await submitIdea(user)
+
+    const paragraph = await screen.findByText(/He opened the door\./)
+    expect(paragraph.textContent).toBe('He opened the door.\nThe cold came in.')
+    expect(paragraph.className).toContain('whitespace-pre-wrap')
   })
 
   it('shows the detail the critic took from the story', async () => {

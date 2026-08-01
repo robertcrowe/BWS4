@@ -1,5 +1,6 @@
 // Built with Spec4 AI - https://spec4.ai
 import type { SingleCallResult } from '../../api/singleCall'
+import { Markdown } from '../../components/Markdown'
 import { formatRequest } from './format'
 
 interface SingleCallResultViewProps {
@@ -70,9 +71,15 @@ function PlainResult({ result }: { result: SingleCallResult }) {
             the request walks a fallback chain, so the chain's head is a guess. */}
         <Tag>{result.model}</Tag>
       </div>
-      <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-gray-700 dark:text-gray-300">
-        {result.plain_text}
-      </p>
+      {/* Plain mode only. The prompt box is free text and the summarize preset
+          asks the model to "list its key points", so a markdown list is the
+          expected shape of a correct answer here. Structured mode's
+          `raw_output` stays in a `<pre>` below — that one is JSON a visitor is
+          meant to read as JSON. */}
+      {/* `plain_text` is nullable and the `<p>` this replaced rendered null as
+          nothing; `?? ''` keeps that rather than changing what an empty
+          response looks like. */}
+      <Markdown>{result.plain_text ?? ''}</Markdown>
       <p className="mt-4 border-t border-gray-200 dark:border-gray-800 pt-3 text-xs text-gray-500">
         One request, one response. The text above is the model's, unedited — nothing was retrieved,
         and nothing was stitched together on the way back.

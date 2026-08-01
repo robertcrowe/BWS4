@@ -38,10 +38,15 @@ from backend.app.chained_calls.service import (
     UsageLimitReachedError,
 )
 from backend.app.db.session import get_db_session
+from backend.app.services import text_gate
+from backend.app.services.moderation import Moderator, get_moderator
 
 logger = structlog.get_logger()
 
 router = APIRouter()
+
+#: Tag on this app's moderation calls.
+CHAINED_CALLS_APP_NAME = "Chained-Calls Example App"
 
 #: The chain, described before it runs. Served from the same constants the
 #: pipeline uses, so the roles a visitor is promised and the roles that actually
@@ -98,6 +103,7 @@ async def get_plan() -> JSONResponse:
 async def generate(
     payload: ChainedCallsRequest,
     session: AsyncSession = Depends(get_db_session),
+    moderator: Moderator = Depends(get_moderator),
 ) -> JSONResponse:
     """Run the two-call chain over a story idea.
 
@@ -107,6 +113,8 @@ async def generate(
         payload: The visitor's story idea.
         session: An async DB session injected per-request, used for the shared
             usage-limit and request-logging bookkeeping.
+        moderator: The shared safety gate. This app offers no presets, so every
+            story idea is the visitor's own words and every one is checked.
 
     Returns:
         A 200 JSON response carrying both labeled output blocks -- or, when the
@@ -118,6 +126,15 @@ async def generate(
         Those two are reported separately because they are different operator
         problems.
     """
+    gate = await text_gate.check_free_text(
+        payload.story_prompt,
+        app_name=CHAINED_CALLS_APP_NAME,
+        session=session,
+        moderator=moderator,
+    )
+    if not gate.allowed and gate.code is not None:
+        return _error(text_gate.status_for(gate.code), gate.code, gate.message or "")
+
     try:
         outcome = await service.run_chain(session, story_prompt=payload.story_prompt)
     except InvalidStoryPromptError as exc:

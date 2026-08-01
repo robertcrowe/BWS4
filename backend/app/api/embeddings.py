@@ -20,11 +20,21 @@ from backend.app.embeddings.placement import (
 )
 from backend.app.embeddings.schemas import PlacementRequest, PresetsResponse
 from backend.app.embeddings.service import get_preset_points
+from backend.app.services import text_gate
 from backend.app.services.embedding import embed_text
+from backend.app.services.moderation import Moderator, get_stateless_moderator
 
 logger = structlog.get_logger()
 
 router = APIRouter()
+
+#: Tag on this app's moderation calls.
+#:
+#: Note what gating this route costs: the visitor's text used to reach no third
+#: party at all -- the embedding model runs in-process and nothing is persisted
+#: or logged verbatim. It now goes to the moderation endpoint. That is a real
+#: privacy trade, made deliberately because the box accepts free text.
+EMBEDDINGS_APP_NAME = "Embeddings Example App"
 
 
 def get_embedder() -> Callable[[str], list[float]]:
@@ -71,6 +81,7 @@ async def get_presets() -> JSONResponse:
 async def place(
     payload: PlacementRequest,
     embed: Callable[[str], list[float]] = Depends(get_embedder),
+    moderator: Moderator = Depends(get_stateless_moderator),
 ) -> JSONResponse:
     """Place a visitor's custom text on the presets' fixed 2D plot.
 
@@ -85,6 +96,10 @@ async def place(
     Args:
         payload: The visitor's text. Not persisted or logged verbatim.
         embed: The shared embedding function, injected per-request.
+        moderator: The shared safety gate. The **stateless** provider, because
+            this route deliberately holds no database session -- the cost is
+            the `moderation_log` row, and the alternative was giving a
+            pure-computation endpoint a datastore reach it has never had.
 
     Returns:
         A 200 JSON response with the point, the echoed text, its nearest
@@ -93,6 +108,17 @@ async def place(
         `invalid_custom_text` to correct the input, `embedding_unavailable`
         to offer a retry.
     """
+    gate = await text_gate.check_free_text(
+        payload.custom_text,
+        app_name=EMBEDDINGS_APP_NAME,
+        moderator=moderator,
+    )
+    if not gate.allowed and gate.code is not None:
+        return JSONResponse(
+            status_code=text_gate.status_for(gate.code),
+            content={"status": "error", "code": gate.code, "detail": gate.message},
+        )
+
     try:
         placement = place_custom_text(payload.custom_text, embed=embed)
     except InvalidCustomTextError as exc:

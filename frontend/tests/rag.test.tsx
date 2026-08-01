@@ -67,6 +67,28 @@ describe('RagApp', () => {
     expect(screen.getByText('cited')).toBeInTheDocument()
   })
 
+  it('renders a markdown answer as formatted elements', async () => {
+    // `answer_v2.md` asks for prose with bracketed citations and says nothing
+    // about formatting, so models answer with lists and bold often enough that
+    // printing the raw syntax was a visible defect.
+    mockedAskRag.mockResolvedValue({
+      answer: 'It launched in **1977** [1]. Key facts:\n\n- Still transmitting\n- Now interstellar',
+      retrieved_passages: [],
+      status: 'grounded',
+      cited_passages: [1],
+      unresolved_citations: [],
+    })
+
+    renderRagApp()
+    await submitQuestion('When did Voyager 1 launch?')
+
+    expect((await screen.findByText('1977')).tagName).toBe('STRONG')
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    // The citation marker still reaches the visitor literally — the passage
+    // cards are keyed to it.
+    expect(screen.getByText(/\[1\]/)).toBeInTheDocument()
+  })
+
   it('renders the graceful no-strong-match message instead of a fabricated answer', async () => {
     mockedAskRag.mockResolvedValue({
       answer: 'No strong match found in this dataset for that question.',

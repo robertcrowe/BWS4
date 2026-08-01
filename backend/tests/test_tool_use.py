@@ -30,6 +30,18 @@ from backend.app.main import app
 from backend.app.services import model_registry
 from backend.app.services.web_search import ExaRateLimitError, ExaResult
 
+
+@pytest.fixture(autouse=True)
+def _gate_allows_everything(allow_all_moderation):
+    """Every request here carries free text, which the shared gate now checks.
+
+    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
+    test environment it fails closed and would refuse all of them. Overridden
+    per module rather than globally, so a test that *should* exercise the gate
+    cannot pass by accident.
+    """
+
+
 #: LiteLLM reports the served model without its routing prefix, so the fake
 #: responses do too -- normalize() must map it back to a real chain slug.
 SERVED_MODEL_SLUG = model_registry.TOOL_MODEL_CHAIN[0]

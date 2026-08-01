@@ -1,6 +1,7 @@
 // Built with Spec4 AI - https://spec4.ai
 import type { ChainResult } from '../../api/chainedCalls'
 import { ChainedCallsRequestError } from '../../api/chainedCalls'
+import { Markdown } from '../../components/Markdown'
 
 interface ChainResultViewProps {
   result: ChainResult
@@ -69,9 +70,7 @@ function IntermediateBlock({ result }: { result: ChainResult }) {
           {intermediate.title}
         </p>
       )}
-      <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-gray-700 dark:text-gray-300">
-        {intermediate.text}
-      </p>
+      <Markdown>{intermediate.text}</Markdown>
       <p className="mt-4 border-t border-gray-200 dark:border-gray-800 pt-3 text-xs text-gray-500">
         This text was sent to the second call as its entire input. The critic saw this and nothing
         else — not your story idea, and not the fact that a model wrote it.
@@ -109,9 +108,7 @@ function FinalBlock({ result }: { result: ChainResult }) {
           {final.quoted_detail}
         </blockquote>
       )}
-      <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-gray-700 dark:text-gray-300">
-        {final.text}
-      </p>
+      <Markdown>{final.text}</Markdown>
 
       {signal && (
         <div className="mt-4 border-t border-gray-200 dark:border-gray-800 pt-3">

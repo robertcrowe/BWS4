@@ -15,6 +15,19 @@ from fastapi.testclient import TestClient
 
 from backend.app.embeddings.presets import PRESET_TEXT_EXAMPLES
 from backend.app.main import app
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _gate_allows_everything(allow_all_moderation):
+    """Every request here carries free text, which the shared gate now checks.
+
+    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
+    test environment it fails closed and would refuse all of them. Overridden
+    per module rather than globally, so a test that *should* exercise the gate
+    cannot pass by accident.
+    """
+
 
 
 def test_presets_endpoint_returns_every_curated_example() -> None:

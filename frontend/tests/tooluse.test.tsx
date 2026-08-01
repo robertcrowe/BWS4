@@ -87,6 +87,25 @@ describe('ToolUseApp', () => {
     expect(screen.getByText(/Source: spec4\.dev\/changelog/)).toBeInTheDocument()
   })
 
+  it('renders a markdown answer as formatted elements even though the prompt forbade it', async () => {
+    // `agent_v1.md` says "no markdown formatting". Models disregard it, and
+    // when they comply the renderer is a no-op — so this is about being robust
+    // to the model, not about changing what we ask for.
+    mockedSearchTool.mockResolvedValue({
+      answer: 'The latest release is **v0.9**.',
+      model: 'openrouter/nvidia/some-model:free',
+      iterations: 1,
+      queries: [],
+      steps: [],
+      results: [],
+    })
+
+    renderToolUseApp()
+    await submitQuery('What is the latest Spec4 release?')
+
+    expect((await screen.findByText('v0.9')).tagName).toBe('STRONG')
+  })
+
   it('makes it visible when the model chose not to call the search tool', async () => {
     mockedSearchTool.mockResolvedValue({
       answer: '17 times 24 is 408.',
