@@ -1,0 +1,12 @@
+{
+  "ai_catalog": [
+    {
+      "name": "custom_text_semantic_placement",
+      "scope": "feature",
+      "rough_description": "Takes a user-entered custom word, phrase, or sentence and produces its semantic position relative to the curated preset examples in the shared 2D visualization.",
+      "tier_recommendation": "embeddings",
+      "tier_decision": "embeddings",
+      "tier_decision_rationale": ""
+    }
+  ]
+}

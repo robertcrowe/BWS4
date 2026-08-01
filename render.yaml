@@ -59,6 +59,12 @@ services:
         sync: false
       - key: EXA_API_KEY
         sync: false
+      # Optional: the shared moderation service that screens free-form visitor
+      # questions. Unset and the orchestrated-subagents app still serves its
+      # pre-vetted curated presets. Free of charge, and separate from the
+      # OpenRouter allowance.
+      - key: OPENAI_API_KEY
+        sync: false
       # Optional: leave unset and error tracking no-ops cleanly.
       - key: SENTRY_DSN
         sync: false

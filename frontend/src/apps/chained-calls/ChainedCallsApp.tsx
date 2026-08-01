@@ -123,7 +123,7 @@ export function ChainedCallsApp() {
             event.preventDefault()
             // Guarded as well as disabled: a form has more than one way to
             // submit, and a second chain in flight would spend two more units
-            // of a shared daily budget.
+            // of a shared hourly budget.
             if (!busy) {
               submit()
             }
@@ -233,7 +233,7 @@ function ChainBlocked({ error, onRetry }: { error: unknown; onRetry: () => void 
     >
       <p className="text-sm font-medium text-red-700 dark:text-red-300">
         {capSpent
-          ? 'The chain did not start — today’s shared generation budget cannot cover both calls.'
+          ? 'The chain did not start — this hour’s shared generation budget cannot cover both calls.'
           : 'The chain did not complete.'}
       </p>
       <p className="mt-1 text-xs text-red-700/90 dark:text-red-300/90">{message}</p>

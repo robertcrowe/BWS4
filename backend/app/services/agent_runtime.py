@@ -45,17 +45,22 @@ and never touches `os.environ`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 
 import structlog
 from pydantic import BaseModel
 from pydantic_ai import Agent
-from pydantic_ai.models import Model
+from pydantic_ai.exceptions import UsageLimitExceeded
+from pydantic_ai.messages import ModelMessage, ModelResponse
+from pydantic_ai.models import Model, ModelRequestParameters
 from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.wrapper import WrapperModel
+from pydantic_ai.settings import ModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.providers.openrouter import OpenRouterProvider
+from pydantic_ai.usage import UsageLimits
 
 from backend.app.services import model_registry
 
@@ -79,6 +84,42 @@ logger = structlog.get_logger()
 #: of the chained-calls app's output shapes and returned conforming objects.
 AGENT_LANE_KNOWN_BAD = frozenset({"groq/llama-3.1-8b-instant"})
 
+#: Slugs excluded when this lane runs a step **with tools**, on top of
+#: AGENT_LANE_KNOWN_BAD. Every entry probed with a real research step (a search
+#: tool plus a typed output type, which is what the planning app's executors
+#: need) against a stubbed search, so no Exa quota was involved.
+#:
+#: This is a *fourth* capability, and it needed its own probe for the reason the
+#: other three did: none of the existing results transfer. Every model here
+#: passes the typed-output probe that AGENT_LANE_KNOWN_BAD is built from, and
+#: some ship in TOOL_MODEL_CHAIN having passed the LiteLLM tool-loop probe.
+#: Offering a function tool and a typed-output tool *at the same time* is what
+#: they cannot do, and only 3 of the 7 configured slugs can:
+#:
+#: - `groq/llama-3.3-70b-versatile` -- emits malformed tool-call syntax when both
+#:   kinds of tool are present (`<function=final_result":{...}</function>`), and
+#:   Groq rejects it with `tool_use_failed`. It had the answer; it could not
+#:   express the call.
+#: - `groq/openai/gpt-oss-20b` -- never stops calling the search tool, so the
+#:   step's request limit ends it before it produces output. Separately excluded
+#:   from the LiteLLM tool chain for an unrelated fault, which is consistency
+#:   rather than a transferred result.
+#: - `openrouter/inclusionai/ling-3.0-flash:free` -- the same runaway.
+#: - `openrouter/nvidia/nemotron-3-super-120b-a12b:free` -- calls the tool, reads
+#:   the results, then returns an empty summary.
+#:
+#: The survivors span both providers, so failover still crosses a provider
+#: boundary. Expect this list to rot like every other; re-probe rather than
+#: assuming a code fault when executors start failing.
+TOOL_LANE_KNOWN_BAD = frozenset(
+    {
+        "groq/llama-3.3-70b-versatile",
+        "groq/openai/gpt-oss-20b",
+        "openrouter/inclusionai/ling-3.0-flash:free",
+        "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+    }
+)
+
 
 class AgentLaneError(Exception):
     """Raised when a typed agent step could not be completed.
@@ -91,6 +132,18 @@ class AgentLaneError(Exception):
     def __init__(self, label: str, message: str) -> None:
         self.label = label
         super().__init__(message)
+
+
+class StepRequestLimitExceeded(AgentLaneError):
+    """Raised when a step used up its `request_limit` without producing output.
+
+    A subclass so callers that only care that the step failed need no change,
+    and a distinct type because this failure is **deterministic**: the model
+    kept calling tools and never settled. Retrying it runs the same model
+    against the same prompt to reach the same limit, spending a second full
+    step's budget to learn nothing -- which is exactly what a live run of the
+    planning app did before this existed.
+    """
 
 
 @dataclass(frozen=True)
@@ -218,13 +271,67 @@ class StepResult[T: BaseModel]:
             Never assumed: the lane walks a fallback chain, so naming the
             chain's head would attribute the output to a model that may never
             have run.
+        requests: How many model requests the step actually took. One for a
+            plain typed call; more when tools are in play, because each
+            tool-calling turn and the final answer are separate requests. A
+            caller metering a shared budget must charge what was spent, not
+            what a step "usually" costs.
     """
 
     output: T
     model: str
+    requests: int = 1
 
 
-def lane_chain(chain: list[str] | None = None) -> list[str]:
+class GatedModel(WrapperModel):
+    """Runs an injected async hook immediately before every model request.
+
+    The extension point that makes "checked before every model call" a
+    structural property rather than an approximation. A tool-using agent issues
+    several requests inside a single `agent.run()` -- one per tool-calling turn
+    plus the final answer -- so a caller that checked a budget around the run
+    would be checking once and spending several times.
+
+    The hook is *injected* rather than imported, on the same reasoning as
+    `tools/agent.py`'s `execute_search`: quota lives in a database and this
+    module must stay free of one, so the caller supplies a closure and this lane
+    stays testable without either.
+
+    Note the deliberate limit: only `request` is gated, not `request_stream`.
+    Nothing in this project streams from a model -- the SSE stream carries
+    completed steps, not tokens -- so there is no ungated path today. Anything
+    that starts streaming must gate that method too.
+    """
+
+    def __init__(self, wrapped: Model, on_request: Callable[[], Awaitable[None]]) -> None:
+        super().__init__(wrapped)
+        self._on_request = on_request
+
+    async def request(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+    ) -> ModelResponse:
+        """Await the hook, then delegate.
+
+        Args:
+            messages: The conversation so far.
+            model_settings: Per-request model settings.
+            model_request_parameters: Tool and output-schema parameters.
+
+        Returns:
+            The wrapped model's response.
+
+        Raises:
+            Exception: Whatever the hook raises, before any provider is
+                contacted. A hook that refuses is the whole point.
+        """
+        await self._on_request()
+        return await super().request(messages, model_settings, model_request_parameters)
+
+
+def lane_chain(chain: list[str] | None = None, *, tools: bool = False) -> list[str]:
     """Resolve the slugs this lane may call, in preference order.
 
     Applies, in order: the registry's own filtering (unconfigured providers and
@@ -235,6 +342,10 @@ def lane_chain(chain: list[str] | None = None) -> list[str]:
         chain: The capability's ordered chain. Defaults to
             GENERATION_MODEL_CHAIN, which is what every current caller wants;
             passed explicitly when a future capability earns its own list.
+        tools: Whether the step will offer the model function tools. When true,
+            `TOOL_LANE_KNOWN_BAD` is excluded as well -- a model that returns
+            clean typed output is not thereby able to do it *while* calling a
+            tool, and four of the shipped slugs cannot.
 
     Returns:
         Full registry slugs -- `provider/model-id`, prefix intact -- in the
@@ -247,11 +358,12 @@ def lane_chain(chain: list[str] | None = None) -> list[str]:
     """
     source = model_registry.GENERATION_MODEL_CHAIN if chain is None else chain
     available = registered_providers()
+    excluded = AGENT_LANE_KNOWN_BAD | (TOOL_LANE_KNOWN_BAD if tools else frozenset())
 
     slugs = [
         model
         for model in model_registry.active_chain(source)
-        if model not in AGENT_LANE_KNOWN_BAD and model_registry.provider_of(model) in available
+        if model not in excluded and model_registry.provider_of(model) in available
     ]
     if not slugs:
         raise AgentLaneError(
@@ -262,7 +374,7 @@ def lane_chain(chain: list[str] | None = None) -> list[str]:
     return slugs
 
 
-def build_fallback_model(chain: list[str] | None = None) -> FallbackModel:
+def build_fallback_model(chain: list[str] | None = None, *, tools: bool = False) -> FallbackModel:
     """Build the lane's model: the head slug, with the rest behind it.
 
     Each entry is constructed by its own provider's adapter, so one
@@ -273,13 +385,15 @@ def build_fallback_model(chain: list[str] | None = None) -> FallbackModel:
 
     Args:
         chain: The capability's ordered chain, or None for the default.
+        tools: Whether the step will offer function tools, which narrows the
+            chain further. See `lane_chain`.
 
     Returns:
         A FallbackModel over every currently-available slug.
     """
     models = [
         _ADAPTERS[model_registry.provider_of(slug)].build_model(slug.split("/", 1)[1])
-        for slug in lane_chain(chain)
+        for slug in lane_chain(chain, tools=tools)
     ]
     return FallbackModel(models[0], *models[1:])
 
@@ -291,12 +405,18 @@ async def run_typed_step[T: BaseModel](
     user_prompt: str,
     output_type: type[T],
     chain: list[str] | None = None,
+    tools: Sequence[Callable[..., object]] | None = None,
+    request_limit: int | None = None,
+    on_request: Callable[[], Awaitable[None]] | None = None,
+    model_settings: ModelSettings | None = None,
 ) -> StepResult[T]:
-    """Run one typed model call and return its output plus the serving model.
+    """Run one typed model step and return its output plus the serving model.
 
-    The unit of work every caller of this lane is built from: one agent, one
-    turn, one validated object. A multi-step app composes these; it does not
-    reach past them into PydanticAI.
+    The unit of work every caller of this lane is built from. Without `tools`
+    it is exactly one model call producing one validated object. With `tools`
+    it is one *step* that may take several model calls -- the model calls a
+    tool, reads the result, and either calls again or answers -- which is why
+    `StepResult.requests` reports what it actually cost.
 
     Google-style docstring per project convention.
 
@@ -307,25 +427,85 @@ async def run_typed_step[T: BaseModel](
         user_prompt: The call's user message.
         output_type: The Pydantic model the response is bound to.
         chain: The capability's ordered chain, or None for the default.
+        tools: Functions to offer the model. Each becomes a tool whose schema
+            PydanticAI derives from its signature and docstring, so the
+            docstring is part of the interface, not a comment.
+        request_limit: Hard ceiling on model requests for this step, enforced
+            by PydanticAI itself. Pass it whenever tools are in play: a model
+            that keeps calling tools would otherwise loop until something else
+            stopped it.
+        on_request: Awaited immediately before each model request. The place to
+            put a budget counter or a quota reservation -- raising from it
+            refuses the call before any provider is contacted.
+        model_settings: Per-request settings such as temperature. Passed
+            through rather than set here: sampling belongs to the capability
+            making the call, and a lane-wide default would silently apply to
+            every app.
 
     Returns:
-        The validated output and the slug that served it.
+        The validated output, the slug that served it, and the request count.
 
     Raises:
         AgentLaneError: If every model in the chain failed, or the surviving
             model could not produce output matching `output_type`. Both arrive
             as one exception because the caller's decision is the same either
             way -- there is no usable output for this step.
+        Exception: Anything `on_request` raises propagates unchanged. A refusal
+            is not a lane failure: it must not bench a model, and it must reach
+            the caller as the specific error it is rather than as a generic
+            "the step could not be completed".
     """
+    # A step that offers tools needs a narrower chain than one that does not,
+    # and the caller should not have to remember that: the presence of `tools`
+    # is the signal, so it cannot be forgotten at a call site.
+    model: Model = build_fallback_model(chain, tools=bool(tools))
+
+    # Whatever the caller's hook raised, kept so the handler below can tell a
+    # refusal from a model failure. Without this the gate's own exception would
+    # be caught as a lane failure -- benching a healthy model for declining to
+    # be called, and replacing the caller's specific error (cap reached, budget
+    # spent) with a generic one. The two need different handling, so they must
+    # stay distinguishable.
+    refusal: list[BaseException] = []
+
+    if on_request is not None:
+        hook = on_request
+
+        async def gate() -> None:
+            try:
+                await hook()
+            except BaseException as exc:
+                refusal.append(exc)
+                raise
+
+        model = GatedModel(model, gate)
+
     agent: Agent[None, T] = Agent(
-        build_fallback_model(chain),
+        model,
         output_type=output_type,
         instructions=instructions,
+        tools=list(tools) if tools else [],
     )
+    limits = UsageLimits(request_limit=request_limit) if request_limit else None
 
     try:
-        result = await agent.run(user_prompt)
+        result = await agent.run(
+            user_prompt, usage_limits=limits, model_settings=model_settings
+        )
+    except UsageLimitExceeded as exc:
+        # The model never stopped calling tools. Distinct from a model failure:
+        # it is deterministic, so the caller must not retry it, and it says
+        # nothing about the model's health, so nothing gets benched.
+        logger.warning("agent_step_hit_request_limit", label=label, limit=request_limit)
+        raise StepRequestLimitExceeded(
+            label, f"The {label} step used its {request_limit}-request limit without answering."
+        ) from exc
     except Exception as exc:  # noqa: BLE001 - the framework raises several unrelated types
+        if refusal:
+            # The provider was never reached. Re-raise the hook's own exception
+            # rather than `exc`, which may be a wrapper the framework put
+            # around it.
+            raise refusal[0] from None
         # Teach the shared bench what this lane learned. A slug a provider has
         # withdrawn is withdrawn for the LiteLLM lane too, and note_failure
         # ignores anything that does not name a permanent failure.
@@ -339,8 +519,9 @@ async def run_typed_step[T: BaseModel](
         raise AgentLaneError(label, f"The {label} call could not be completed.") from exc
 
     served = model_registry.normalize(result.response.model_name or "unknown")
-    logger.info("agent_step_completed", label=label, model=served)
-    return StepResult(output=result.output, model=served)
+    requests = result.usage.requests
+    logger.info("agent_step_completed", label=label, model=served, requests=requests)
+    return StepResult(output=result.output, model=served, requests=requests)
 
 
 def reset_providers() -> None:

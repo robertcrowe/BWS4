@@ -1,0 +1,605 @@
+{
+  "entities": [
+    {
+      "name": "ExampleApp",
+      "fields": [
+        "name",
+        "description",
+        "tag",
+        "target",
+        "status"
+      ]
+    },
+    {
+      "name": "Document",
+      "fields": [
+        "title",
+        "source",
+        "text"
+      ]
+    },
+    {
+      "name": "Question",
+      "fields": [
+        "text"
+      ]
+    },
+    {
+      "name": "RetrievedPassage",
+      "fields": [
+        "title",
+        "source",
+        "text",
+        "score"
+      ]
+    },
+    {
+      "name": "Answer",
+      "fields": [
+        "text",
+        "confidence",
+        "citations"
+      ]
+    },
+    {
+      "name": "GenerationRequest",
+      "fields": [
+        "prompt",
+        "mode",
+        "schema"
+      ]
+    },
+    {
+      "name": "Embedding",
+      "fields": [
+        "text",
+        "vectorPreview",
+        "x",
+        "y"
+      ]
+    },
+    {
+      "name": "SearchResult",
+      "fields": [
+        "title",
+        "summary",
+        "source"
+      ]
+    },
+    {
+      "name": "StoredRecord",
+      "fields": [
+        "key",
+        "value",
+        "writtenBy"
+      ]
+    },
+    {
+      "name": "SearchQuery",
+      "fields": [
+        "text"
+      ]
+    },
+    {
+      "name": "TextExample",
+      "fields": [
+        "text",
+        "category",
+        "x",
+        "y",
+        "isCustom"
+      ]
+    },
+    {
+      "name": "ProjectionPoint",
+      "fields": [
+        "text",
+        "x",
+        "y",
+        "category",
+        "neighbors"
+      ]
+    },
+    {
+      "name": "Prompt",
+      "fields": [
+        "text",
+        "presetId"
+      ]
+    },
+    {
+      "name": "Response",
+      "fields": [
+        "text",
+        "structuredObject",
+        "valid"
+      ]
+    },
+    {
+      "name": "StructuredSchema",
+      "fields": [
+        "fields"
+      ]
+    },
+    {
+      "name": "Request",
+      "fields": [
+        "type",
+        "payload"
+      ]
+    },
+    {
+      "name": "IntermediateOutput",
+      "fields": [
+        "role",
+        "text"
+      ]
+    },
+    {
+      "name": "FinalOutput",
+      "fields": [
+        "role",
+        "text",
+        "status"
+      ]
+    },
+    {
+      "name": "ChainStep",
+      "fields": [
+        "stepNumber",
+        "role",
+        "state"
+      ]
+    },
+    {
+      "name": "UsageCapability",
+      "fields": [
+        "label",
+        "used",
+        "cap"
+      ]
+    },
+    {
+      "name": "LogEntry",
+      "fields": [
+        "time",
+        "app",
+        "capability",
+        "summary"
+      ]
+    }
+  ],
+  "screens": [
+    {
+      "id": "screen-landing",
+      "audience": "all visitors",
+      "purpose": "Introduce BWS4 and list every available example app",
+      "surfaces": [
+        "app_directory"
+      ]
+    },
+    {
+      "id": "screen-rag",
+      "audience": "developers learning RAG",
+      "purpose": "Demonstrate retrieval-augmented generation end-to-end",
+      "surfaces": [
+        "dataset_browser",
+        "rag_example_app"
+      ]
+    },
+    {
+      "id": "screen-tooluse",
+      "audience": "developers learning tool-use agents",
+      "purpose": "Demonstrate an agent calling a live search tool mid-response",
+      "surfaces": [
+        "tool_use_example_app"
+      ]
+    },
+    {
+      "id": "screen-singlecall",
+      "audience": "developers learning the single-call pattern",
+      "purpose": "Demonstrate one-prompt-in one-response-out, in plain and structured modes",
+      "surfaces": [
+        "single_call_generation"
+      ]
+    },
+    {
+      "id": "screen-chained",
+      "audience": "developers learning the chained-calls pattern",
+      "purpose": "Demonstrate exactly two sequential role-played model calls, with roles shown upfront and quota conservation explained",
+      "surfaces": [
+        "chained_role_play_generation"
+      ]
+    },
+    {
+      "id": "screen-embeddings",
+      "audience": "developers learning embeddings",
+      "purpose": "Visualize curated texts in 2D semantic space and place custom text alongside them",
+      "surfaces": [
+        "embed_plot_viewer",
+        "custom_text_semantic_placement"
+      ]
+    },
+    {
+      "id": "screen-console",
+      "audience": "Spec4 team / maintainers",
+      "purpose": "Directly exercise and monitor shared framework services",
+      "surfaces": [
+        "request_tester",
+        "usage_monitor",
+        "cross_app_log"
+      ]
+    }
+  ],
+  "surfaces": [
+    {
+      "name": "app_directory",
+      "kind": "non_ai",
+      "screen": "screen-landing",
+      "implements_features": [
+        "Landing_Page"
+      ],
+      "inputs": [],
+      "output": "Grid of app cards with name, description, tag, and open/coming-soon action, generated from one shared app list (now includes Chained-Calls Example App)",
+      "states": [
+        "default"
+      ],
+      "reads": [
+        "ExampleApp"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "landing_page"
+      ]
+    },
+    {
+      "name": "dataset_browser",
+      "kind": "non_ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "RAG_Example_App"
+      ],
+      "inputs": [
+        "expand/collapse toggle per document"
+      ],
+      "output": "Expandable list of the 5 reference documents",
+      "states": [
+        "collapsed",
+        "expanded"
+      ],
+      "reads": [
+        "Document"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "rag_example_app",
+      "kind": "ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "rag_example_app"
+      ],
+      "inputs": [
+        "user_question text field",
+        "preset question chips"
+      ],
+      "output": "Generated answer with inline citations plus a list of retrieved passages with match scores",
+      "states": [
+        "idle",
+        "retrieving",
+        "generating",
+        "answered-high-confidence",
+        "answered-low-confidence-dataset-gap",
+        "service-unavailable"
+      ],
+      "reads": [
+        "Document",
+        "Question"
+      ],
+      "writes": [
+        "RetrievedPassage",
+        "Answer",
+        "LogEntry",
+        "UsageCapability"
+      ],
+      "depends_on": [
+        "dataset_browser"
+      ],
+      "affordance": "multi-stage status line (retrieving \u2192 generating) before result",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "rag_example_app",
+      "catalog_surface_id": "rag_example_app",
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "tool_use_example_app",
+      "kind": "ai",
+      "screen": "screen-tooluse",
+      "implements_features": [
+        "Tool_Use_Integration"
+      ],
+      "inputs": [
+        "query text field",
+        "preset query chips"
+      ],
+      "output": "Routing line, ranked search results, and a synthesized answer grounded in those results",
+      "states": [
+        "idle",
+        "parsing",
+        "calling-tool",
+        "synthesizing",
+        "answered",
+        "tool-unavailable"
+      ],
+      "reads": [
+        "SearchQuery"
+      ],
+      "writes": [
+        "SearchResult",
+        "Answer",
+        "LogEntry",
+        "UsageCapability"
+      ],
+      "depends_on": [],
+      "affordance": "3-step progress indicator (parse \u2192 search \u2192 synthesize)",
+      "invocation": "user submits a query needing live information",
+      "catalog_surface": "tool_use_example_app",
+      "catalog_surface_id": "tool_use_example_app",
+      "implements_feature_ids": [
+        "tool_use_integration"
+      ]
+    },
+    {
+      "name": "single_call_generation",
+      "kind": "ai",
+      "screen": "screen-singlecall",
+      "implements_features": [
+        "single_call_example_app"
+      ],
+      "inputs": [
+        "prompt textarea",
+        "preset prompt chips",
+        "mode toggle (simple/structured)"
+      ],
+      "output": "Plain-text response in simple mode, or request+response JSON pair with schema-conformance flag in structured mode",
+      "states": [
+        "idle",
+        "validation-empty-prompt",
+        "loading",
+        "simple-answered",
+        "structured-valid",
+        "structured-schema-mismatch",
+        "service-unavailable"
+      ],
+      "reads": [
+        "Prompt",
+        "StructuredSchema"
+      ],
+      "writes": [
+        "Response",
+        "LogEntry",
+        "UsageCapability"
+      ],
+      "depends_on": [],
+      "affordance": "single stage-line spinner while call is in flight",
+      "invocation": {
+        "trigger": "User enters or selects a preset prompt, chooses a response mode (plain or structured), and submits the form.",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "single_call_generation",
+      "catalog_surface_id": "single_call_generation",
+      "implements_feature_ids": [
+        "single_call_example_app"
+      ]
+    },
+    {
+      "name": "chained_role_play_generation",
+      "kind": "ai",
+      "screen": "screen-chained",
+      "implements_features": [
+        "Chained_Calls_Example_App"
+      ],
+      "inputs": [
+        "story_prompt text field",
+        "preset story-prompt chips"
+      ],
+      "output": "Two labeled blocks: Step 1 \u00b7 Struggling Writer (intermediate output) and Step 2 \u00b7 Harsh Critic (final output), shown as each call completes",
+      "states": [
+        "idle",
+        "role-preview-before-run",
+        "step1-running",
+        "step1-done-step2-running",
+        "chain-complete",
+        "quota-exhausted-before-start",
+        "quota-exhausted-mid-chain",
+        "step2-failed-retryable",
+        "step2-retry-running"
+      ],
+      "reads": [
+        "ChainStep"
+      ],
+      "writes": [
+        "IntermediateOutput",
+        "FinalOutput",
+        "LogEntry",
+        "UsageCapability"
+      ],
+      "depends_on": [],
+      "affordance": "2-step progress indicator (Call 1 \u2192 Call 2) that doubles as an upfront role preview before submission",
+      "invocation": {
+        "trigger": "User submits a free-form story prompt in the Chained-Calls example app",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "chained_role_play_generation",
+      "catalog_surface_id": "chained_role_play_generation",
+      "implements_feature_ids": [
+        "chained_calls_example_app"
+      ]
+    },
+    {
+      "name": "embed_plot_viewer",
+      "kind": "non_ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "Embeddings_Example_App"
+      ],
+      "inputs": [],
+      "output": "2D SVG scatter plot of 24 curated texts colored by category, with a legend distinguishing categories and custom points",
+      "states": [
+        "default",
+        "updated-after-custom-add"
+      ],
+      "reads": [
+        "TextExample",
+        "ProjectionPoint"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "custom_text_semantic_placement",
+      "kind": "ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "embeddings_example_app"
+      ],
+      "inputs": [
+        "custom text field",
+        "suggestion chips"
+      ],
+      "output": "Custom point merged into the fixed plot (distinct marker), plus nearest-neighbor list with distances",
+      "states": [
+        "idle",
+        "embedding",
+        "placed-in-cluster",
+        "placed-centrally-no-match",
+        "representation-unavailable"
+      ],
+      "reads": [
+        "TextExample"
+      ],
+      "writes": [
+        "ProjectionPoint",
+        "LogEntry",
+        "UsageCapability"
+      ],
+      "depends_on": [
+        "embed_plot_viewer"
+      ],
+      "affordance": "stage-line spinner while embedding, then redraw of full plot so the update is visibly explainable",
+      "invocation": {
+        "trigger": "User submits custom text in the Embeddings Example App (preset examples are embedded and projected once at build/deploy time, not per-request)",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "custom_text_semantic_placement",
+      "catalog_surface_id": "custom_text_semantic_placement",
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "request_tester",
+      "kind": "ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "embeddings_example_app"
+      ],
+      "inputs": [
+        "request type select",
+        "payload textarea",
+        "send/simulate-limit buttons"
+      ],
+      "output": "Raw capability response (generation text, representation vector preview, or stored-record confirmation)",
+      "states": [
+        "idle",
+        "sending",
+        "responded",
+        "limit-error"
+      ],
+      "reads": [
+        "Request"
+      ],
+      "writes": [
+        "StoredRecord",
+        "LogEntry",
+        "UsageCapability"
+      ],
+      "depends_on": [],
+      "affordance": "response box populates after short delay",
+      "invocation": {
+        "trigger": "User submits custom text in the Embeddings Example App (preset examples are embedded and projected once at build/deploy time, not per-request)",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "custom_text_semantic_placement",
+      "catalog_surface_id": "custom_text_semantic_placement",
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "usage_monitor",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [],
+      "output": "Per-capability usage bars (used/cap) including generation usage shared by RAG, Single-Call, and Chained-Calls apps",
+      "states": [
+        "normal",
+        "near-limit-warn"
+      ],
+      "reads": [
+        "UsageCapability"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    },
+    {
+      "name": "cross_app_log",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [],
+      "output": "Table of recent requests across all apps including the new Chained-Calls Example App",
+      "states": [
+        "empty",
+        "populated"
+      ],
+      "reads": [
+        "LogEntry"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    }
+  ],
+  "shared_layout": {
+    "nav": "Sticky top nav with brand mark, horizontal pill nav links (Home, RAG, Tool-Use, Single-Call, Chained-Calls, Embeddings, Framework Console), and a theme toggle button",
+    "shell": [
+      "topnav",
+      "main screen container (one active .screen at a time)",
+      "footer.app-footer"
+    ]
+  }
+}

@@ -39,6 +39,16 @@ const ChainedCallsScreen = lazy(() =>
     default: module.ChainedCallsScreen,
   })),
 )
+const PlanningScreen = lazy(() =>
+  import('./screens/planning/PlanningScreen').then((module) => ({
+    default: module.PlanningScreen,
+  })),
+)
+const OrchestratedScreen = lazy(() =>
+  import('./screens/orchestrated/OrchestratedScreen').then((module) => ({
+    default: module.OrchestratedScreen,
+  })),
+)
 
 /** Wraps a lazy-loaded route element in the fallback every route shares while its chunk loads. */
 function withSuspense(element: ReactNode) {
@@ -77,6 +87,14 @@ export const router = createBrowserRouter([
   {
     path: '/chained-calls',
     element: withSuspense(<ChainedCallsScreen />),
+  },
+  {
+    path: '/planning',
+    element: withSuspense(<PlanningScreen />),
+  },
+  {
+    path: '/orchestrated',
+    element: withSuspense(<OrchestratedScreen />),
   },
   ...exampleApps
     .filter((app) => app.status === 'coming-soon')

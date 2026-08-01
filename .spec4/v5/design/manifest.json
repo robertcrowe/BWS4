@@ -1,0 +1,1192 @@
+{
+  "entities": [
+    {
+      "name": "ExampleApp",
+      "fields": [
+        "name",
+        "pattern",
+        "description",
+        "target",
+        "status"
+      ]
+    },
+    {
+      "name": "Pattern",
+      "fields": [
+        "name",
+        "summary"
+      ]
+    },
+    {
+      "name": "Visitor",
+      "fields": [
+        "session_id"
+      ]
+    },
+    {
+      "name": "Session",
+      "fields": [
+        "id",
+        "runs_used",
+        "runs_cap"
+      ]
+    },
+    {
+      "name": "Document",
+      "fields": [
+        "title",
+        "source",
+        "text"
+      ]
+    },
+    {
+      "name": "Passage",
+      "fields": [
+        "title",
+        "source",
+        "text",
+        "score"
+      ]
+    },
+    {
+      "name": "Embedding",
+      "fields": [
+        "text",
+        "vector_preview",
+        "dimensions"
+      ]
+    },
+    {
+      "name": "Question",
+      "fields": [
+        "text",
+        "source"
+      ]
+    },
+    {
+      "name": "RetrievalResult",
+      "fields": [
+        "passages",
+        "max_score",
+        "low_relevance"
+      ]
+    },
+    {
+      "name": "Answer",
+      "fields": [
+        "text",
+        "confidence",
+        "citations"
+      ]
+    },
+    {
+      "name": "Model",
+      "fields": [
+        "id",
+        "label"
+      ]
+    },
+    {
+      "name": "GenerationRequest",
+      "fields": [
+        "prompt",
+        "mode",
+        "response_schema"
+      ]
+    },
+    {
+      "name": "GenerationResult",
+      "fields": [
+        "content",
+        "model",
+        "schema_conformant"
+      ]
+    },
+    {
+      "name": "StoredRecord",
+      "fields": [
+        "key",
+        "value",
+        "writtenBy"
+      ]
+    },
+    {
+      "name": "UsageAllowance",
+      "fields": [
+        "capability",
+        "used",
+        "cap",
+        "remaining"
+      ]
+    },
+    {
+      "name": "SearchQuery",
+      "fields": [
+        "query",
+        "calling_context",
+        "result_limit"
+      ]
+    },
+    {
+      "name": "SearchResult",
+      "fields": [
+        "title",
+        "summary",
+        "source",
+        "rank"
+      ]
+    },
+    {
+      "name": "TextSample",
+      "fields": [
+        "text",
+        "category",
+        "is_custom"
+      ]
+    },
+    {
+      "name": "Category",
+      "fields": [
+        "name",
+        "color"
+      ]
+    },
+    {
+      "name": "Projection",
+      "fields": [
+        "width",
+        "height",
+        "deterministic"
+      ]
+    },
+    {
+      "name": "PlotPoint",
+      "fields": [
+        "text",
+        "x",
+        "y",
+        "category",
+        "is_custom"
+      ]
+    },
+    {
+      "name": "Prompt",
+      "fields": [
+        "id",
+        "label",
+        "intent",
+        "text"
+      ]
+    },
+    {
+      "name": "ResponseShape",
+      "fields": [
+        "fields",
+        "types"
+      ]
+    },
+    {
+      "name": "ChainStep",
+      "fields": [
+        "number",
+        "role",
+        "input",
+        "output",
+        "status"
+      ]
+    },
+    {
+      "name": "Goal",
+      "fields": [
+        "city",
+        "interests"
+      ]
+    },
+    {
+      "name": "Plan",
+      "fields": [
+        "steps",
+        "trimmed"
+      ]
+    },
+    {
+      "name": "PlanStep",
+      "fields": [
+        "number",
+        "kind",
+        "label",
+        "purpose",
+        "query",
+        "status"
+      ]
+    },
+    {
+      "name": "Itinerary",
+      "fields": [
+        "morning",
+        "afternoon",
+        "evening"
+      ]
+    },
+    {
+      "name": "Specialist",
+      "fields": [
+        "id",
+        "displayName",
+        "scope",
+        "color"
+      ]
+    },
+    {
+      "name": "DelegationDecision",
+      "fields": [
+        "chosen_specialists",
+        "rationale",
+        "briefs",
+        "fit_quality"
+      ]
+    },
+    {
+      "name": "Brief",
+      "fields": [
+        "specialist_id",
+        "instruction"
+      ]
+    },
+    {
+      "name": "SubagentResult",
+      "fields": [
+        "specialist_id",
+        "status",
+        "answer",
+        "error"
+      ]
+    },
+    {
+      "name": "MergedAnswer",
+      "fields": [
+        "text",
+        "sources_used",
+        "disagreement_note"
+      ]
+    },
+    {
+      "name": "ModerationVerdict",
+      "fields": [
+        "allowed",
+        "category",
+        "visitor_message"
+      ]
+    },
+    {
+      "name": "ServiceLogEntry",
+      "fields": [
+        "time",
+        "app",
+        "capability",
+        "summary"
+      ]
+    }
+  ],
+  "screens": [
+    {
+      "id": "screen-landing",
+      "audience": "Developers evaluating Spec4 / learning agentic patterns",
+      "purpose": "Introduce BWS4, explain it was built with Spec4, and present the catalogue of example apps.",
+      "surfaces": [
+        "project_introduction",
+        "example_app_catalogue"
+      ]
+    },
+    {
+      "id": "screen-rag",
+      "audience": "Developers learning the RAG pattern",
+      "purpose": "Demonstrate retrieval-augmented generation over a small public dataset with retrieval and generation visible as distinct stages.",
+      "surfaces": [
+        "rag_dataset_browser",
+        "rag_question_form"
+      ]
+    },
+    {
+      "id": "screen-tooluse",
+      "audience": "Developers learning tool use / function calling",
+      "purpose": "Show an agent calling a shared web search tool mid-response and synthesizing an answer from the findings.",
+      "surfaces": [
+        "tool_use_query_runner"
+      ]
+    },
+    {
+      "id": "screen-singlecall",
+      "audience": "Developers learning the single-call pattern",
+      "purpose": "Show one prompt in, one response out, in both plain and schema-conforming structured modes.",
+      "surfaces": [
+        "single_call_overview",
+        "single_call_runner"
+      ]
+    },
+    {
+      "id": "screen-chained",
+      "audience": "Developers learning chained calls",
+      "purpose": "Show a two-step chain where the writer's draft becomes the critic's input, with both outputs visible.",
+      "surfaces": [
+        "chained_calls_overview",
+        "chained_calls_runner"
+      ]
+    },
+    {
+      "id": "screen-planning",
+      "audience": "Developers learning the planning-agent pattern",
+      "purpose": "Show a planner call decomposing a goal into a visible plan, then executing steps after explicit confirmation.",
+      "surfaces": [
+        "planning_overview",
+        "planning_goal_form",
+        "planning_execution_runner"
+      ]
+    },
+    {
+      "id": "screen-orchestrated",
+      "audience": "Developers learning orchestrated subagents",
+      "purpose": "Show a coordinator choosing two specialists from a fixed roster, briefing them, running them side by side, and merging their answers.",
+      "surfaces": [
+        "orchestrated_overview",
+        "specialist_roster_panel",
+        "orchestrated_question_form",
+        "orchestrated_delegation_review",
+        "orchestrated_parallel_execution",
+        "orchestrated_merged_answer"
+      ]
+    },
+    {
+      "id": "screen-embeddings",
+      "audience": "Developers learning embeddings",
+      "purpose": "Make embeddings tangible with a 2D semantic plot of curated texts plus visitor-added text.",
+      "surfaces": [
+        "embeddings_overview",
+        "embeddings_plot",
+        "embeddings_custom_text_form"
+      ]
+    },
+    {
+      "id": "screen-console",
+      "audience": "Spec4 team / maintainers",
+      "purpose": "Exercise the shared framework services directly, watch usage limits, and view a cross-app request log.",
+      "surfaces": [
+        "service_request_tester",
+        "usage_limits_panel",
+        "cross_app_request_log"
+      ]
+    }
+  ],
+  "surfaces": [
+    {
+      "name": "project_introduction",
+      "kind": "non_ai",
+      "screen": "screen-landing",
+      "implements_features": [
+        "Landing_Page"
+      ],
+      "inputs": [],
+      "output": "Hero copy stating what BWS4 is, that it was built with Spec4, plus pattern badges",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "Pattern"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "landing_page"
+      ]
+    },
+    {
+      "name": "example_app_catalogue",
+      "kind": "non_ai",
+      "screen": "screen-landing",
+      "implements_features": [
+        "Landing_Page"
+      ],
+      "inputs": [],
+      "output": "Grid of example-app cards, each with pattern tag, name, description, and an open action; unavailable apps shown as disabled",
+      "states": [
+        "populated",
+        "entry_unavailable"
+      ],
+      "reads": [
+        "ExampleApp",
+        "Pattern"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "landing_page"
+      ]
+    },
+    {
+      "name": "rag_dataset_browser",
+      "kind": "non_ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "RAG_Example_App"
+      ],
+      "inputs": [
+        "document expand/collapse toggles"
+      ],
+      "output": "Expandable list of the 5 reference documents with source labels",
+      "states": [
+        "collapsed",
+        "expanded"
+      ],
+      "reads": [
+        "Document",
+        "Passage"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "rag_question_form",
+      "kind": "ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "rag_example_app"
+      ],
+      "catalog_surface": "rag_example_app",
+      "affordance": "show retrieval then generation as distinct staged progress lines",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "inputs": [
+        "curated question chips",
+        "question text input",
+        "Ask button"
+      ],
+      "output": "Grounded answer with confidence badge and inline citations, plus the ranked retrieved passages with match scores and sources",
+      "states": [
+        "idle",
+        "retrieving",
+        "generating",
+        "answered_grounded",
+        "answered_low_relevance_warning",
+        "service_unavailable_quota"
+      ],
+      "reads": [
+        "Question",
+        "Document",
+        "Passage",
+        "RetrievalResult",
+        "UsageAllowance"
+      ],
+      "writes": [
+        "Answer",
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "rag_dataset_browser"
+      ],
+      "catalog_surface_id": "rag_example_app",
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "tool_use_query_runner",
+      "kind": "ai",
+      "screen": "screen-tooluse",
+      "implements_features": [
+        "rag_example_app"
+      ],
+      "catalog_surface": "rag_example_app",
+      "affordance": "show multi-step progress/status while it runs",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "inputs": [
+        "preset query chips",
+        "query text input",
+        "Run agent button"
+      ],
+      "output": "Routing line, synthesized answer, and the ranked search findings with titles, summaries, and sources",
+      "states": [
+        "idle",
+        "parsing",
+        "calling_tool",
+        "synthesizing",
+        "answered",
+        "tool_quota_exhausted"
+      ],
+      "reads": [
+        "SearchQuery",
+        "SearchResult",
+        "UsageAllowance"
+      ],
+      "writes": [
+        "Answer",
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [],
+      "catalog_surface_id": "rag_example_app",
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "single_call_overview",
+      "kind": "non_ai",
+      "screen": "screen-singlecall",
+      "implements_features": [
+        "Single_Call_Example_App"
+      ],
+      "inputs": [],
+      "output": "Educational card explaining the single-call pattern and when to use it",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "Pattern"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "single_call_example_app"
+      ]
+    },
+    {
+      "name": "single_call_runner",
+      "kind": "ai",
+      "screen": "screen-singlecall",
+      "implements_features": [
+        "single_call_example_app"
+      ],
+      "catalog_surface": "single_call_generation",
+      "affordance": "single staged progress line; structured mode shows request and response side by side",
+      "invocation": {
+        "trigger": "User enters or selects a preset prompt, chooses a response mode (plain or structured), and submits the form.",
+        "mode": "synchronous"
+      },
+      "inputs": [
+        "preset prompt chips",
+        "prompt textarea",
+        "mode toggle (simple/structured)",
+        "Run single call button"
+      ],
+      "output": "Plain-text response, or the schema-bearing request plus the returned JSON object with conformance badge",
+      "states": [
+        "idle",
+        "validation_error_empty_prompt",
+        "loading",
+        "result_plain",
+        "result_structured_conformant",
+        "result_structured_mismatch",
+        "service_unavailable_quota"
+      ],
+      "reads": [
+        "Prompt",
+        "ResponseShape",
+        "GenerationRequest",
+        "UsageAllowance"
+      ],
+      "writes": [
+        "GenerationResult",
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "single_call_overview"
+      ],
+      "catalog_surface_id": "single_call_generation",
+      "implements_feature_ids": [
+        "single_call_example_app"
+      ]
+    },
+    {
+      "name": "chained_calls_overview",
+      "kind": "non_ai",
+      "screen": "screen-chained",
+      "implements_features": [
+        "Chained_Calls_Example_App"
+      ],
+      "inputs": [],
+      "output": "Educational card explaining chained calls and the deliberate two-call quota-conservation limit",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "Pattern"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "chained_calls_example_app"
+      ]
+    },
+    {
+      "name": "chained_calls_runner",
+      "kind": "ai",
+      "screen": "screen-chained",
+      "implements_features": [
+        "Chained_Calls_Example_App"
+      ],
+      "catalog_surface": "chained_role_play_generation",
+      "affordance": "show multi-step progress/status while it runs",
+      "invocation": {
+        "trigger": "User submits a free-form story prompt in the Chained-Calls example app",
+        "mode": "synchronous"
+      },
+      "inputs": [
+        "story prompt chips",
+        "story prompt input",
+        "Run chain button"
+      ],
+      "output": "Step 1 writer draft as a labelled intermediate output, then step 2 critic critique as the final output",
+      "states": [
+        "idle",
+        "step1_running",
+        "step1_done_step2_running",
+        "complete",
+        "step2_failed_with_retry",
+        "quota_halt_midchain",
+        "service_unavailable_quota"
+      ],
+      "reads": [
+        "ChainStep",
+        "UsageAllowance"
+      ],
+      "writes": [
+        "GenerationResult",
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "chained_calls_overview"
+      ],
+      "catalog_surface_id": "chained_role_play_generation",
+      "implements_feature_ids": [
+        "chained_calls_example_app"
+      ]
+    },
+    {
+      "name": "planning_overview",
+      "kind": "non_ai",
+      "screen": "screen-planning",
+      "implements_features": [
+        "Planning_Agent_Example_App"
+      ],
+      "inputs": [],
+      "output": "Educational card explaining the planning-agent pattern and its call/run limits",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "Pattern"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "planning_agent_example_app"
+      ]
+    },
+    {
+      "name": "planning_goal_form",
+      "kind": "ai",
+      "screen": "screen-planning",
+      "implements_features": [
+        "planning_agent_example_app"
+      ],
+      "catalog_surface": "trip_day_planning_agent",
+      "affordance": "show planner progress; display plan before anything executes",
+      "invocation": {
+        "trigger": "Two-phase: (1) user submits city + interests in the example app UI, which invokes the planner call and returns the displayed plan; (2) user's explicit advance signal triggers sequential execution of the planned steps.",
+        "mode": "asynchronous"
+      },
+      "inputs": [
+        "preset city/interest chips",
+        "city input",
+        "interests input",
+        "Generate plan button"
+      ],
+      "output": "A displayed plan of at most 3 steps, each with purpose and whether it uses web search, plus runs-remaining tag",
+      "states": [
+        "idle",
+        "validation_error_missing_fields",
+        "planning",
+        "plan_displayed",
+        "plan_trimmed_warning",
+        "session_run_limit_reached",
+        "service_unavailable_quota"
+      ],
+      "reads": [
+        "Goal",
+        "Plan",
+        "PlanStep",
+        "Session",
+        "UsageAllowance"
+      ],
+      "writes": [
+        "Plan",
+        "ServiceLogEntry",
+        "UsageAllowance",
+        "Session"
+      ],
+      "depends_on": [
+        "planning_overview"
+      ],
+      "catalog_surface_id": "trip_day_planning_agent",
+      "implements_feature_ids": [
+        "planning_agent_example_app"
+      ]
+    },
+    {
+      "name": "planning_execution_runner",
+      "kind": "ai",
+      "screen": "screen-planning",
+      "implements_features": [
+        "planning_agent_example_app"
+      ],
+      "catalog_surface": "trip_day_planning_agent",
+      "affordance": "require explicit confirmation before the action commits; show multi-step progress and reveal each step result as it completes",
+      "invocation": {
+        "trigger": "Two-phase: (1) user submits city + interests in the example app UI, which invokes the planner call and returns the displayed plan; (2) user's explicit advance signal triggers sequential execution of the planned steps.",
+        "mode": "asynchronous"
+      },
+      "inputs": [
+        "Execute plan button"
+      ],
+      "output": "Per-step statuses and results appearing as they complete, ending in a morning/afternoon/evening itinerary",
+      "states": [
+        "awaiting_confirmation",
+        "step_running",
+        "step_result_appended",
+        "research_step_failed_gap_noted",
+        "complete",
+        "synthesis_quota_halt"
+      ],
+      "reads": [
+        "Plan",
+        "PlanStep",
+        "SearchQuery",
+        "SearchResult",
+        "UsageAllowance"
+      ],
+      "writes": [
+        "Itinerary",
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "planning_goal_form"
+      ],
+      "catalog_surface_id": "trip_day_planning_agent",
+      "implements_feature_ids": [
+        "planning_agent_example_app"
+      ]
+    },
+    {
+      "name": "orchestrated_overview",
+      "kind": "non_ai",
+      "screen": "screen-orchestrated",
+      "implements_features": [
+        "Orchestrated_Subagents_Example_App"
+      ],
+      "inputs": [],
+      "output": "Educational card explaining that subagents are independent workers that can run at the same time, and that the 3-call budget and 3-run session limit are quota-conservation choices",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "Pattern"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "specialist_roster_panel",
+      "kind": "non_ai",
+      "screen": "screen-orchestrated",
+      "implements_features": [
+        "Orchestrated_Subagents_Example_App"
+      ],
+      "inputs": [],
+      "output": "The immutable roster of four knowledge-only specialists with display names and scopes",
+      "states": [
+        "static",
+        "highlighted_when_chosen"
+      ],
+      "reads": [
+        "Specialist"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "orchestrated_question_form",
+      "kind": "ai",
+      "screen": "screen-orchestrated",
+      "implements_features": [
+        "orchestrated_subagents_example_app"
+      ],
+      "catalog_surface": "orchestrated_specialist_answer",
+      "affordance": "show multi-step progress/status while it runs; runs-remaining count always visible",
+      "invocation": {
+        "trigger": "Two-phase, visitor-driven. Phase 1: visitor submits a question (curated preset or free-form) from the example app page \u2192 coordinator produces the delegation decision. Phase 2: visitor clicks the explicit 'Dispatch specialists' confirmation \u2192 the two chosen specialists run in parallel and the coordinator emits the merged answer.",
+        "mode": "streaming"
+      },
+      "inputs": [
+        "curated preset question chips",
+        "question text input",
+        "Choose specialists button",
+        "runs-remaining indicator"
+      ],
+      "output": "A moderation verdict followed by the coordinator's delegation decision hand-off into the review surface",
+      "states": [
+        "idle",
+        "validation_error_empty_question",
+        "moderating",
+        "moderation_blocked",
+        "coordinating",
+        "decision_ready",
+        "invalid_delegation_rerequested",
+        "invalid_delegation_failed",
+        "session_run_limit_reached",
+        "service_unavailable_quota"
+      ],
+      "reads": [
+        "Question",
+        "Specialist",
+        "Session",
+        "UsageAllowance",
+        "ModerationVerdict"
+      ],
+      "writes": [
+        "DelegationDecision",
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "specialist_roster_panel",
+        "orchestrated_overview"
+      ],
+      "catalog_surface_id": "orchestrated_specialist_answer",
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "orchestrated_delegation_review",
+      "kind": "ai",
+      "screen": "screen-orchestrated",
+      "implements_features": [
+        "orchestrated_subagents_example_app"
+      ],
+      "catalog_surface": "orchestrated_specialist_answer",
+      "affordance": "require explicit confirmation before the action commits",
+      "invocation": {
+        "trigger": "Two-phase, visitor-driven. Phase 1: visitor submits a question (curated preset or free-form) from the example app page \u2192 coordinator produces the delegation decision. Phase 2: visitor clicks the explicit 'Dispatch specialists' confirmation \u2192 the two chosen specialists run in parallel and the coordinator emits the merged answer.",
+        "mode": "streaming"
+      },
+      "inputs": [
+        "Dispatch both specialists button"
+      ],
+      "output": "The two chosen specialists, the pairing rationale (including a weak-fit note when applicable), and the distinct brief written for each",
+      "states": [
+        "decision_shown_awaiting_confirmation",
+        "weak_fit_noted",
+        "dispatched",
+        "allowance_lost_before_dispatch"
+      ],
+      "reads": [
+        "DelegationDecision",
+        "Brief",
+        "Specialist",
+        "UsageAllowance"
+      ],
+      "writes": [
+        "ServiceLogEntry"
+      ],
+      "depends_on": [
+        "orchestrated_question_form"
+      ],
+      "catalog_surface_id": "orchestrated_specialist_answer",
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "orchestrated_parallel_execution",
+      "kind": "ai",
+      "screen": "screen-orchestrated",
+      "implements_features": [
+        "orchestrated_subagents_example_app"
+      ],
+      "catalog_surface": "orchestrated_specialist_answer",
+      "affordance": "stream the output progressively (streaming/typing indicator); show per-column live status while both run at the same time",
+      "invocation": {
+        "trigger": "Two-phase, visitor-driven. Phase 1: visitor submits a question (curated preset or free-form) from the example app page \u2192 coordinator produces the delegation decision. Phase 2: visitor clicks the explicit 'Dispatch specialists' confirmation \u2192 the two chosen specialists run in parallel and the coordinator emits the merged answer.",
+        "mode": "streaming"
+      },
+      "inputs": [],
+      "output": "Two side-by-side columns, each headed by its specialist's brief, showing live status then the streamed specialist answer",
+      "states": [
+        "both_running",
+        "one_done_one_running",
+        "one_failed_other_succeeded",
+        "both_complete"
+      ],
+      "reads": [
+        "Brief",
+        "Specialist",
+        "SubagentResult"
+      ],
+      "writes": [
+        "SubagentResult",
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "orchestrated_delegation_review"
+      ],
+      "catalog_surface_id": "orchestrated_specialist_answer",
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "orchestrated_merged_answer",
+      "kind": "ai",
+      "screen": "screen-orchestrated",
+      "implements_features": [
+        "orchestrated_subagents_example_app"
+      ],
+      "catalog_surface": "orchestrated_specialist_answer",
+      "affordance": "show multi-step progress/status while it runs; both source answers stay on screen beside the merge",
+      "invocation": {
+        "trigger": "Two-phase, visitor-driven. Phase 1: visitor submits a question (curated preset or free-form) from the example app page \u2192 coordinator produces the delegation decision. Phase 2: visitor clicks the explicit 'Dispatch specialists' confirmation \u2192 the two chosen specialists run in parallel and the coordinator emits the merged answer.",
+        "mode": "streaming"
+      },
+      "inputs": [],
+      "output": "One merged answer integrating both specialist perspectives, plus a comparison note listing agreements, complements, and contradictions, and a call-count summary",
+      "states": [
+        "merging",
+        "merged_both_sources",
+        "merged_with_missing_contribution_note",
+        "call_budget_summary_shown"
+      ],
+      "reads": [
+        "SubagentResult",
+        "DelegationDecision"
+      ],
+      "writes": [
+        "MergedAnswer",
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "orchestrated_parallel_execution"
+      ],
+      "catalog_surface_id": "orchestrated_specialist_answer",
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "embeddings_overview",
+      "kind": "non_ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "Embeddings_Example_App"
+      ],
+      "inputs": [],
+      "output": "Educational card explaining what an embedding is and that the plot is a 2D projection",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "Pattern",
+        "Embedding"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "embeddings_plot",
+      "kind": "non_ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "Embeddings_Example_App"
+      ],
+      "inputs": [
+        "hover on points"
+      ],
+      "output": "2D SVG scatter of curated category points and visually distinct visitor-added points, with a category legend",
+      "states": [
+        "curated_only",
+        "with_custom_points"
+      ],
+      "reads": [
+        "TextSample",
+        "Category",
+        "PlotPoint",
+        "Projection"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "embeddings_custom_text_form",
+      "kind": "ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "embeddings_example_app"
+      ],
+      "catalog_surface": "custom_text_semantic_placement",
+      "affordance": "show embedding progress; presets stay fixed so the addition is directly comparable",
+      "invocation": {
+        "trigger": "User submits custom text in the Embeddings Example App (preset examples are embedded and projected once at build/deploy time, not per-request)",
+        "mode": "synchronous"
+      },
+      "inputs": [
+        "suggestion chips",
+        "custom text input",
+        "Add to plot button"
+      ],
+      "output": "The new point on the shared plot plus its nearest preset neighbours with projected distances",
+      "states": [
+        "idle",
+        "embedding",
+        "placed_in_cluster",
+        "placed_centrally_no_match_warning",
+        "representation_quota_exhausted"
+      ],
+      "reads": [
+        "TextSample",
+        "PlotPoint",
+        "UsageAllowance"
+      ],
+      "writes": [
+        "PlotPoint",
+        "Embedding",
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "embeddings_plot"
+      ],
+      "catalog_surface_id": "custom_text_semantic_placement",
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "service_request_tester",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [
+        "request type select",
+        "payload textarea",
+        "Send request button",
+        "Simulate limit reached button"
+      ],
+      "output": "Raw structured response from the chosen shared capability, or a uniform limit-refusal message",
+      "states": [
+        "idle",
+        "sending",
+        "response",
+        "limit_refused"
+      ],
+      "reads": [
+        "GenerationRequest",
+        "Embedding",
+        "StoredRecord",
+        "UsageAllowance"
+      ],
+      "writes": [
+        "StoredRecord",
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    },
+    {
+      "name": "usage_limits_panel",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [],
+      "output": "Per-capability usage bars with used/cap counts, warning styling near the cap",
+      "states": [
+        "normal",
+        "near_limit",
+        "exhausted"
+      ],
+      "reads": [
+        "UsageAllowance"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    },
+    {
+      "name": "cross_app_request_log",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [],
+      "output": "Table of recent requests across all example apps with time, app, capability, and summary",
+      "states": [
+        "empty",
+        "populated"
+      ],
+      "reads": [
+        "ServiceLogEntry"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    }
+  ],
+  "shared_layout": {
+    "nav": "Sticky top bar with brand mark, theme toggle, and a hamburger dropdown listing Home plus every example app and the framework console",
+    "shell": [
+      "topnav",
+      "brand",
+      "theme_toggle",
+      "hamburger_menu_dropdown",
+      "screen_container",
+      "screen_head_with_pattern_tags",
+      "app_footer"
+    ]
+  }
+}

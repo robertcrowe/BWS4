@@ -19,6 +19,7 @@ dependencies = [
     "sentence-transformers>=5.6.1",
     "sentry-sdk>=2.66.1",
     "sqlalchemy>=2.0.51",
+    "sse-starlette>=3.4.6",
     "structlog>=26.1.0",
     "tenacity>=9.1.4",
     "torch>=2.0",
@@ -27,12 +28,128 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mypy>=2.3.0",
     "pytest>=9.1.1",
+    "ruff>=0.16.1",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["backend/tests"]
+
+# Ruff and mypy arrive in v5 against a backend that has never had either. Both
+# are therefore scoped deliberately: the gate applies to code this revision
+# writes, and the four already-shipped example apps are left alone. Widening it
+# is a change worth making on purpose, not a side effect of adding a linter --
+# a repo-wide reformat would bury this revision's diff in whitespace.
+[tool.ruff]
+line-length = 88
+indent-width = 4
+target-version = "py312"
+
+# Everything that predates v5. Ruff reports 366 findings and would reformat 57
+# files across these paths, which is precisely the repo-wide reformat this
+# revision is told not to become -- so the gate covers code written from v5
+# onward and each deferred path is one line here rather than an invisible
+# omission. Cleaning one up means deleting its line and fixing what appears,
+# as a change made on purpose.
+extend-exclude = [
+    "backend/app/main.py",
+    "backend/app/api",
+    "backend/app/chained_calls",
+    "backend/app/core",
+    "backend/app/db",
+    "backend/app/embeddings",
+    "backend/app/planning",
+    "backend/app/rag",
+    # services/ is listed file by file rather than as a directory so that
+    # `moderation.py`, which v5 adds, is gated from the moment it exists
+    # instead of inheriting an exclusion meant for its neighbours.
+    "backend/app/services/__init__.py",
+    "backend/app/services/agent_runtime.py",
+    "backend/app/services/discover_models.py",
+    "backend/app/services/embedding.py",
+    "backend/app/services/generation.py",
+    "backend/app/services/model_registry.py",
+    "backend/app/services/prompt_loader.py",
+    "backend/app/services/shared.py",
+    "backend/app/services/storage.py",
+    "backend/app/services/web_search.py",
+    "backend/app/single_call",
+    "backend/app/tools",
+    "backend/tests/chained_calls",
+    "backend/tests/embeddings",
+    "backend/tests/single_call",
+    "backend/tests/conftest.py",
+    "backend/tests/test_*.py",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, isort, pep8-naming (the snake_case/PascalCase/
+# UPPER_SNAKE_CASE conventions this project already follows by hand),
+# flake8-bugbear, pyupgrade, and the blind-except rule `main.py` already
+# suppresses by name.
+select = ["E", "F", "I", "N", "B", "UP", "BLE"]
+
+[tool.ruff.lint.flake8-bugbear]
+# `Depends(...)` in an argument default is not a mutable-default bug -- it is
+# how FastAPI declares dependencies, and every router in this repo uses it.
+# Telling bugbear the call is immutable is the documented fix; blanket-ignoring
+# B008 would also hide the real version of this mistake.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Header"]
+
+[tool.ruff.lint.per-file-ignores]
+# Migrations are generated with a fixed template and are never edited by hand.
+"backend/app/db/migrations/**" = ["E501", "I001", "UP035", "UP006"]
+
+[tool.mypy]
+python_version = "3.12"
+# Strict everywhere, then narrowed by the overrides below. Stated this way
+# round so that a new package is covered by default and any exemption is
+# visible as an explicit entry rather than an omission.
+strict = true
+files = ["backend/app"]
+
+[[tool.mypy.overrides]]
+# The pre-v5 backend is comprehensively annotated but has never been type
+# checked, so it has never had to satisfy a checker's stricter reading. It is
+# out of scope for this revision.
+module = [
+    "backend.app.api.*",
+    "backend.app.chained_calls.*",
+    "backend.app.core.*",
+    "backend.app.db.*",
+    "backend.app.embeddings.*",
+    "backend.app.planning.*",
+    "backend.app.rag.*",
+    "backend.app.single_call.*",
+    "backend.app.tools.*",
+    "backend.app.main",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+# services/ is shared by every app, so it is exempt as a whole for now --
+# except the moderation service this revision introduces, re-enabled below.
+module = ["backend.app.services.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "backend.app.services.moderation",
+    "backend.app.services.allowance_holds",
+    "backend.app.services.untrusted",
+]
+ignore_errors = false
+
+[[tool.mypy.overrides]]
+# Third-party packages without shipped stubs.
+module = ["litellm.*", "sentence_transformers.*", "sklearn.*", "pgvector.*"]
+ignore_missing_imports = true
 
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu" }]

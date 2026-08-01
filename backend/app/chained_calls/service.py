@@ -97,7 +97,7 @@ class UsageLimitReachedError(ChainedCallsError):
     """Raised when the shared generation cap cannot cover the whole chain.
 
     Distinct from GenerationUnavailableError for the same reason as in the
-    single-call app: a spent cap resets at 00:00 UTC and an unreachable
+    single-call app: a spent cap resets at the top of the hour and an unreachable
     provider does not, and an operator told only "503" learns neither.
     """
 
@@ -335,7 +335,7 @@ async def _reserve(session: AsyncSession, *, units: int) -> None:
             raise UsageLimitReachedError(
                 f"Today's shared generation budget cannot cover all {units} calls in "
                 "this chain, so it was not started -- a half-finished chain would "
-                "show a story with no critique. The budget resets at 00:00 UTC."
+                "show a story with no critique. The budget resets at the top of the hour."
             ) from exc
         raise UsageLimitReachedError(str(exc)) from exc
 

@@ -1,0 +1,358 @@
+{
+  "version": 1,
+  "features": [
+    {
+      "id": "landing_page",
+      "name": "Landing_Page",
+      "purpose": "Introduces BWS4 to visitors, explains that it and every example app were built using Spec4, and provides a way to discover and open each available example app.",
+      "invocation": {
+        "trigger": "A user navigates to the application's main entry point."
+      },
+      "inputs": [
+        {
+          "name": "example app listing",
+          "type": "list of items",
+          "description": "The set of currently available example apps, each with a name and short description.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "An introductory view naming BWS4, explaining its Spec4 provenance, and listing each example app with a short description and a way to open it.",
+        "format": "page content",
+        "schema_notes": "Each listed entry includes an app name, a one- or two-line description, and an entry point into that app."
+      },
+      "success_criteria": [
+        "Every currently available example app appears in the listing and can be opened from it.",
+        "The explanatory text clearly states that BWS4 and all its example apps were built using Spec4.",
+        "Newly added example apps appear in the listing without requiring changes elsewhere."
+      ],
+      "failure_modes": [
+        {
+          "mode": "A new example app is added but does not appear on the landing page.",
+          "likelihood": "low",
+          "mitigation": "The listing is guaranteed to reflect the current set of available apps rather than a fixed snapshot."
+        },
+        {
+          "mode": "An entry links to an app that fails to open.",
+          "likelihood": "low",
+          "mitigation": "Each entry's link is confirmed valid before being shown."
+        }
+      ],
+      "dependencies": [
+        "rag_example_app",
+        "embeddings_example_app",
+        "single_call_example_app"
+      ],
+      "entities": [
+        "ExampleApp"
+      ],
+      "references": []
+    },
+    {
+      "id": "rag_example_app",
+      "name": "RAG_Example_App",
+      "purpose": "Illustrates the Retrieval-Augmented Generation pattern by answering user questions using a small, public dataset as a grounding source, for educational rather than task-specific purposes.",
+      "invocation": {
+        "trigger": "A user opens the app and submits a question."
+      },
+      "inputs": [
+        {
+          "name": "user question",
+          "type": "text",
+          "description": "A free-form question the user wants answered using the dataset.",
+          "required": true
+        },
+        {
+          "name": "reference dataset",
+          "type": "list of documents",
+          "description": "A small, publicly available, pre-loaded set of documents used as the retrieval source for answers.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "An answer to the user's question, accompanied by the specific passages that supported it.",
+        "format": "text with supporting excerpts",
+        "schema_notes": "Includes the generated answer plus a list of the retrieved passages used to produce it."
+      },
+      "success_criteria": [
+        "Answers are grounded in and traceable to passages actually retrieved from the dataset.",
+        "Retrieved passages shown alongside the answer are relevant to the question.",
+        "A short explanation of the retrieval-then-generate pattern is presented to the user.",
+        "The app behaves reasonably across a range of sample questions about the dataset's subject matter."
+      ],
+      "failure_modes": [
+        {
+          "mode": "Retrieval surfaces passages unrelated to the question.",
+          "likelihood": "medium",
+          "mitigation": "Retrieved passages are relevance-checked before being used to generate the answer."
+        },
+        {
+          "mode": "The generated answer disregards the retrieved passages.",
+          "likelihood": "low",
+          "mitigation": "Retrieved passages are shown alongside the answer so any mismatch is visible to the user."
+        },
+        {
+          "mode": "The reference dataset is unavailable when the app runs.",
+          "likelihood": "low",
+          "mitigation": "The dataset is bundled with the app so it is always available."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Dataset",
+        "Query",
+        "Answer",
+        "RetrievedPassage"
+      ],
+      "references": []
+    },
+    {
+      "id": "shared_framework_services",
+      "name": "Shared_Framework_Services",
+      "purpose": "Provides the common text-generation, embedding, web-search, and small-scale data-persistence capabilities that every example app relies on, so each app can be built without recreating these capabilities itself.",
+      "invocation": {
+        "trigger": "Any example app requests text generation, an embedding, a search, or persistence of a small piece of data."
+      },
+      "inputs": [
+        {
+          "name": "request type",
+          "type": "text",
+          "description": "Which capability is being requested: generation, embedding, search, or persistence.",
+          "required": true
+        },
+        {
+          "name": "request payload",
+          "type": "text or structured data",
+          "description": "The prompt, text to embed, search query, or data record relevant to the request.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A capability-specific result: generated text, a numeric representation of meaning for given text, a set of search results, or confirmation that data was stored or retrieved.",
+        "format": "varies by request type",
+        "schema_notes": "Each response is tagged with the request type and the requesting app so results can be matched to their originating request."
+      },
+      "success_criteria": [
+        "Any example app can obtain a generation, embedding, search, or persistence result without implementing that capability itself.",
+        "The same embedding capability produces consistent, comparable results across all apps that use it.",
+        "Data submitted for persistence can reliably be retrieved again later.",
+        "An unavailable or malfunctioning underlying capability is detectable rather than silently producing a wrong result."
+      ],
+      "failure_modes": [
+        {
+          "mode": "An underlying capability is temporarily unavailable.",
+          "likelihood": "medium",
+          "mitigation": "Requests fail with a clear, retriable signal rather than returning a silently incorrect result."
+        },
+        {
+          "mode": "Different apps end up using inconsistent embedding behavior.",
+          "likelihood": "low",
+          "mitigation": "A single shared embedding capability is used by all apps that need embeddings."
+        },
+        {
+          "mode": "Persisted data is lost or not retrievable later.",
+          "likelihood": "low",
+          "mitigation": "The persistence guarantee is verified before apps depend on it."
+        }
+      ],
+      "dependencies": [],
+      "entities": [
+        "GenerationRequest",
+        "EmbeddingRequest",
+        "SearchResult",
+        "StoredRecord"
+      ],
+      "references": []
+    },
+    {
+      "id": "tool_use_integration",
+      "name": "Tool_Use_Integration",
+      "purpose": "Gives example apps the ability to perform a live web search step as part of demonstrating tool-use and agentic patterns, so a model's request for external information can be fulfilled and fed back into its process.",
+      "invocation": {
+        "trigger": "An example app's process determines it needs current external information and issues a search request as a tool step."
+      },
+      "inputs": [
+        {
+          "name": "search query",
+          "type": "text",
+          "description": "The query the requesting app needs answered via external search.",
+          "required": true
+        },
+        {
+          "name": "result count",
+          "type": "number",
+          "description": "How many search results to return.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A list of relevant search results that the requesting app can present or feed into a further step.",
+        "format": "list of items",
+        "schema_notes": "Each result includes a title, a short snippet, and a reference to its source."
+      },
+      "success_criteria": [
+        "Search requests return results relevant to the query.",
+        "Results are usable as input to the requesting app's next step without further reformatting.",
+        "A failed or unavailable search is surfaced to the user rather than silently ignored."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The external search capability is temporarily unavailable.",
+          "likelihood": "medium",
+          "mitigation": "The requesting app is informed the tool step failed and degrades gracefully instead of stalling."
+        },
+        {
+          "mode": "Returned results are irrelevant to the query.",
+          "likelihood": "low",
+          "mitigation": "The query is passed through unmodified and relevance is visible to the user for evaluation."
+        },
+        {
+          "mode": "Search usage limits are reached during heavy use.",
+          "likelihood": "medium",
+          "mitigation": "Search usage is capped so the app remains responsive rather than failing unpredictably."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "SearchResult",
+        "ToolRequest"
+      ],
+      "references": []
+    },
+    {
+      "id": "embeddings_example_app",
+      "name": "Embeddings_Example_App",
+      "purpose": "Demonstrates the embedding pattern through a visual explorer that plots pre-configured text examples in a shared 2D space to show semantic clustering, and lets users add their own text to see where it lands.",
+      "invocation": {
+        "trigger": "A user opens the app, or submits custom text for inclusion in the visualization."
+      },
+      "inputs": [
+        {
+          "name": "preset text set",
+          "type": "list of items",
+          "description": "A curated built-in set of word/short-phrase categories and full sentences used to populate the initial visualization.",
+          "required": true
+        },
+        {
+          "name": "custom text",
+          "type": "text",
+          "description": "Text a user enters to be embedded and merged into the visualization.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A two-dimensional visualization of all text points, grouped by semantic similarity, with any custom user text shown in a visually distinct color.",
+        "format": "interactive visualization",
+        "schema_notes": "Each point carries its source text, its category (if preset), and its position; custom points are flagged separately from preset points."
+      },
+      "success_criteria": [
+        "Semantically related preset texts appear visually close together, and unrelated ones appear farther apart.",
+        "Submitted custom text is embedded, merged into the same visualization, and rendered in a distinct color from preset points.",
+        "A short explanation of what embeddings are and what the visualization shows is presented to the user.",
+        "The visualization uses the same shared embedding capability used elsewhere in the framework, so results are consistent."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The 2D projection distorts true semantic similarity.",
+          "likelihood": "medium",
+          "mitigation": "The projection is chosen to preserve relative closeness as well as reasonably possible and is described to the user as an approximation."
+        },
+        {
+          "mode": "Embedding of custom text fails.",
+          "likelihood": "low",
+          "mitigation": "A clear error is shown and the prior visualization remains unaffected."
+        },
+        {
+          "mode": "The plot becomes cluttered and hard to read with many points.",
+          "likelihood": "low",
+          "mitigation": "Point labels and details are available on demand rather than all shown at once."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "TextSample",
+        "EmbeddingPoint",
+        "Projection"
+      ],
+      "references": []
+    },
+    {
+      "id": "single_call_example_app",
+      "name": "Single_Call_Example_App",
+      "purpose": "Demonstrates the single-call pattern: one direct request to a model producing one direct response, with no retrieval, tools, or multi-step chaining, in both plain and structured response modes.",
+      "invocation": {
+        "trigger": "A user enters or selects a prompt, chooses a response mode, and submits."
+      },
+      "inputs": [
+        {
+          "name": "prompt text",
+          "type": "text",
+          "description": "A free-form prompt entered by the user.",
+          "required": false
+        },
+        {
+          "name": "preset prompt selection",
+          "type": "text",
+          "description": "A choice from a set of example prompts such as summarize, classify, or extract.",
+          "required": false
+        },
+        {
+          "name": "mode selection",
+          "type": "text",
+          "description": "Whether the request should use Simple mode (plain text) or Structured mode (schema-conforming response).",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A single model response corresponding to the submitted prompt and selected mode.",
+        "format": "plain text, or structured data shown alongside the request that produced it",
+        "schema_notes": "In Structured mode, the output includes both the structured request submitted and the structured response returned, displayed together."
+      },
+      "success_criteria": [
+        "Simple mode returns a readable plain-text response to the submitted prompt.",
+        "Structured mode returns a response that conforms to the requested structure and shows both the request and response to the user.",
+        "A short explanation of the single-call pattern and when it is appropriate is presented.",
+        "No retrieval, tool use, or multi-step chaining occurs as part of producing the response."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The structured response does not conform to the requested structure.",
+          "likelihood": "medium",
+          "mitigation": "Nonconformance is detected and shown to the user rather than presented as if it succeeded."
+        },
+        {
+          "mode": "Users are unsure what a preset prompt will do.",
+          "likelihood": "low",
+          "mitigation": "Preset prompts are labeled with their intent, such as summarize, classify, or extract."
+        },
+        {
+          "mode": "A user submits with no prompt and no preset chosen.",
+          "likelihood": "low",
+          "mitigation": "Submission is blocked until a valid prompt or preset is provided."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Prompt",
+        "PresetPrompt",
+        "Response"
+      ],
+      "references": []
+    }
+  ],
+  "nfr_goals": [
+    "Each example app responds to user actions within a few seconds under normal conditions.",
+    "The collection of example apps can grow over time without disrupting apps that are already in use.",
+    "All example apps share a consistent navigation and layout experience.",
+    "The framework can run using freely accessible generation, embedding, and search capabilities, without requiring paid access for basic evaluation.",
+    "The application is fully usable directly in a web browser without additional installation."
+  ]
+}

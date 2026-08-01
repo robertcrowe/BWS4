@@ -1,0 +1,888 @@
+{
+  "ai_features": [
+    {
+      "id": "rag_example_app",
+      "name": "rag_example_app",
+      "linked_vision_features": [
+        "rag_example_app"
+      ],
+      "scope": "feature",
+      "tier": "rag",
+      "tier_recommendation": "single_call",
+      "tier_decision_rationale": "The whole point of this example is to illustrate the use of RAG, so the retrieval pipeline is intentional despite the small dataset size.",
+      "rough_description": "Takes a natural-language question plus a small public dataset and produces a generated answer grounded in retrieved passages from that dataset, illustrating the RAG pattern end-to-end.",
+      "purpose": "Demonstrate the retrieval-augmented generation pattern end-to-end by answering a visitor's natural-language question with a generated response grounded in passages retrieved from a small public reference dataset.",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "inputs": [
+        {
+          "name": "user_question",
+          "type": "string",
+          "description": "The natural-language question submitted by the visitor",
+          "required": true
+        },
+        {
+          "name": "reference_dataset",
+          "type": "collection of documents",
+          "description": "Small, fixed public dataset of documents/passages used as the retrieval corpus for this example",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A generated natural-language answer to the question, accompanied by the specific retrieved passages that grounded it, so a visitor can see the retrieval-to-answer chain",
+        "format": "JSON object",
+        "schema_notes": "Object with fields: answer (string), retrieved_passages (array of {passage_id, source_title, text_excerpt, similarity_score}), and a short explanatory note pointing out which passage(s) informed which part of the answer"
+      },
+      "decision_authority": "autonomous",
+      "success_criteria": [
+        "For questions covered by the dataset, at least the top retrieved passage is topically relevant to the question (measured via relevance labels or human spot-check)",
+        "The generated answer contains content traceable to the retrieved passages (e.g. paraphrase or quote overlap) rather than being generic or unrelated",
+        "A visitor with no prior knowledge of RAG can, from the displayed passages and answer together, understand that retrieval fed into generation",
+        "Answer generation completes and displays within budgeted latency for at least 95% of requests"
+      ],
+      "failure_modes": [
+        {
+          "mode": "Retrieved passages are irrelevant to the question (dataset gap or poor embedding match)",
+          "likelihood": "medium",
+          "mitigation": "Show a similarity-score threshold; below threshold, display an explicit 'no strong match found in this dataset' message instead of forcing an answer"
+        },
+        {
+          "mode": "Generated answer ignores retrieved passages and hallucinates instead",
+          "likelihood": "medium",
+          "mitigation": "Prompt template explicitly instructs the model to answer only from provided passages and to cite which passage supports each claim; validate citations reference passages actually retrieved"
+        },
+        {
+          "mode": "Shared embedding or generation service is unavailable when a question is submitted",
+          "likelihood": "low",
+          "mitigation": "Return a clear error state in the UI and log the outage; no silent fallback that fabricates an answer"
+        },
+        {
+          "mode": "Question is out of scope for the small dataset entirely",
+          "likelihood": "high",
+          "mitigation": "Explicitly state in the UI that the dataset is small and topic-limited; return a graceful 'not covered by this dataset' response rather than a low-confidence guess"
+        }
+      ],
+      "escalation": "On retrieval or generation service failure, surface a user-facing error state (no answer generated) and log the incident for shared_framework_services monitoring; no automatic retry loop beyond a single transient-error retry.",
+      "eval_approach": {
+        "offline": "Curate a small set of question/expected-passage pairs from the reference dataset; verify retrieval returns the expected passage in top-k and that a held-out reviewer confirms the generated answer reflects the passage content",
+        "online": "Log retrieval similarity scores, whether the answer text overlaps lexically/semantically with retrieved passages, and visitor-facing error rates; sample transcripts periodically for manual relevance and groundedness review",
+        "ground_truth": "Manually authored question-to-passage mappings for the fixed dataset, created once during dataset curation and reused as a small regression eval set"
+      },
+      "budgets": {
+        "cost_per_call": "$0.001",
+        "p95_latency": "2.5s"
+      },
+      "privacy_safety": [
+        "Reference dataset is public and non-sensitive by design; no user PII is stored beyond the transient question text needed to serve the response",
+        "User questions are not persisted beyond logging needed for debugging/eval, and are not linked to visitor identity",
+        "Generated answers are constrained to dataset content to avoid producing unrelated or unsafe open-domain claims"
+      ],
+      "mechanisms": [
+        {
+          "name": "structured_outputs",
+          "rationale": "Forcing the response into a schema with distinct answer and retrieved_passages fields makes the retrieval-to-generation link visible and inspectable, which is the whole educational point of the example",
+          "configuration": {
+            "schema": "{ answer: string, retrieved_passages: [{passage_id, source_title, text_excerpt, similarity_score}] }"
+          }
+        }
+      ],
+      "references": [
+        "Lewis et al., 'Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks', https://arxiv.org/abs/2005.11401"
+      ],
+      "knowledge_sources": [
+        {
+          "name": "example_public_dataset_embeddings",
+          "type": "vector_store",
+          "content_description": "Embeddings of passages from a small, fixed, publicly licensed dataset (e.g. a curated set of short articles) used solely to illustrate retrieval for this example app",
+          "update_frequency": "static"
+        }
+      ],
+      "composed_under": "",
+      "requires": [
+        "chunking_pipeline",
+        "retriever",
+        "embedding_pipeline",
+        "vector_index"
+      ],
+      "kind": "feature",
+      "vision_grounding": {
+        "served_features": [
+          {
+            "id": "rag_example_app",
+            "name": "RAG_Example_App",
+            "purpose": "Demonstrates the retrieval-augmented generation pattern in an educational way, letting a visitor see how a question is answered by combining a small public dataset with generated text.",
+            "invocation": {
+              "trigger": "A visitor opens the RAG example app from the landing page and submits a question."
+            },
+            "inputs": [
+              {
+                "name": "user_question",
+                "type": "text",
+                "description": "The question the visitor wants answered using the example dataset.",
+                "required": true
+              },
+              {
+                "name": "reference_dataset",
+                "type": "collection of documents",
+                "description": "A small, publicly available set of documents used as the knowledge source for retrieval.",
+                "required": true
+              }
+            ],
+            "outputs": {
+              "primary": "A generated answer grounded in passages retrieved from the reference dataset",
+              "format": "text with supporting excerpts",
+              "schema_notes": "Includes the generated answer plus the specific retrieved passages it drew from, so the pattern is visible to the visitor."
+            },
+            "success_criteria": [
+              "For questions covered by the dataset, the retrieved passages are topically relevant to the question",
+              "The generated answer visibly reflects the content of the retrieved passages rather than ignoring them",
+              "A visitor unfamiliar with retrieval-augmented generation can follow, from the output, how retrieval fed into the answer"
+            ],
+            "failure_modes": [
+              {
+                "mode": "Retrieved passages are irrelevant to the question asked",
+                "likelihood": "medium",
+                "mitigation": "The dataset is kept small and curated so relevant matches are more likely for typical example questions."
+              },
+              {
+                "mode": "The generated answer ignores the retrieved passages entirely",
+                "likelihood": "medium",
+                "mitigation": "The answer is structured to explicitly reference the retrieved content."
+              },
+              {
+                "mode": "Shared generation or embedding capability is unavailable when a question is submitted",
+                "likelihood": "low",
+                "mitigation": "A clear message is shown indicating the demonstration is temporarily unavailable."
+              }
+            ],
+            "dependencies": [
+              "landing_page",
+              "shared_framework_services"
+            ],
+            "entities": [
+              "Dataset",
+              "Question",
+              "RetrievedPassage",
+              "Answer"
+            ],
+            "references": []
+          }
+        ]
+      },
+      "tier_analysis": {
+        "recommended_tier": "single_call",
+        "rationale": "The described dataset is explicitly a 'small public dataset,' which is the exact trigger in the rag pattern's when_doesnt list: knowledge that fits in roughly 5,000 tokens and rarely changes should be placed directly in the system prompt and answered with a single structured-output call rather than built out as a full retrieval pipeline. The task itself \u2014 turn a natural-language question plus grounding text into a generated answer \u2014 is a bounded input/bounded output transformation, squarely matching single_call's when_works criteria, and does not require acting on the world or fetching data outside what's already given.",
+        "compared_to_next_tier_down": "The next tier down (embeddings alone) could rank or surface similar passages but cannot generate the natural-language answer the feature requires \u2014 embeddings rank and group, they do not write, so single_call's generation capability is necessary here.",
+        "borderline": true,
+        "borderline_seams": [
+          "If 'small public dataset' later becomes large, frequently changing, or too big to fit in ~5,000 tokens, this should be re-escalated to rag.",
+          "If answers must cite specific retrieved passages for auditability, that requirement would push this back toward the rag tier even at small scale."
+        ],
+        "risks_of_going_higher": [
+          "Building embeddings-based retrieval and a retrieval step for a dataset small enough to fit in-prompt adds indexing, chunking, and retrieval-quality engineering with no accuracy benefit.",
+          "A full rag pipeline introduces failure modes (irrelevant chunk retrieval, retrieval latency) that a single well-crafted prompt with the whole dataset inline would avoid entirely for this scale."
+        ],
+        "risks_of_going_lower": [
+          "Trying to answer via pure deterministic logic (keyword match/lookup) would fail on natural-language questions whose phrasing doesn't match the dataset's exact wording, since meaning rather than surface form drives the answer.",
+          "Embeddings alone would only rank/retrieve passages but could not generate the natural-language answer the feature requires."
+        ]
+      },
+      "phase_priority": "steel_thread",
+      "introduced_in_version": 0
+    },
+    {
+      "id": "custom_text_semantic_placement",
+      "name": "custom_text_semantic_placement",
+      "linked_vision_features": [
+        "embeddings_example_app"
+      ],
+      "scope": "feature",
+      "tier": "embeddings",
+      "tier_recommendation": "embeddings",
+      "tier_decision_rationale": "",
+      "rough_description": "Takes a user-entered custom word, phrase, or sentence and produces its semantic position relative to the curated preset examples in the shared 2D visualization, letting users see how their own text clusters with (or diverges from) existing categories and sentences.",
+      "purpose": "Computes an embedding for user-submitted custom text and projects it into the same fixed 2D semantic space as the curated preset examples, so users can see where their own words semantically fall relative to known categories.",
+      "invocation": {
+        "trigger": "User submits custom text in the Embeddings Example App (preset examples are embedded and projected once at build/deploy time, not per-request)",
+        "mode": "synchronous"
+      },
+      "inputs": [
+        {
+          "name": "custom_text",
+          "type": "string",
+          "description": "User-entered word, phrase, or sentence to be placed on the shared plot",
+          "required": true
+        },
+        {
+          "name": "preset_projection_model",
+          "type": "object",
+          "description": "Precomputed embedding vectors, fitted 2D projection (e.g. PCA/UMAP transform), and category labels for the curated preset examples; used as the fixed reference space",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "The (x, y) coordinate of the custom text within the existing shared 2D plot, computed by embedding the text and applying the same fitted projection used for the presets, plus the custom text's nearest preset neighbors for optional UI highlighting",
+        "format": "JSON object",
+        "schema_notes": "{ point: { x: number, y: number }, text: string, nearest_neighbors: [{ text, distance }], embedding_model_version: string }. Coordinates must be produced via transform() on the pre-fitted projection model, never a re-fit, so preset positions never move."
+      },
+      "decision_authority": "autonomous",
+      "success_criteria": [
+        "Preset examples remain visually clustered by semantic category and do not shift position when custom text is added",
+        "Custom text is placed near semantically related presets (validated on a small labeled test set of custom inputs)",
+        "Custom text points render as visually distinct markers from preset points",
+        "Empty or whitespace-only custom text is rejected before embedding with a clear inline message",
+        "Same embedding model and projection pipeline is reused consistently across app sessions and matches the model used elsewhere in the app suite"
+      ],
+      "failure_modes": [
+        {
+          "mode": "Projection re-fit on every submission causes preset points to jump around",
+          "likelihood": "medium",
+          "mitigation": "Fit the 2D projection (PCA/UMAP) once on preset embeddings at build time; persist the fitted transform; apply transform-only (no re-fit) to new custom text embeddings"
+        },
+        {
+          "mode": "User submits empty or whitespace-only text",
+          "likelihood": "medium",
+          "mitigation": "Client- and server-side validation rejects empty/whitespace input before calling the embedding API, with inline error message"
+        },
+        {
+          "mode": "Embedding model differs from the one used for presets or other example apps",
+          "likelihood": "low",
+          "mitigation": "Pin a single shared embedding model/version in shared_framework_services config; version-tag all stored preset embeddings and validate match at runtime"
+        },
+        {
+          "mode": "Custom text is extremely long or contains unsupported characters causing embedding API error",
+          "likelihood": "low",
+          "mitigation": "Truncate/validate input length client-side; catch API errors and surface a friendly retry message"
+        },
+        {
+          "mode": "Out-of-distribution custom text (e.g. gibberish) lands in a misleading/arbitrary spot",
+          "likelihood": "medium",
+          "mitigation": "Document as expected behavior in the educational explanation text; optionally show nearest-neighbor distances so users can judge confidence"
+        }
+      ],
+      "escalation": "On embedding API failure or timeout, show a non-blocking error state in the UI and allow retry; no human review needed since output is a non-critical visualization, not a decision with real-world consequences",
+      "eval_approach": {
+        "offline": "Maintain a small labeled test set of custom phrases with expected semantic neighborhoods (e.g. 'kitten' should land near animal presets); verify placement via nearest-neighbor check after each embedding model or projection change",
+        "online": "Monitor embedding API latency/error rate, rate of empty-input rejections, and spot-check a sample of submitted custom texts' placements weekly",
+        "ground_truth": "Preset example categories are manually curated and labeled; custom-text placement quality is judged by qualitative nearest-neighbor plausibility rather than strict labels"
+      },
+      "budgets": {
+        "cost_per_call": "$0.0001",
+        "p95_latency": "600ms"
+      },
+      "privacy_safety": [
+        "Custom text may contain user-entered free text; do not persist beyond the active session/plot state unless explicitly opted into analytics",
+        "Do not log raw custom text in long-term logs; if logging is needed for debugging, redact or hash",
+        "No content filtering needed for placement itself, but consider basic profanity/PII masking in the displayed label if the plot is shareable"
+      ],
+      "mechanisms": [
+        {
+          "name": "structured_outputs",
+          "rationale": "The projected coordinate and neighbor list must conform to a fixed schema so the frontend can reliably render the point on the shared plot",
+          "configuration": {
+            "schema": "{ point: {x: number, y: number}, text: string, nearest_neighbors: array, embedding_model_version: string }"
+          }
+        }
+      ],
+      "references": [
+        "https://platform.openai.com/docs/guides/embeddings",
+        "https://umap-learn.readthedocs.io/en/latest/",
+        "https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html"
+      ],
+      "composed_under": "",
+      "requires": [
+        "embedding_pipeline",
+        "vector_index"
+      ],
+      "kind": "feature",
+      "vision_grounding": {
+        "served_features": [
+          {
+            "id": "embeddings_example_app",
+            "name": "Embeddings_Example_App",
+            "purpose": "Visually demonstrates the embedding pattern by plotting a curated set of texts in a 2D space based on semantic similarity, letting users add their own text and see it placed among the rest, alongside a short explanation of what embeddings are.",
+            "invocation": {
+              "trigger": "A user opens the embeddings example app, or submits custom text within it."
+            },
+            "inputs": [
+              {
+                "name": "preconfigured_examples",
+                "type": "list of text items",
+                "description": "A built-in curated set of words, short phrases, and sentences spanning multiple categories.",
+                "required": true
+              },
+              {
+                "name": "custom_text",
+                "type": "text",
+                "description": "Text entered by the user to be embedded and placed among the existing examples.",
+                "required": false
+              }
+            ],
+            "outputs": {
+              "primary": "A 2D visual plot of all texts positioned by semantic similarity, plus an educational explanation of the embedding pattern",
+              "format": "Interactive visual plot with distinctly marked custom entries, accompanied by explanatory text",
+              "schema_notes": "Each plotted point is labeled with its source text; custom-entered points are visually distinguishable from the preconfigured ones."
+            },
+            "success_criteria": [
+              "Preconfigured examples visibly cluster by semantic category (e.g. animals near animals, emotions near emotions)",
+              "Submitting custom text adds it to the same plot, recalculated to include it",
+              "Custom text points are clearly visually distinct from preconfigured points",
+              "The explanation of the embedding pattern is present and understandable",
+              "The app follows the same layout as other example apps and is reachable from the landing page and navigation menu"
+            ],
+            "failure_modes": [
+              {
+                "mode": "The plot layout shifts drastically each time custom text is added, making comparison hard",
+                "likelihood": "medium",
+                "mitigation": "Apply the same projection approach consistently across recalculations"
+              },
+              {
+                "mode": "Custom text points are not visually distinguishable from preconfigured points",
+                "likelihood": "low",
+                "mitigation": "Enforce a distinct visual treatment for user-submitted points"
+              },
+              {
+                "mode": "This app ends up using a different embedding representation than other apps",
+                "likelihood": "low",
+                "mitigation": "Require use of the one shared embedding model rather than a separate one"
+              },
+              {
+                "mode": "User submits empty custom text",
+                "likelihood": "low",
+                "mitigation": "Validate input before attempting to embed and plot it"
+              }
+            ],
+            "dependencies": [
+              "shared_framework_services"
+            ],
+            "entities": [
+              "TextExample",
+              "EmbeddingVector",
+              "Projection",
+              "CustomText"
+            ],
+            "references": []
+          }
+        ]
+      },
+      "tier_analysis": {
+        "recommended_tier": "embeddings",
+        "rationale": "The feature takes free-form, natural-language text (arbitrary user-entered words, phrases, or sentences) and must position it in a semantic space relative to preset examples based on meaning, not exact match or structured fields \u2014 this is exactly the 'semantic search / clustering' use case embeddings exist for. A deterministic implementation could not provably place, say, the phrase 'a swift red fox' near 'quick brown fox' or in the correct region relative to curated categories, because that judgment depends on meaning rather than any fixed rule, keyword, or lookup key. No generation is required \u2014 the output is a position (coordinates/nearest neighbours in the 2D projection), not written prose, explanation, or summary, so single_call's generation capability is unnecessary and embeddings alone satisfy the requirement.",
+        "compared_to_next_tier_down": "Deterministic (e.g., keyword matching against preset categories) would fail on any user input phrased differently from the presets' exact wording, since it can't capture semantic closeness \u2014 it would only work for exact or near-exact string matches, defeating the purpose of a semantic map.",
+        "borderline": false,
+        "borderline_seams": [],
+        "risks_of_going_higher": [
+          "single_call would add unneeded LLM generation cost/latency for what is fundamentally a vector math + projection operation, and could introduce non-determinism in a spatial visualization where users expect consistent placement.",
+          "rag or tool_agent would add retrieval/tool machinery with no unstructured document corpus to ground on and no action to take \u2014 pure overhead."
+        ],
+        "risks_of_going_lower": [
+          "A deterministic (keyword/rule) approach cannot capture semantic similarity for arbitrary user text, so it would misplace synonyms, paraphrases, or novel phrasing relative to the preset examples, undermining the core 'see how your text clusters' value proposition."
+        ]
+      },
+      "phase_priority": "v2",
+      "introduced_in_version": 1
+    },
+    {
+      "id": "single_call_generation",
+      "name": "single_call_generation",
+      "linked_vision_features": [
+        "single_call_example_app"
+      ],
+      "scope": "feature",
+      "tier": "single_call",
+      "tier_recommendation": "single_call",
+      "tier_decision_rationale": "",
+      "rough_description": "Takes a user-entered or preset prompt and returns either a plain-text response or a JSON-schema-conforming structured response depending on the selected mode, demonstrating a single direct LLM call with no retrieval or chaining.",
+      "purpose": "Provide a minimal, transparent example of the single-call LLM pattern \u2014 one prompt in, one completion out \u2014 in both free-text and schema-constrained structured modes, so users can see and understand this baseline pattern before more complex tiers are introduced.",
+      "invocation": {
+        "trigger": "User enters or selects a preset prompt, chooses a response mode (plain or structured), and submits the form.",
+        "mode": "synchronous"
+      },
+      "inputs": [
+        {
+          "name": "prompt_text",
+          "type": "string",
+          "description": "Free-text prompt entered by the user.",
+          "required": false
+        },
+        {
+          "name": "preset_prompt_id",
+          "type": "string",
+          "description": "Identifier of a preset prompt selected instead of free text.",
+          "required": false
+        },
+        {
+          "name": "mode",
+          "type": "string enum: 'plain' | 'structured'",
+          "description": "Selected response mode; determines whether output is free text or JSON-schema-conforming.",
+          "required": true
+        },
+        {
+          "name": "response_schema",
+          "type": "JSON Schema object",
+          "description": "Target schema for structured mode, either fixed per preset or a default demo schema.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A single model-generated response to the submitted prompt: plain readable text in 'plain' mode, or a JSON object conforming to response_schema in 'structured' mode. The UI displays both the submitted request and the response.",
+        "format": "plain text or JSON object depending on mode",
+        "schema_notes": "In structured mode, output must validate against the provided response_schema (JSON Schema draft-07 or later). No schema constraint applies in plain mode."
+      },
+      "decision_authority": "autonomous",
+      "success_criteria": [
+        "Plain mode consistently returns a coherent, readable plain-text response to the submitted prompt.",
+        "Structured mode output validates against the requested JSON schema on first attempt in the large majority of calls.",
+        "Both the submitted request and the returned response are shown to the user for structured mode.",
+        "A short explanatory note describing the single-call pattern and its appropriate use cases is displayed alongside the demo.",
+        "No retrieval, external tool call, or multi-step chaining occurs in producing any response (single model call per submission)."
+      ],
+      "failure_modes": [
+        {
+          "mode": "Structured response does not conform to the requested JSON schema",
+          "likelihood": "medium",
+          "mitigation": "Use structured_outputs / function-calling schema enforcement at the API level; validate response server-side and surface a clear inline error with the raw output if validation fails."
+        },
+        {
+          "mode": "User submits with no prompt text and no preset selected",
+          "likelihood": "medium",
+          "mitigation": "Block submission client-side and prompt the user to enter text or choose a preset before calling the model."
+        },
+        {
+          "mode": "User is unsure what a given preset prompt will produce",
+          "likelihood": "medium",
+          "mitigation": "Show the full preset prompt text and its mode before submission so the user knows exactly what will be sent."
+        },
+        {
+          "mode": "Model call times out or errors",
+          "likelihood": "low",
+          "mitigation": "Return a clear error message to the UI and allow retry; no silent fallback content is fabricated."
+        },
+        {
+          "mode": "Model output contains unsafe or inappropriate content",
+          "likelihood": "low",
+          "mitigation": "Apply provider-side content filtering/safety settings and display a generic blocked-content message if triggered."
+        }
+      ],
+      "escalation": "On failure (validation error, timeout, or safety block), display a clear inline error state in the UI with the option to retry; no automatic retries or silent fallback content are generated, since this is a demonstration feature with no downstream automation.",
+      "eval_approach": {
+        "offline": "Maintain a fixed set of preset prompts (plain and structured) with expected schema shapes; run them through the call and assert schema validation passes and plain-text responses are non-empty and on-topic.",
+        "online": "Track schema-validation pass rate for structured mode, error/timeout rate, and empty-submission block rate in production telemetry.",
+        "ground_truth": "No single correct answer is required for plain mode (readability is the bar); for structured mode, ground truth is schema conformance, checked via automated JSON Schema validation rather than human-labeled correctness."
+      },
+      "budgets": {
+        "cost_per_call": "$0.002",
+        "p95_latency": "2500ms"
+      },
+      "privacy_safety": [
+        "User-entered prompt text is not stored beyond the session/demo log unless explicitly retained for debugging, and any such logs should be scrubbed of obvious PII.",
+        "Apply standard model-provider content-safety filtering to both input and output.",
+        "No prompt or response data is sent to any third-party system beyond the single model call itself (no retrieval, no external tools)."
+      ],
+      "mechanisms": [
+        {
+          "name": "structured_outputs",
+          "rationale": "Structured mode requires the model's completion to conform to a caller-supplied JSON Schema; enforcing this at the API/decoding level (rather than via prompt instruction alone) is what makes the structured-mode success criterion reliably achievable.",
+          "configuration": {
+            "schema_source": "response_schema input, defaulting to a built-in demo schema if none supplied",
+            "enforcement": "provider-native JSON schema / function-calling constrained decoding where available; otherwise generate + validate + single reject-and-report on failure",
+            "on_validation_failure": "surface raw output and validation error to the UI rather than silently retrying"
+          }
+        }
+      ],
+      "references": [
+        "https://json-schema.org/",
+        "https://platform.openai.com/docs/guides/structured-outputs",
+        "https://www.promptingguide.ai/ (general single-call prompting reference)"
+      ],
+      "composed_under": "",
+      "requires": [],
+      "kind": "feature",
+      "vision_grounding": {
+        "served_features": [
+          {
+            "id": "single_call_example_app",
+            "name": "Single_Call_Example_App",
+            "purpose": "Demonstrates the single-call pattern: one direct request to a model producing one direct response, with no retrieval, tools, or multi-step chaining, in both plain and structured response modes.",
+            "invocation": {
+              "trigger": "A user enters or selects a prompt, chooses a response mode, and submits."
+            },
+            "inputs": [
+              {
+                "name": "prompt text",
+                "type": "text",
+                "description": "A free-form prompt entered by the user.",
+                "required": false
+              },
+              {
+                "name": "preset prompt selection",
+                "type": "text",
+                "description": "A choice from a set of example prompts such as summarize, classify, or extract.",
+                "required": false
+              },
+              {
+                "name": "mode selection",
+                "type": "text",
+                "description": "Whether the request should use Simple mode (plain text) or Structured mode (schema-conforming response).",
+                "required": true
+              }
+            ],
+            "outputs": {
+              "primary": "A single model response corresponding to the submitted prompt and selected mode.",
+              "format": "plain text, or structured data shown alongside the request that produced it",
+              "schema_notes": "In Structured mode, the output includes both the structured request submitted and the structured response returned, displayed together."
+            },
+            "success_criteria": [
+              "Simple mode returns a readable plain-text response to the submitted prompt.",
+              "Structured mode returns a response that conforms to the requested structure and shows both the request and response to the user.",
+              "A short explanation of the single-call pattern and when it is appropriate is presented.",
+              "No retrieval, tool use, or multi-step chaining occurs as part of producing the response."
+            ],
+            "failure_modes": [
+              {
+                "mode": "The structured response does not conform to the requested structure.",
+                "likelihood": "medium",
+                "mitigation": "Nonconformance is detected and shown to the user rather than presented as if it succeeded."
+              },
+              {
+                "mode": "Users are unsure what a preset prompt will do.",
+                "likelihood": "low",
+                "mitigation": "Preset prompts are labeled with their intent, such as summarize, classify, or extract."
+              },
+              {
+                "mode": "A user submits with no prompt and no preset chosen.",
+                "likelihood": "low",
+                "mitigation": "Submission is blocked until a valid prompt or preset is provided."
+              }
+            ],
+            "dependencies": [
+              "shared_framework_services"
+            ],
+            "entities": [
+              "Prompt",
+              "PresetPrompt",
+              "Response"
+            ],
+            "references": []
+          }
+        ]
+      },
+      "tier_analysis": {
+        "recommended_tier": "single_call",
+        "rationale": "This is explicitly a demonstration of a single direct LLM call taking a free-form or preset prompt and producing either plain text or a structured JSON response, with no retrieval or chaining. The input (a user-entered natural-language prompt) is not a fixed enum or structured field a rule engine could branch on, and the output (an open-ended generated response, or a schema-conforming structured extraction) cannot be produced by lookup, formula, or regex \u2014 a concrete input like an arbitrary creative-writing prompt or an open-ended question has no deterministic mapping to an answer, which is why this clears deterministic. The task's bounded input and bounded output, transforming input into output rather than acting on the world or requiring outside facts, place it squarely in single_call's when_works.",
+        "compared_to_next_tier_down": "Deterministic logic (or embeddings) could not generate free-form text or arbitrary structured output from an open-ended prompt; it can only classify, route, or retrieve by exact/semantic match, not produce novel generated content.",
+        "borderline": false,
+        "borderline_seams": [],
+        "risks_of_going_higher": [
+          "Adding rag would introduce retrieval infrastructure with no knowledge base to ground on, adding latency and complexity for no factual-accuracy gain",
+          "Adding chained_calls or tool_agent would introduce multiple LLM invocations or tool wiring where none is needed, since there is no second step whose input depends on a first LLM call's output"
+        ],
+        "risks_of_going_lower": [
+          "A deterministic/template approach cannot generate open-ended natural-language responses or reliably produce arbitrary JSON-schema-conforming output from an arbitrary free-text prompt",
+          "Embeddings alone can rank/cluster but cannot generate the plain-text or structured content the feature requires"
+        ]
+      },
+      "phase_priority": "steel_thread",
+      "introduced_in_version": 2
+    },
+    {
+      "id": "chained_role_play_generation",
+      "name": "chained_role_play_generation",
+      "linked_vision_features": [
+        "Chained_Calls_Example_App"
+      ],
+      "scope": "feature",
+      "tier": "chained_calls",
+      "tier_recommendation": "chained_calls",
+      "tier_decision_rationale": "",
+      "rough_description": "Takes a user's free-form story prompt and produces two sequential, role-conditioned outputs (a short story from a 'struggling writer' persona, then a critique from a 'harsh critic' persona reacting to that story) \u2014 both shown to the user. Requires generation because the story and critique content must be composed in natural language conditioned on persona and prior output, not looked up or computed.",
+      "purpose": "Demonstrate the chained-calls pattern end-to-end by generating a short story via a 'struggling writer' persona and then feeding that story into a second, independent 'harsh critic' persona call, so the user can see one model output become the literal input to the next.",
+      "invocation": {
+        "trigger": "User submits a free-form story prompt in the Chained-Calls example app",
+        "mode": "synchronous"
+      },
+      "inputs": [
+        {
+          "name": "story_prompt",
+          "type": "string",
+          "description": "User's free-form request describing what kind of story to write (theme, characters, setting, etc.)",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "Two labeled text blocks: (1) the intermediate output \u2014 a short story written in a 'struggling writer' voice, and (2) the final output \u2014 a critique of that exact story written in a 'harsh critic' voice",
+        "format": "JSON object with two string fields",
+        "schema_notes": "{ intermediate_output: { role: 'struggling_writer', text: string }, final_output: { role: 'harsh_critic', text: string } } \u2014 final_output.text must reference concrete content from intermediate_output.text (e.g. quote or paraphrase a specific plot point or line) so the chaining is visibly demonstrated"
+      },
+      "decision_authority": "autonomous",
+      "success_criteria": [
+        "The critic's output demonstrably references specific content (plot points, phrasing, or choices) from the writer's story, not generic commentary",
+        "The writer-persona output is clearly distinguishable in tone/style (self-doubting, hedging, apologetic) from the critic-persona output (blunt, dismissive, exacting)",
+        "Both outputs are returned and labeled by role in >99% of successful runs",
+        "Second call only executes after first call completes and its output is injected into the second prompt",
+        "End-to-end chain completes within latency budget in at least 95% of requests"
+      ],
+      "failure_modes": [
+        {
+          "mode": "Second call (critic) fails after first call (writer) succeeds",
+          "likelihood": "medium",
+          "mitigation": "Display the successfully generated intermediate output immediately with a clear 'critique failed' state; offer a retry that re-sends only the second call using the already-generated story (no need to regenerate the story)"
+        },
+        {
+          "mode": "Persona bleed \u2014 writer output sounds confident/critical, or critic output sounds encouraging/generic",
+          "likelihood": "medium",
+          "mitigation": "Use strict system prompts with explicit tone constraints and few-shot exemplars per persona; validate via offline rubric scoring before deployment"
+        },
+        {
+          "mode": "Critique does not actually reference the specific story (generic/templated critique)",
+          "likelihood": "medium",
+          "mitigation": "Explicitly instruct the critic prompt to quote or paraphrase at least one specific detail from the story; add a lightweight automated check (substring/embedding overlap) as a quality signal"
+        },
+        {
+          "mode": "Shared usage/rate limit exhausted between first and second call",
+          "likelihood": "low",
+          "mitigation": "Reserve budget for both calls before starting the chain; if reservation fails, reject the request upfront with a clear message rather than running only the first call"
+        },
+        {
+          "mode": "Unsafe or harmful content generated in either persona (e.g. critic persona drifts into abusive/hateful language beyond 'harsh')",
+          "likelihood": "low",
+          "mitigation": "Apply content moderation/safety filter to both outputs before display; if flagged, suppress output and show a generic error rather than the unsafe content"
+        }
+      ],
+      "escalation": "On any call failure, show whatever output was successfully generated so far (labeled), display a role-specific error state for the failed step, and offer a scoped retry of only the failed step. On budget/rate-limit exhaustion, block the entire chain from starting and inform the user rather than partially executing.",
+      "eval_approach": {
+        "offline": "Run a fixed set of story prompts through the chain and score writer-persona and critic-persona outputs against a rubric (tone adherence, self-consistency, critique specificity/groundedness in the story) using human raters or an LLM-as-judge with the rubric as reference",
+        "online": "Track per-call success/failure rate, chain completion rate, latency per call and total, and a lightweight automated groundedness check (does critique text overlap with story content) sampled continuously",
+        "ground_truth": "Small hand-curated set of example story prompts with reference 'struggling writer' stories and matching 'harsh critic' critiques, authored/reviewed by a human, used as few-shot exemplars and as the rubric-scoring reference set"
+      },
+      "budgets": {
+        "cost_per_call": "$0.01 combined for both calls per full chain",
+        "p95_latency": "7s for the full two-call chain"
+      },
+      "privacy_safety": [
+        "Do not persist raw user story prompts or generated content beyond the session needed to render the demo",
+        "Apply content moderation to both writer and critic outputs before display to block hateful, harassing, or otherwise unsafe content, even under the 'harsh critic' persona",
+        "Do not allow the critic persona's 'harshness' framing to justify outputs targeting protected characteristics or real individuals; keep critique scoped to the fictional story content only",
+        "Strip or avoid echoing any incidental PII the user includes in their free-form prompt into logs or displayed output beyond what's needed for the demo"
+      ],
+      "mechanisms": [
+        {
+          "name": "structured_outputs",
+          "rationale": "Both calls' outputs must be reliably labeled by role and shape (intermediate vs final) so the UI can display them clearly and so the second call's prompt can programmatically consume the first call's output field",
+          "configuration": {
+            "call_1_schema": {
+              "role": "struggling_writer",
+              "text": "string"
+            },
+            "call_2_schema": {
+              "role": "harsh_critic",
+              "text": "string"
+            }
+          }
+        }
+      ],
+      "references": [
+        "Prompt chaining / workflow pattern overview: https://www.anthropic.com/research/building-effective-agents",
+        "OpenAI structured outputs guide: https://platform.openai.com/docs/guides/structured-outputs"
+      ],
+      "knowledge_sources": [
+        {
+          "name": "persona_prompt_templates",
+          "type": "file_system",
+          "content_description": "Static system-prompt templates and few-shot exemplars defining the 'struggling writer' voice (self-doubting, hedging) and the 'harsh critic' voice (blunt, exacting, dismissive), used to condition each respective call",
+          "update_frequency": "static"
+        }
+      ],
+      "tool_access": {
+        "capabilities_needed": []
+      },
+      "composed_under": "",
+      "requires": [
+        "pipeline_runner"
+      ],
+      "kind": "feature",
+      "vision_grounding": {
+        "served_features": [
+          {
+            "id": "chained_calls_example_app",
+            "name": "Chained_Calls_Example_App",
+            "purpose": "Demonstrates the chained-calls pattern by routing an initial request through exactly two sequential model calls, showing the user each call's role, its intermediate output, and the final output.",
+            "invocation": {
+              "trigger": "A user opens the Chained-Calls example app and submits an initial request."
+            },
+            "inputs": [
+              {
+                "name": "initial request",
+                "type": "text",
+                "description": "The user's starting request that begins the two-step chain.",
+                "required": true
+              }
+            ],
+            "outputs": {
+              "primary": "The intermediate output produced by the first call and the final output produced by the second call.",
+              "format": "Two labeled text blocks",
+              "schema_notes": "Each block is labeled with the role of the call that produced it (e.g., first step vs. final step)."
+            },
+            "success_criteria": [
+              "The output of the first call is visibly used as the input to the second call.",
+              "Both the intermediate and final outputs are displayed to the user, each clearly labeled by role.",
+              "The user is told upfront what each of the two calls is meant to do before submitting a request.",
+              "The user is told that this demo is limited to exactly two chained calls to conserve usage, and that the pattern itself supports any number of chained calls.",
+              "A short educational overview explains the chained-calls pattern."
+            ],
+            "failure_modes": [
+              {
+                "mode": "The second call fails after the first succeeds",
+                "likelihood": "medium",
+                "mitigation": "The intermediate output remains visible along with a clear notice that the final step failed."
+              },
+              {
+                "mode": "The user misunderstands what each call's role is meant to be",
+                "likelihood": "low",
+                "mitigation": "Each call's role is described to the user before they submit their request."
+              },
+              {
+                "mode": "The shared usage limit is reached partway through the chain",
+                "likelihood": "medium",
+                "mitigation": "A clear message is shown when the limit is hit, with no partial or misleading final output presented."
+              }
+            ],
+            "dependencies": [
+              "shared_framework_services"
+            ],
+            "entities": [
+              "Request",
+              "IntermediateOutput",
+              "FinalOutput"
+            ],
+            "references": []
+          }
+        ]
+      },
+      "tier_analysis": {
+        "recommended_tier": "chained_calls",
+        "rationale": "The task decomposes into two natural-language generation steps in a fixed sequence: (1) generate a short story conditioned on a 'struggling writer' persona, and (2) generate a critique conditioned on a 'harsh critic' persona that reacts specifically to the text produced in step 1. Step 2's input is genuinely the generated output of step 1 \u2014 the critique cannot be written until the story exists \u2014 which is the defining trigger for chained_calls ('each step's output feeds the next'). Both steps require generation (not lookup or computation), ruling out deterministic and embeddings, and the sequence is stable and known in advance (story then critique, always in that order), so this doesn't rise to planning_agent's adaptive re-planning.",
+        "compared_to_next_tier_down": "single_call would generate both the story and critique in one invocation; it risks persona blending and offers no clean boundary ensuring the critique is conditioned only on the finished story rather than on its own generation process, which the two-step chain guarantees by construction.",
+        "borderline": true,
+        "borderline_seams": [
+          "If testing shows a single structured-output call reliably produces both a distinct story and a genuinely harsh, story-specific critique in one pass, single_call would suffice and the second call would be unnecessary overhead.",
+          "Watch whether the critic persona needs to be strictly isolated from having generated the story itself (favoring two calls) versus tolerating being the same model voice across both parts (favoring one call)."
+        ],
+        "risks_of_going_higher": [
+          "A tool_agent or planning_agent would add tool-selection or autonomous re-planning machinery that this fixed two-step narrative flow never needs, increasing latency and failure surface for no benefit.",
+          "orchestrated_subagents would introduce a coordinator persona and inter-agent protocol overhead when a simple two-call pipeline already isolates the two personas cleanly."
+        ],
+        "risks_of_going_lower": [
+          "Collapsing to single_call risks persona bleed \u2014 the model may soften the critic's harshness or fail to genuinely 'react' to the story since it's writing both halves in one uninterrupted pass rather than treating the story as fixed prior context.",
+          "A single combined prompt makes it harder to guarantee the critique is conditioned strictly on the finished story text rather than on the story's own draft-in-progress, risking inconsistent or hedged critiques."
+        ]
+      },
+      "phase_priority": "steel_thread",
+      "introduced_in_version": 3
+    },
+    {
+      "id": "chunking_pipeline",
+      "name": "chunking_pipeline",
+      "linked_vision_features": [],
+      "scope": "feature",
+      "kind": "infrastructure",
+      "tier": "infrastructure",
+      "tier_recommendation": "",
+      "tier_decision_rationale": "",
+      "rough_description": "Enabling infrastructure (chunking pipeline): shared substrate injected because the selected rag feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "composed_under": "",
+      "requires": [],
+      "tier_analysis": {},
+      "phase_priority": "steel_thread",
+      "introduced_in_version": 0
+    },
+    {
+      "id": "embedding_pipeline",
+      "name": "embedding_pipeline",
+      "linked_vision_features": [],
+      "scope": "feature",
+      "kind": "infrastructure",
+      "tier": "infrastructure",
+      "tier_recommendation": "",
+      "tier_decision_rationale": "",
+      "rough_description": "Enabling infrastructure (embedding pipeline): shared substrate injected because the selected rag feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "composed_under": "",
+      "requires": [],
+      "tier_analysis": {},
+      "phase_priority": "steel_thread",
+      "introduced_in_version": 0
+    },
+    {
+      "id": "retriever",
+      "name": "retriever",
+      "linked_vision_features": [],
+      "scope": "feature",
+      "kind": "infrastructure",
+      "tier": "infrastructure",
+      "tier_recommendation": "",
+      "tier_decision_rationale": "",
+      "rough_description": "Enabling infrastructure (retriever): shared substrate injected because the selected rag feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "composed_under": "",
+      "requires": [],
+      "tier_analysis": {},
+      "phase_priority": "steel_thread",
+      "introduced_in_version": 0
+    },
+    {
+      "id": "vector_index",
+      "name": "vector_index",
+      "linked_vision_features": [],
+      "scope": "feature",
+      "kind": "infrastructure",
+      "tier": "infrastructure",
+      "tier_recommendation": "",
+      "tier_decision_rationale": "",
+      "rough_description": "Enabling infrastructure (vector index): shared substrate injected because the selected rag feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "composed_under": "",
+      "requires": [],
+      "tier_analysis": {},
+      "phase_priority": "steel_thread",
+      "introduced_in_version": 0
+    },
+    {
+      "id": "pipeline_runner",
+      "name": "pipeline_runner",
+      "linked_vision_features": [],
+      "scope": "feature",
+      "kind": "infrastructure",
+      "tier": "infrastructure",
+      "tier_recommendation": "",
+      "tier_decision_rationale": "",
+      "rough_description": "Enabling infrastructure (pipeline runner): shared substrate injected because the selected chained_calls feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "composed_under": "",
+      "requires": [],
+      "tier_analysis": {},
+      "phase_priority": "steel_thread",
+      "introduced_in_version": 3
+    }
+  ],
+  "cross_cutting": {
+    "provider_strategy": {
+      "recommendation": "Adopt a single low-to-mid capability tier for this feature \u2014 roughly comparable to a small/fast general-purpose chat model (e.g. capability similar to GPT-4o-mini or Claude Haiku class), since the two chained calls (persona-driven story generation, then structured critique/refinement) involve short creative generation and schema-constrained output rather than complex reasoning. Route model access through litellm as the existing shared model registry/quota layer already in place, so the actual model resolved at runtime is whatever is configured centrally \u2014 no dedicated frontier-tier model or feature-specific override is warranted. Fallback posture: rely on the shared registry's existing fallback/quota handling rather than introducing feature-specific retry-to-a-stronger-model logic.",
+      "rationale": "This is an educational demo of the chained-calls pattern, not a production feature with quality-critical output \u2014 the explicit goal is to showcase orchestration (persona generation -> transformation) via structured_outputs, so model capability is deliberately deprioritized. Both calls are lightweight (short story generation, structured reformatting/critique) and don't require frontier-level reasoning, long-context handling, or advanced tool use. Reusing the existing litellm-based shared model registry and quota machinery avoids introducing a second provider-access path, keeps the demo consistent with already-adopted infrastructure, and defers any model/vendor selection and cost tradeoffs to that shared layer and the downstream stack-selection phase.",
+      "cited_patterns": [
+        "structured_outputs"
+      ]
+    },
+    "prompt_versioning": {}
+  },
+  "explicitly_rejected": [],
+  "references": [],
+  "consolidation": [],
+  "reconciliation": [],
+  "nfr_goals": [
+    "All example apps share a consistent layout and navigation so users can move between them without relearning the interface.",
+    "New example apps can be added and appear in navigation without disrupting existing apps or requiring users to notice any interruption.",
+    "Each example app's educational overview is understandable to a developer with no prior background in that specific pattern.",
+    "Typical interactions within an example app respond within a few seconds under normal conditions.",
+    "Shared capabilities (generation, embedding, search, storage) can be updated or swapped while the app keeps running, without interrupting users.",
+    "Overall usage stays within free-tier limits of underlying services so the collection of example apps remains sustainable for public, repeated use."
+  ]
+}

@@ -1,0 +1,188 @@
+{
+  "_comment": "Golden fan-in cases for the orchestrated-subagents merge. Each case supplies two specialist answers and the synthesis response a model returned for them, so the deterministic checks can be exercised offline. `expect` states what the checks must conclude. Following backend/tests/golden/planning_cases.json: the fixtures are validated against the production schema at collection time, so a fixture that drifts from MergedAnswer fails loudly rather than passing while the live system breaks.",
+  "cases": [
+    {
+      "id": "clean-complementary-pair",
+      "note": "The common case: two answers on different sub-topics, no conflict. A correct merge reports zero contradictions, and the false-positive control is what this pins.",
+      "question": "Should we move our reporting workload off the primary database?",
+      "answers": {
+        "technical": "Running reports against the primary database competes with transactional traffic for buffer pool and locks. A read replica isolates that contention because replication applies changes asynchronously, so a long analytical scan cannot block a write. The trade is staleness: replica lag under load is typically seconds but can reach minutes during bulk writes.",
+        "financial": "A managed read replica of the same instance class roughly doubles the database line on the bill. If the primary costs 400 dollars a month the replica lands around 380 dollars once storage is counted. Against that, the outage risk from a report locking the primary is the number worth putting a figure on."
+      },
+      "synthesis": {
+        "disagreement_note": {
+          "summary": "Both land on contention as the real problem. One quantifies the replica bill at roughly 380 dollars a month; the other quantifies the cost as replication lag of seconds to minutes.",
+          "agreements": ["Report queries contending with transactional traffic is the underlying problem"],
+          "complements": ["Technical supplied the lag characteristics, Financial supplied the monthly replica cost"],
+          "contradictions": [],
+          "comparable": true
+        },
+        "text": "The reporting workload is worth separating, and the decision turns on two quantities rather than a preference.\n\nThe first is contention. Analytical scans against the primary compete for the same buffer pool and locks as transactional writes, which is why a long report can stall the application. Replication is asynchronous, so a replica removes that competition entirely.\n\nThe second is what separation costs. A replica of the same instance class adds roughly the price of the primary again, and it buys data that trails by seconds under normal load and by minutes during bulk writes. Whether that trade is worth making depends on how fresh the reports actually need to be.",
+        "sources_used": ["technical", "financial"]
+      },
+      "expect": {
+        "contradictions_kept": 0,
+        "contradictions_dropped": 0,
+        "comparable": true,
+        "verbatim_run_flagged": false,
+        "banned_phrase_hits": 0
+      }
+    },
+    {
+      "id": "planted-contradiction-survives",
+      "note": "A real conflict, quoted near-verbatim from both answers. The traceability check must KEEP it -- a check that dropped everything would score perfectly on fabrication and be useless.",
+      "question": "Should we rewrite the billing service now?",
+      "answers": {
+        "technical": "The existing service should be rewritten now, before the payment provider migration lands, because retrofitting the new provider interface onto the current abstraction would mean doing the work twice.",
+        "practical": "Do not start the rewrite this quarter. Ship the provider migration against the code you have, then rewrite once the new interface has settled and you know what it actually needs to support."
+      },
+      "synthesis": {
+        "disagreement_note": {
+          "summary": "The two disagree on sequencing: one wants the rewrite before the provider migration, the other explicitly after it.",
+          "agreements": ["A rewrite is warranted at some point"],
+          "complements": ["Technical supplied the duplicated-work argument, Practical supplied the sequencing risk"],
+          "contradictions": [
+            {
+              "claim_a": "should be rewritten now, before the payment provider migration lands",
+              "claim_b": "Do not start the rewrite this quarter",
+              "specialist_a": "technical",
+              "specialist_b": "practical"
+            }
+          ],
+          "comparable": true
+        },
+        "text": "There is a genuine disagreement here about order, and it is worth seeing rather than splitting the difference.\n\nOne reading is that the abstraction has to change either way, so doing it before the provider migration avoids building an adapter that will be thrown away. The other is that the new interface's requirements are not yet known, so a rewrite now is a guess at a shape that has not settled.\n\nBoth accept the rewrite is coming. What they disagree about is whether the provider migration is information you need first or work you would be duplicating.",
+        "sources_used": ["technical", "practical"]
+      },
+      "expect": {
+        "contradictions_kept": 1,
+        "contradictions_dropped": 0,
+        "comparable": true,
+        "verbatim_run_flagged": false,
+        "banned_phrase_hits": 0
+      }
+    },
+    {
+      "id": "manufactured-contradiction-dropped",
+      "note": "The capability's highest-rated failure: a model inventing a conflict to look insightful. Neither quote appears in the answer it is attributed to, so both must be dropped before the visitor sees them.",
+      "question": "Is putting solar panels on my roof a good idea?",
+      "answers": {
+        "technical": "Panel efficiency for commercial silicon sits between fifteen and twenty-two percent. Roof orientation and shading matter more than the panel choice for most installations.",
+        "financial": "A five kilowatt system runs twelve to seventeen thousand dollars before incentives, and the federal credit takes thirty percent off that. Payback typically lands between nine and twelve years."
+      },
+      "synthesis": {
+        "disagreement_note": {
+          "summary": "The two take opposite views on whether rooftop solar is worthwhile for a typical home.",
+          "agreements": [],
+          "complements": [],
+          "contradictions": [
+            {
+              "claim_a": "rooftop solar is rarely worth it for a typical household",
+              "claim_b": "every homeowner should install panels immediately",
+              "specialist_a": "technical",
+              "specialist_b": "financial"
+            }
+          ],
+          "comparable": true
+        },
+        "text": "Rooftop solar comes down to how much sun the roof actually gets and how long you intend to stay. Efficiency differences between panels matter less than orientation and shading, and the financial case turns on the payback horizon against the installed cost after incentives.",
+        "sources_used": ["technical", "financial"]
+      },
+      "expect": {
+        "contradictions_kept": 0,
+        "contradictions_dropped": 1,
+        "comparable": true,
+        "verbatim_run_flagged": false,
+        "banned_phrase_hits": 0
+      }
+    },
+    {
+      "id": "concatenated-merge-flagged",
+      "note": "The merge lifts a long run verbatim from one answer instead of synthesising. Flagged in telemetry, never blocked: it is a weaker demonstration, not a broken run.",
+      "question": "Should we move our reporting workload off the primary database?",
+      "answers": {
+        "technical": "Running reports against the primary database competes with transactional traffic for buffer pool and locks. A read replica isolates that contention because replication applies changes asynchronously, so a long analytical scan cannot block a write, and the trade you are making is staleness rather than throughput.",
+        "financial": "A managed read replica roughly doubles the database line on the bill."
+      },
+      "synthesis": {
+        "disagreement_note": {
+          "summary": "One describes the contention mechanism, the other prices the fix at roughly double the current database line.",
+          "agreements": ["Separating the workloads addresses a real problem"],
+          "complements": ["Technical supplied the mechanism, Financial supplied the cost"],
+          "contradictions": [],
+          "comparable": true
+        },
+        "text": "Running reports against the primary database competes with transactional traffic for buffer pool and locks. A read replica isolates that contention because replication applies changes asynchronously, so a long analytical scan cannot block a write, and the trade you are making is staleness rather than throughput. It also roughly doubles the database line on the bill.",
+        "sources_used": ["technical", "financial"]
+      },
+      "expect": {
+        "contradictions_kept": 0,
+        "contradictions_dropped": 0,
+        "comparable": true,
+        "verbatim_run_flagged": true,
+        "banned_phrase_hits": 0
+      }
+    },
+    {
+      "id": "vacuous-summary-linted",
+      "note": "The second high-likelihood failure: filler that would read the same beside any two answers. The lint must catch it so one regeneration can be attempted.",
+      "question": "Why did microservices become so popular?",
+      "answers": {
+        "historical": "Microservices spread from the 2012 to 2015 era of large monolithic deployments where a single release train blocked every team at once.",
+        "technical": "The architecture trades in-process calls for network calls, which buys independent deployment and costs you latency and partial failure."
+      },
+      "synthesis": {
+        "disagreement_note": {
+          "summary": "Both specialists broadly agree and offer complementary perspectives on the question.",
+          "agreements": ["Microservices became popular for real reasons"],
+          "complements": ["Both add useful context"],
+          "contradictions": [],
+          "comparable": true
+        },
+        "text": "Microservices spread because release coupling in large monoliths had become the binding constraint, and the architecture trades in-process calls for network calls to break that coupling — buying independent deployment at the cost of latency and partial failure.",
+        "sources_used": ["historical", "technical"]
+      },
+      "expect": {
+        "contradictions_kept": 0,
+        "contradictions_dropped": 0,
+        "comparable": true,
+        "verbatim_run_flagged": false,
+        "banned_phrase_hits": 2
+      }
+    },
+    {
+      "id": "attribution-to-a-specialist-that-did-not-run",
+      "note": "The enum permits all four roster ids; only the run knows which two were dispatched. A contradiction attributed to an absent specialist must be dropped.",
+      "question": "Should we adopt Kubernetes?",
+      "answers": {
+        "technical": "Kubernetes gives you declarative rollouts and self-healing, and costs you a control plane that someone has to keep running.",
+        "practical": "Start with a managed control plane. Budget two weeks for the first production workload and expect networking to be where you get stuck."
+      },
+      "synthesis": {
+        "disagreement_note": {
+          "summary": "One describes what the control plane buys; the other says where the first two weeks actually go.",
+          "agreements": ["The control plane is the real cost"],
+          "complements": ["Technical supplied the capability, Practical supplied the timeline"],
+          "contradictions": [
+            {
+              "claim_a": "costs you a control plane that someone has to keep running",
+              "claim_b": "the licensing model makes this expensive at small scale",
+              "specialist_a": "technical",
+              "specialist_b": "financial"
+            }
+          ],
+          "comparable": true
+        },
+        "text": "Kubernetes is worth adopting when the thing you need is declarative rollouts and self-healing, and the honest price is a control plane somebody has to operate. Starting on a managed one removes most of that, and the first production workload is realistically a two-week exercise in which networking is where the time goes.",
+        "sources_used": ["technical", "practical"]
+      },
+      "expect": {
+        "contradictions_kept": 0,
+        "contradictions_dropped": 1,
+        "comparable": true,
+        "verbatim_run_flagged": false,
+        "banned_phrase_hits": 0
+      }
+    }
+  ]
+}

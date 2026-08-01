@@ -311,7 +311,7 @@ describe('SingleCallApp', () => {
     expect(await screen.findByText(RESULT.plain_text!)).toBeInTheDocument()
   })
 
-  it('does not offer a retry when the daily quota is spent', async () => {
+  it('does not offer a retry when the hourly quota is spent', async () => {
     const user = userEvent.setup()
     mockedRunSingleCall.mockRejectedValue(
       new SingleCallRequestError(
@@ -327,7 +327,7 @@ describe('SingleCallApp', () => {
 
     // Retrying a spent daily cap cannot succeed until 00:00 UTC, so offering
     // the button would invite the visitor to keep failing.
-    expect(await screen.findByText(/quota for today is spent/i)).toBeInTheDocument()
+    expect(await screen.findByText(/quota for this hour is spent/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument()
   })
 

@@ -75,7 +75,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000
 /**
  * A failure the backend described, carrying its machine-readable code.
  *
- * The code is what lets the UI distinguish a spent daily cap (which resets)
+ * The code is what lets the UI distinguish a spent hourly cap (which resets)
  * from an unreachable provider (which does not) without matching on prose.
  */
 export class SingleCallRequestError extends Error {

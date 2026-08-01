@@ -1,0 +1,494 @@
+{
+  "version": 1,
+  "features": [
+    {
+      "id": "landing_page",
+      "name": "Landing_Page",
+      "purpose": "Introduces BWS4, explains that the whole application and every example app were built with Spec4, and presents the catalog of example apps so visitors can choose one to explore.",
+      "invocation": {
+        "trigger": "A user arrives at the application's entry point, or navigates back to the home view from anywhere in the app."
+      },
+      "inputs": [
+        {
+          "name": "example app catalog",
+          "type": "list of items",
+          "description": "The set of currently available example apps, each with a name, a one-line summary of the pattern it demonstrates, and a way to open it.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A home view introducing BWS4 and listing every available example app with a short description and a path into each one.",
+        "format": "Readable introductory text plus a navigable catalog of example apps.",
+        "schema_notes": "Each catalog entry carries the app's name, the agentic pattern it illustrates, and a short blurb; the introduction states that everything shown was built with Spec4."
+      },
+      "success_criteria": [
+        "A first-time visitor can explain in their own words what BWS4 is and that it was built with Spec4 after reading the page.",
+        "Every available example app appears exactly once in the catalog, and choosing one takes the user to that app.",
+        "New example apps appear in the catalog as they are added, without any entry going stale or missing."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The catalog drifts out of sync with the example apps that actually exist (missing or dead entries).",
+          "likelihood": "medium",
+          "mitigation": "Treat the catalog as a single shared source of truth for available apps, and verify on every release that each listed app opens successfully."
+        },
+        {
+          "mode": "The introduction fails to convey the Spec4 connection, so evaluators miss the core message.",
+          "likelihood": "low",
+          "mitigation": "State the Spec4 provenance prominently in the opening text and repeat it in each app's educational overview."
+        }
+      ],
+      "dependencies": [],
+      "entities": [
+        "ExampleApp",
+        "Visitor"
+      ],
+      "references": []
+    },
+    {
+      "id": "rag_example_app",
+      "name": "RAG_Example_App",
+      "purpose": "Demonstrates the Retrieval-Augmented Generation pattern: a user's question is answered by first retrieving the most relevant passages from a small, publicly available dataset, then generating an answer grounded in those passages. It exists to teach the pattern, not to be a practical task tool.",
+      "invocation": {
+        "trigger": "A user opens the RAG example app and submits a question about the demo dataset."
+      },
+      "inputs": [
+        {
+          "name": "user question",
+          "type": "text",
+          "description": "A free-form question the user wants answered from the demo dataset.",
+          "required": true
+        },
+        {
+          "name": "demo dataset",
+          "type": "collection of text passages",
+          "description": "A small, publicly available body of text that has been prepared for semantic retrieval ahead of time.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A generated answer grounded in the dataset, shown together with the retrieved passages that informed it.",
+        "format": "A readable answer plus a visible list of the supporting passages, alongside a short educational overview of the RAG pattern.",
+        "schema_notes": "Each shown passage is traceable to its place in the dataset; the pattern's retrieve-then-generate flow is made visible so users learn how RAG works."
+      },
+      "success_criteria": [
+        "Answers to questions covered by the dataset are correct and visibly supported by the displayed passages.",
+        "For questions the dataset cannot answer, the app says so rather than inventing an answer.",
+        "A user unfamiliar with RAG can describe the retrieve-then-generate flow after using the app.",
+        "The app follows the same overall layout as the other example apps and is reachable from the home catalog and app-wide navigation."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The model produces an answer not supported by the retrieved passages (hallucination).",
+          "likelihood": "medium",
+          "mitigation": "Instruct generation to answer only from the shown passages and to state clearly when the dataset lacks the answer; always display the passages so users can verify."
+        },
+        {
+          "mode": "Retrieval surfaces irrelevant passages for an off-topic question.",
+          "likelihood": "medium",
+          "mitigation": "Show the retrieved passages transparently and have the answer acknowledge when relevance is weak \u2014 itself an educational moment about RAG's limits."
+        },
+        {
+          "mode": "Generation is unavailable due to exhausted free-model limits.",
+          "likelihood": "medium",
+          "mitigation": "Present a clear, friendly explanation of the limit and invite the user to try again later."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Question",
+        "Passage",
+        "Dataset",
+        "Answer"
+      ],
+      "references": []
+    },
+    {
+      "id": "shared_framework_services",
+      "name": "Shared_Framework_Services",
+      "purpose": "Provides the core capabilities every example app relies on: text generation from language models, semantic embedding of text, web search, and reliable keeping of the small amounts of data the apps need. Exists so each example app demonstrates a pattern rather than re-solving infrastructure.",
+      "invocation": {
+        "trigger": "Any example app requests generation, embedding, search, or data access; the services are available whenever the application is running."
+      },
+      "inputs": [
+        {
+          "name": "generation request",
+          "type": "text",
+          "description": "A prompt or instruction from an example app to be answered by a language model, optionally with a declared structure the response must follow.",
+          "required": false
+        },
+        {
+          "name": "embedding request",
+          "type": "text",
+          "description": "One or more pieces of text an example app wants converted into semantic vector representations.",
+          "required": false
+        },
+        {
+          "name": "search request",
+          "type": "text",
+          "description": "A query an example app wants answered with current web results.",
+          "required": false
+        },
+        {
+          "name": "data read/write request",
+          "type": "structured record",
+          "description": "A small record an example app wants to keep or retrieve, such as datasets, preset examples, or usage counts.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "For each request: generated text (or a structured response), embedding vectors, ranked search results, or the stored/retrieved record.",
+        "format": "Plain-language responses, numeric vector representations, result lists, or records \u2014 matching the type of request made.",
+        "schema_notes": "Every response indicates success or a clear, categorized failure (e.g., quota exhausted, capability temporarily unavailable) so calling apps can react gracefully."
+      },
+      "success_criteria": [
+        "Every example app can obtain generation, embedding, search, and data capabilities through one consistent shared route, with no app introducing its own duplicate capability.",
+        "Embeddings produced for the same text are consistent across apps and across a session, so comparisons are meaningful.",
+        "When a capability is unavailable or a usage limit is hit, calling apps receive a clear categorized failure rather than a hang or silent error.",
+        "Data kept by the services remains intact and retrievable throughout normal use."
+      ],
+      "failure_modes": [
+        {
+          "mode": "Free model usage limits are exhausted, so generation requests start failing.",
+          "likelihood": "medium",
+          "mitigation": "Report quota exhaustion as a distinct, user-explainable condition; keep per-run call counts small across all example apps."
+        },
+        {
+          "mode": "An upstream model or search provider is slow or unavailable.",
+          "likelihood": "medium",
+          "mitigation": "Bound how long any request may take, and surface a friendly, retryable failure to the calling app."
+        },
+        {
+          "mode": "Inconsistent embedding behavior between apps makes cross-app results confusing.",
+          "likelihood": "low",
+          "mitigation": "Guarantee a single shared embedding capability that all apps must use, verified by comparing identical inputs across apps."
+        }
+      ],
+      "dependencies": [],
+      "entities": [
+        "GenerationRequest",
+        "EmbeddingVector",
+        "SearchResult",
+        "StoredRecord",
+        "UsageQuota"
+      ],
+      "references": []
+    },
+    {
+      "id": "tool_use_integration",
+      "name": "Tool_Use_Integration",
+      "purpose": "Gives example apps that demonstrate tool use a working web search tool, so agent patterns that call external tools can be shown with real, current results.",
+      "invocation": {
+        "trigger": "An example app (or a model acting within one) issues a web search request as part of carrying out its pattern."
+      },
+      "inputs": [
+        {
+          "name": "search query",
+          "type": "text",
+          "description": "The question or topic to search the web for, formed by an app or by a model deciding to use the tool.",
+          "required": true
+        },
+        {
+          "name": "result limit",
+          "type": "number",
+          "description": "How many results the caller wants back; a small default applies when omitted.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A ranked list of web search results relevant to the query.",
+        "format": "A list of results, each with a title, a source reference, and a short snippet of content.",
+        "schema_notes": "An empty result list and an unavailable-tool condition are distinguishable, so callers can explain the difference to users."
+      },
+      "success_criteria": [
+        "Example apps that need tool use receive relevant, current web results for their queries.",
+        "Results arrive quickly enough to keep an interactive multi-step demo flowing.",
+        "When the search tool is unavailable or rate-limited, callers get a clear categorized failure they can present to the user."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The free search allowance is exhausted or the provider rejects requests.",
+          "likelihood": "medium",
+          "mitigation": "Keep per-run search counts small, report the exhaustion clearly, and let apps continue with a degraded but honest experience."
+        },
+        {
+          "mode": "Search returns irrelevant or empty results for a niche query.",
+          "likelihood": "medium",
+          "mitigation": "Pass empty or weak results back honestly so downstream model calls can acknowledge the gap rather than fabricate content."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "SearchQuery",
+        "SearchResult",
+        "UsageQuota"
+      ],
+      "references": []
+    },
+    {
+      "id": "embeddings_example_app",
+      "name": "Embeddings_Example_App",
+      "purpose": "Demonstrates the embeddings pattern through a visual explorer: curated texts and user-entered texts are embedded with the framework's shared embedding capability, reduced to two dimensions, and plotted so users can see semantic clustering with their own eyes.",
+      "invocation": {
+        "trigger": "A user opens the embeddings example app (plotting the curated set immediately) or submits their own custom text to add to the plot."
+      },
+      "inputs": [
+        {
+          "name": "curated text examples",
+          "type": "list of labeled texts",
+          "description": "A pre-configured mix of word/short-phrase categories (e.g., animals, emotions, tech terms) and full sentences, each tagged with its category.",
+          "required": true
+        },
+        {
+          "name": "custom user text",
+          "type": "text",
+          "description": "A word, phrase, or sentence the user enters to see where it lands relative to the curated points.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A two-dimensional plot of all embedded texts, where semantically similar items appear near each other; user-entered points appear in a distinct color that stands out from the curated points.",
+        "format": "An interactive scatter of labeled points, accompanied by a short educational overview explaining the embeddings pattern.",
+        "schema_notes": "Each point carries its source text, its category (or 'user-entered'), and its 2D position; when a custom text is added the projection is recalculated so all points share one coherent space."
+      },
+      "success_criteria": [
+        "Curated items from the same semantic category visibly cluster together in the plot.",
+        "A user's custom text appears in a clearly distinct color and lands plausibly near semantically related curated items.",
+        "The plot updates within a moment of the user adding custom text, with all points remaining in one coherent shared space.",
+        "The app uses the framework's one shared embedding capability \u2014 the same texts embed identically here and elsewhere in BWS4.",
+        "The app follows the same overall layout as the other example apps and is reachable from the home catalog and app-wide navigation."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The 2D reduction distorts distances so clusters look misleading.",
+          "likelihood": "medium",
+          "mitigation": "Curate example sets known to separate well in two dimensions, and note in the educational overview that 2D views approximate a higher-dimensional space."
+        },
+        {
+          "mode": "Recalculating the projection after adding a custom point shifts existing points confusingly.",
+          "likelihood": "medium",
+          "mitigation": "Keep the overall arrangement as stable as possible between updates and explain in the overview why positions can shift when new points join."
+        },
+        {
+          "mode": "The user submits empty or extremely long text.",
+          "likelihood": "medium",
+          "mitigation": "Reject empty input with a gentle prompt and bound the accepted text length, telling the user the limit."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "TextExample",
+        "EmbeddingVector",
+        "ProjectedPoint",
+        "Category"
+      ],
+      "references": []
+    },
+    {
+      "id": "single_call_example_app",
+      "name": "Single_Call_Example_App",
+      "purpose": "Demonstrates the single-call pattern: one direct request to a language model producing one direct response \u2014 no retrieval, no tools, no chaining. Also shows the difference between a plain-text exchange and a structured-output exchange.",
+      "invocation": {
+        "trigger": "A user opens the app and submits a prompt \u2014 either free-form text they typed or one of the preset example prompts (e.g., summarize, classify, extract) \u2014 in their currently selected mode."
+      },
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "text",
+          "description": "The user's free-form prompt, or the text of a chosen preset example prompt.",
+          "required": true
+        },
+        {
+          "name": "mode selection",
+          "type": "choice",
+          "description": "Whether the exchange runs in Simple mode (plain text in, plain text out) or Structured mode (the request asks the model to reply in a declared structured shape).",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "In Simple mode, the model's plain-text response. In Structured mode, both the structured request that was sent and the model's structured response, shown side by side.",
+        "format": "Readable text in Simple mode; a clearly formatted display of the structured request and structured response in Structured mode, plus a short educational overview of the single-call pattern and when it fits.",
+        "schema_notes": "In Structured mode the response is checked against the declared shape, and the user is told whether it conforms."
+      },
+      "success_criteria": [
+        "Exactly one model call is made per submission, with no retrieval, tools, or chaining involved.",
+        "Preset prompts run correctly out of the box, and switching modes visibly changes both what is sent and what is displayed.",
+        "In Structured mode, the response conforms to the declared shape, and both request and response are fully visible to the user.",
+        "A user can explain the single-call pattern and when it is appropriate after reading the overview and trying a prompt.",
+        "The app follows the same overall layout as the other example apps and is reachable from the home catalog and app-wide navigation."
+      ],
+      "failure_modes": [
+        {
+          "mode": "In Structured mode, the model returns a response that does not match the declared shape.",
+          "likelihood": "medium",
+          "mitigation": "Detect the mismatch, show the raw response with a clear explanation, and frame it as an honest illustration of structured-output reliability."
+        },
+        {
+          "mode": "The model call fails or times out due to free-model limits.",
+          "likelihood": "medium",
+          "mitigation": "Show a clear, categorized message distinguishing quota exhaustion from a transient failure, and let the user retry."
+        },
+        {
+          "mode": "The user submits an empty or excessively long prompt.",
+          "likelihood": "low",
+          "mitigation": "Reject empty prompts with a gentle nudge and bound accepted prompt length, stating the limit."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Prompt",
+        "PresetPrompt",
+        "Mode",
+        "Response",
+        "StructuredResponse"
+      ],
+      "references": []
+    },
+    {
+      "id": "chained_calls_example_app",
+      "name": "Chained_Calls_Example_App",
+      "purpose": "Demonstrates the chained-calls pattern: a sequence of model calls where one call's output becomes the next call's input. Limited to exactly two calls in this demo to conserve model quota, while teaching that the pattern generalizes to any chain length.",
+      "invocation": {
+        "trigger": "A user opens the app and submits an initial request, which starts the two-call chain."
+      },
+      "inputs": [
+        {
+          "name": "initial user request",
+          "type": "text",
+          "description": "The user's starting input, consumed by the first model call in the chain.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "Both the intermediate output of the first call and the final output of the second call, shown to the user in order as the chain runs.",
+        "format": "Two clearly separated, labeled results \u2014 intermediate and final \u2014 with each agent's role explained before the run begins, plus a short educational overview of the chained-calls pattern.",
+        "schema_notes": "The display makes the data flow explicit: the first call's output is visibly the second call's input. A prominent note explains that the two-call limit is a quota-conservation choice and that the pattern supports chains of any length."
+      },
+      "success_criteria": [
+        "Every run makes exactly two model calls, with the first call's output demonstrably feeding the second call.",
+        "Before running, the user is told each call's role so they know what to expect; afterward both the intermediate and final outputs are visible.",
+        "The two-call limit and its quota-conservation rationale are clearly stated, alongside the point that chains can be any length in general.",
+        "The app follows the same overall layout as the other example apps and is reachable from the home catalog and app-wide navigation."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The first call produces weak or off-target output, degrading the second call's result.",
+          "likelihood": "medium",
+          "mitigation": "Show the intermediate output so users can see exactly where quality degraded \u2014 itself a lesson about error propagation in chains \u2014 and allow re-running with a revised request."
+        },
+        {
+          "mode": "The second call fails after the first succeeded, leaving a half-finished chain.",
+          "likelihood": "medium",
+          "mitigation": "Keep and display the intermediate output, clearly mark the final step as failed, and let the user retry."
+        },
+        {
+          "mode": "Free-model limits are exhausted mid-session.",
+          "likelihood": "medium",
+          "mitigation": "Report quota exhaustion as a distinct, friendly condition and invite the user to return later."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "UserRequest",
+        "IntermediateOutput",
+        "FinalOutput",
+        "AgentRole"
+      ],
+      "references": []
+    },
+    {
+      "id": "planning_agent_example_app",
+      "name": "Planning_Agent_Example_App",
+      "purpose": "Demonstrates the planning-agent pattern via a trip-day planner: a planner call decomposes the user's goal into discrete steps (web research plus a final synthesis), the plan is shown first, and then executor calls carry out the steps in sequence, ending with a one-day itinerary.",
+      "invocation": {
+        "trigger": "A user opens the app and submits a city and their interests, which invokes the planner; the user then explicitly advances the run to execute the planned steps."
+      },
+      "inputs": [
+        {
+          "name": "city",
+          "type": "text",
+          "description": "The city the user wants a one-day itinerary for.",
+          "required": true
+        },
+        {
+          "name": "interests",
+          "type": "text",
+          "description": "The user's interests (e.g., food, museums, outdoors) used to shape the plan and itinerary.",
+          "required": true
+        },
+        {
+          "name": "user advance signal",
+          "type": "user action",
+          "description": "The user's explicit go-ahead, after reviewing the plan, that starts execution of the planned steps.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "First, a displayed plan of discrete steps (research steps using web search, plus a final synthesis step); then, as execution proceeds, each step's result shown as it completes; finally, a composed one-day itinerary.",
+        "format": "A readable step list, followed by progressively appearing step results, ending with a structured itinerary for the day; accompanied by a short educational overview of the planning-agent pattern.",
+        "schema_notes": "Each step shows its purpose and its result once complete. Prominent notes state that each run is limited to roughly one planner call plus two to three executor calls, that runs per session are limited, and that planning agents in general can use any number of steps."
+      },
+      "success_criteria": [
+        "The planner produces a small, sensible plan tailored to the given city and interests, and the plan is visible before anything executes.",
+        "Execution begins only after the user's explicit go-ahead, steps run in sequence, and each step's result appears as it completes.",
+        "The final itinerary reflects both the user's interests and the research gathered by the executed steps.",
+        "Each run stays within the stated call limits, the per-session run limit is enforced, and both limits \u2014 plus the pattern's general unboundedness \u2014 are clearly communicated.",
+        "The app follows the same overall layout as the other example apps and is reachable from the home catalog and app-wide navigation."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The planner produces a plan that exceeds the allowed number of steps or includes an unusable step.",
+          "likelihood": "medium",
+          "mitigation": "Constrain the planner to the allowed step count and step kinds, and check the plan before display, re-planning or trimming with a note if it doesn't conform."
+        },
+        {
+          "mode": "A research step returns poor or empty search results, weakening the itinerary.",
+          "likelihood": "medium",
+          "mitigation": "Show each step's result honestly and have the synthesis acknowledge gaps rather than fabricate details."
+        },
+        {
+          "mode": "An executor step fails partway through the run.",
+          "likelihood": "medium",
+          "mitigation": "Preserve and display completed step results, clearly mark the failed step, and let the user retry within their remaining run allowance."
+        },
+        {
+          "mode": "A user exhausts their session run limit and is confused about why they cannot continue.",
+          "likelihood": "medium",
+          "mitigation": "State the run limit upfront, show remaining runs, and explain the quota-conservation rationale when the limit is reached."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "tool_use_integration"
+      ],
+      "entities": [
+        "Goal",
+        "Plan",
+        "PlanStep",
+        "StepResult",
+        "Itinerary",
+        "SearchResult",
+        "RunAllowance"
+      ],
+      "references": []
+    }
+  ],
+  "nfr_goals": [
+    "Single model interactions feel responsive, with results typically appearing within a few seconds and never leaving the user without progress feedback during longer multi-step runs.",
+    "The whole application operates comfortably within free-tier usage allowances for models and search, degrading gracefully with clear explanations when limits are reached.",
+    "All example apps share one consistent layout and navigation, so a user who has learned one app can immediately orient in any other.",
+    "Every example app is honest and transparent about what the underlying pattern is doing, including intermediate results and known limits, so the educational message survives failures.",
+    "New example apps can be added and appear in the catalog and navigation without disrupting existing apps or users.",
+    "The application works in current mainstream browsers without any setup on the visitor's part."
+  ]
+}

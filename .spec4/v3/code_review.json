@@ -1,0 +1,422 @@
+{
+  "code_review": {
+    "schema_version": 1,
+    "is_software_project": true,
+    "project_type": "web application \u2014 full-stack monorepo (FastAPI backend + React/Vite frontend), gallery of AI application pattern demos",
+    "existing_self_description": {
+      "text": "Built with Spec4 (BWS4) is a living showcase of common AI application patterns, presented as a collection of small, self-contained example apps behind a single landing page.",
+      "source": "README.md"
+    },
+    "architecture": {
+      "summary": "A monorepo pairing a FastAPI backend organized by feature vertical (embeddings, rag, single_call, tools) around shared framework services (generation, embedding, storage, web_search, model_registry), with a React/Vite frontend mirroring the same per-example structure and route-based lazy-loading so each example app code-splits independently.",
+      "pattern": "layered / modular-monolith with shared-services core",
+      "inferred_from": "backend/app/main.py"
+    },
+    "languages": [
+      {
+        "name": "Python",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "TypeScript",
+        "source": "frontend/package.json"
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "FastAPI",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "React",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "React Router",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "TanStack Query",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "Tailwind CSS",
+        "source": "frontend/package.json"
+      }
+    ],
+    "runtime_versions": {
+      "python": ">=3.12",
+      "node": "20",
+      "_source": "pyproject.toml / README.md"
+    },
+    "build_system": {
+      "tool": "uv",
+      "manifest": "pyproject.toml"
+    },
+    "dependencies": [
+      {
+        "name": "fastapi",
+        "purpose": "REST API framework with auto-generated OpenAPI schema",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sqlalchemy",
+        "purpose": "ORM / data access, including pgvector cosine-distance queries",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "alembic",
+        "purpose": "Database schema migrations",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "asyncpg",
+        "purpose": "Async PostgreSQL driver",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pgvector",
+        "purpose": "pgvector extension bindings for vector similarity search",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "litellm",
+        "purpose": "Unified LLM client routing to OpenRouter/Groq with fallback chains",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sentence-transformers",
+        "purpose": "In-process embedding model (all-MiniLM-L6-v2)",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "scikit-learn",
+        "purpose": "PCA projection of embeddings to 2D",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "torch",
+        "purpose": "Tensor backend for sentence-transformers (CPU build pinned)",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pydantic-settings",
+        "purpose": "Settings management",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sentry-sdk",
+        "purpose": "Backend error tracking / observability spans",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "structlog",
+        "purpose": "Structured logging",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "tenacity",
+        "purpose": "Retry logic",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "uvicorn",
+        "purpose": "ASGI server",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "httpx",
+        "purpose": "HTTP client",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "numpy",
+        "purpose": "Numerical support for embeddings/PCA",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "react",
+        "purpose": "UI library",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react-dom",
+        "purpose": "UI rendering library",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react-router",
+        "purpose": "Client-side routing",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "@tanstack/react-query",
+        "purpose": "Server-state / data-fetching",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "plotly.js",
+        "purpose": "Scatter plot visualization for embeddings example",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react-plotly.js",
+        "purpose": "React bindings for Plotly",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "@sentry/react",
+        "purpose": "Frontend error tracking",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "tailwindcss",
+        "purpose": "Utility-first CSS framework",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "vite",
+        "purpose": "Build tool / dev server",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "oxlint",
+        "purpose": "Linter",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "typescript",
+        "purpose": "Type checking",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "vitest",
+        "purpose": "Test runner",
+        "source": "frontend/package.json"
+      }
+    ],
+    "commands": {
+      "build": "npm run build",
+      "test": "uv run pytest",
+      "lint": "npm run lint",
+      "typecheck": "tsc -b",
+      "dev": "npm run dev",
+      "run": "uv run uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT"
+    },
+    "entrypoints": {
+      "wsgi_app": "backend.app.main:app",
+      "dev_server": "npm run dev",
+      "ui_root": "frontend/index.html"
+    },
+    "directory_map": [
+      {
+        "path": "backend/app/api/",
+        "role": "FastAPI route handlers, one module per example app + health"
+      },
+      {
+        "path": "backend/app/core/",
+        "role": "Settings, logging, Sentry/observability configuration"
+      },
+      {
+        "path": "backend/app/db/",
+        "role": "SQLAlchemy models, session management, Alembic migrations"
+      },
+      {
+        "path": "backend/app/embeddings/",
+        "role": "Embeddings example: placement logic, presets, service"
+      },
+      {
+        "path": "backend/app/rag/",
+        "role": "RAG pipeline: chunking, retrieval, citations, dataset, prompts"
+      },
+      {
+        "path": "backend/app/services/",
+        "role": "Shared framework services: generation, embedding, storage, web search, model registry"
+      },
+      {
+        "path": "backend/app/single_call/",
+        "role": "Single-call example app backend logic"
+      },
+      {
+        "path": "backend/app/tools/",
+        "role": "Tool-use example app: agent loop, prompts"
+      },
+      {
+        "path": "backend/tests/",
+        "role": "pytest suite mirroring backend/app structure"
+      },
+      {
+        "path": "frontend/src/api/",
+        "role": "Typed API clients + TanStack Query hooks, one pair per example app"
+      },
+      {
+        "path": "frontend/src/apps/",
+        "role": "Per-example UI feature modules (embeddings, rag, single-call, tooluse)"
+      },
+      {
+        "path": "frontend/src/components/",
+        "role": "Shared layout, nav, theming components"
+      },
+      {
+        "path": "frontend/src/screens/",
+        "role": "Route-level screens per example plus landing, health, coming-soon"
+      }
+    ],
+    "persistence": {
+      "databases": [
+        {
+          "engine": "PostgreSQL",
+          "role": "primary + vector search (pgvector, Neon-hosted)",
+          "source": "README.md"
+        }
+      ],
+      "orm": {
+        "name": "SQLAlchemy",
+        "source": "pyproject.toml"
+      },
+      "migration_tool": {
+        "name": "Alembic",
+        "source": "pyproject.toml"
+      },
+      "migrations_path": "backend/app/db/migrations/versions/"
+    },
+    "env_vars": [
+      {
+        "name": "OPENROUTER_API_KEY",
+        "purpose": "API key for OpenRouter, used by the shared LiteLLM model registry",
+        "required": true,
+        "source": "README.md"
+      },
+      {
+        "name": "EXA_API_KEY",
+        "purpose": "API key for Exa web search, used by the tool-use example's function-calling loop",
+        "required": true,
+        "source": "README.md"
+      },
+      {
+        "name": "SENTRY_DSN",
+        "purpose": "Enables backend Sentry error tracking / observability spans; no-ops when unset",
+        "required": false,
+        "source": "backend/app/main.py"
+      },
+      {
+        "name": "VITE_SENTRY_DSN",
+        "purpose": "Enables frontend Sentry error tracking; unset disables initialization",
+        "required": false,
+        "source": "frontend/src/main.tsx"
+      },
+      {
+        "name": "EMBEDDING_MODEL_NAME",
+        "purpose": "Overrides the sentence-transformers model pre-downloaded at build time (defaults to all-MiniLM-L6-v2)",
+        "required": false,
+        "source": "render.yaml"
+      }
+    ],
+    "deployment": {
+      "paas": {
+        "platform": "Render",
+        "config_path": "render.yaml",
+        "source": "render.yaml"
+      }
+    },
+    "api_surface": [
+      {
+        "protocol": "http",
+        "path_or_method": "GET /health",
+        "handler": "health",
+        "summary": "Liveness and database connectivity check",
+        "source": "backend/app/api/health.py"
+      },
+      {
+        "protocol": "http",
+        "path_or_method": "GET /api/embeddings/presets",
+        "handler": "get_presets",
+        "summary": "Returns curated text examples at their projected 2D coordinates",
+        "source": "backend/app/api/embeddings.py"
+      },
+      {
+        "protocol": "http",
+        "path_or_method": "POST /api/embeddings/place",
+        "handler": "place",
+        "summary": "Places visitor-submitted text on the fixed 2D embeddings plot",
+        "source": "backend/app/api/embeddings.py"
+      }
+    ],
+    "auth": {
+      "model": "none",
+      "source": "README.md"
+    },
+    "ui_summary": {
+      "has_ui": true,
+      "kind": "spa",
+      "framework": "React 19 + React Router + TanStack Query",
+      "styling": "Tailwind CSS, class-based light/dark theming persisted via localStorage",
+      "routing": "Client-side routing with per-example lazy-loaded chunks, configured in frontend/src/routes.tsx",
+      "entry_files": [
+        "frontend/index.html",
+        "frontend/src/main.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/routes.tsx"
+      ]
+    },
+    "coding_style": {
+      "linter": {
+        "value": "oxlint (frontend only)",
+        "source": "frontend/package.json"
+      },
+      "type_checker": {
+        "value": "tsc -b (TypeScript project references)",
+        "source": "frontend/tsconfig.json"
+      },
+      "indentation": {
+        "value": "4 spaces (Python), 2 spaces (TSX)",
+        "inferred_from": "backend/app/main.py"
+      },
+      "quotes": {
+        "value": "double quotes (Python), single quotes (TypeScript imports)",
+        "inferred_from": "backend/app/main.py"
+      },
+      "naming_conventions": {
+        "functions": {
+          "value": "snake_case",
+          "inferred_from": "backend/app/api/health.py"
+        },
+        "classes": {
+          "value": "PascalCase",
+          "inferred_from": "backend/app/api/embeddings.py"
+        }
+      }
+    },
+    "notes": {
+      "test_coverage": {
+        "has_tests": true,
+        "framework": "pytest",
+        "coverage_summary": "Backend has extensive pytest coverage \u2014 23 test files under backend/tests/ spanning embeddings, single-call, RAG (generation, retrieval, citations, chunking), tool-use/tool-agent, model registry, observability, shared services, usage-limit windows, and health. Frontend ships vitest + @testing-library devDependencies and a test script, but no frontend test files were visible in the sampled directory listing.",
+        "inferred_from": "backend/tests/ directory listing"
+      },
+      "ci_cd": {
+        "present": false
+      },
+      "incomplete_or_dead_code": [
+        "No Python linter, formatter, or type checker (ruff/black/mypy) is declared in pyproject.toml despite a documented 'Google-style docstring' convention \u2014 backend has no automated style/type enforcement."
+      ],
+      "change_risks": [
+        {
+          "area": "backend/app/services/model_registry.py fallback chains",
+          "risk": "Hand-curated free-tier OpenRouter/Groq model slug chains rot as providers retire free models; README explicitly warns these require periodic manual refresh.",
+          "mitigation_hint": "Treat model-registry chain updates as recurring maintenance; verify slugs against provider changelogs before relying on a chain in a new phase."
+        }
+      ],
+      "security_observations": [
+        "API is unauthenticated by design for a public demo; CORS is restricted to exactly one configured origin (settings.cors_origin) rather than '*', and per-UTC-day usage caps are enforced server-side before any paid provider call to prevent quota drain from anonymous traffic."
+      ],
+      "other_notes": [
+        ".python-version file present at repo root (content not sampled)",
+        "CLAUDE.md and CONTRIBUTING.md exist at repo root but were not sampled in this pass \u2014 may document additional commands worth re-checking",
+        "Secondary frontend test command: `npm run test` (vitest run) \u2014 present in frontend/package.json but no test files confirmed in the sampled tree",
+        "render.yaml pre-downloads the sentence-transformers embedding model (~88 MB) at build time specifically to avoid cold-start latency and Hugging Face's unauthenticated rate limit on Render's shared egress IPs",
+        "README volunteers specific technology choices (Neon Postgres, LiteLLM/OpenRouter/Groq, Render, Sentry) \u2014 captured as existing facts for StackAdvisor's context; any proposed stack changes will be revisited with StackAdvisor"
+      ]
+    }
+  }
+}

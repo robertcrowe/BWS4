@@ -100,7 +100,7 @@ async def generate(
         validation, which is reported as `schema_conforming: false` alongside
         the raw output. Otherwise a 422 for an unusable prompt or an
         unrecognised schema, or a 503 carrying a machine-readable `code` the
-        frontend branches on -- `usage_limit_reached` (resets at 00:00 UTC) or
+        frontend branches on -- `usage_limit_reached` (resets hourly) or
         `generation_unavailable` (the provider chain failed). Those two are
         reported separately because they are different operator problems.
     """

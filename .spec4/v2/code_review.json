@@ -1,0 +1,435 @@
+{
+  "code_review": {
+    "schema_version": 1,
+    "is_software_project": true,
+    "project_type": "web application \u2014 FastAPI backend + React/Vite SPA frontend (AI pattern demo gallery)",
+    "existing_self_description": {
+      "text": "Built with Spec4 (BWS4) is a living showcase of common AI application patterns, presented as a collection of small, self-contained example apps behind a single landing page.",
+      "source": "README.md"
+    },
+    "architecture": {
+      "summary": "The backend is a layered FastAPI service where thin route handlers delegate to feature packages (rag, embeddings, tools) that call shared framework services (generation, embedding, storage, model registry, web search); the frontend mirrors this with per-example React apps wired into lazy-loaded routes.",
+      "pattern": "layered backend (api \u2192 feature modules \u2192 shared services \u2192 db) + modular route-split frontend",
+      "inferred_from": "backend/app/ package layout and frontend/src/apps/ + frontend/src/routes.tsx"
+    },
+    "languages": [
+      {
+        "name": "Python",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "TypeScript",
+        "source": "frontend/package.json"
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "FastAPI",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "React",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "React Router",
+        "source": "frontend/package.json"
+      }
+    ],
+    "runtime_versions": {
+      "python": ">=3.12",
+      "node": "20",
+      "_source": "pyproject.toml / README.md"
+    },
+    "build_system": {
+      "tool": "uv",
+      "manifest": "pyproject.toml"
+    },
+    "dependencies": [
+      {
+        "name": "fastapi",
+        "purpose": "REST API framework",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "uvicorn",
+        "purpose": "ASGI server",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sqlalchemy",
+        "purpose": "Async ORM / DB access, incl. pgvector queries",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "asyncpg",
+        "purpose": "Async PostgreSQL driver",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "alembic",
+        "purpose": "Schema migrations",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pgvector",
+        "purpose": "pgvector column type integration",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pydantic-settings",
+        "purpose": "Env-based settings",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "litellm",
+        "purpose": "Unified routing to OpenRouter/Groq LLM providers",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sentence-transformers",
+        "purpose": "In-process embedding model (all-MiniLM-L6-v2)",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "torch",
+        "purpose": "Tensor backend for sentence-transformers (CPU wheel)",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "scikit-learn",
+        "purpose": "PCA projection for embeddings visualization",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "numpy",
+        "purpose": "Numerical computation in embeddings pipeline",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sentry-sdk",
+        "purpose": "Error tracking / observability",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "structlog",
+        "purpose": "Structured logging",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "tenacity",
+        "purpose": "Retry logic",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "httpx",
+        "purpose": "HTTP client",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "react",
+        "purpose": "UI rendering",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react-dom",
+        "purpose": "UI rendering",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react-router",
+        "purpose": "Client-side, lazy-loaded routing",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "@tanstack/react-query",
+        "purpose": "API data fetching/caching",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "@sentry/react",
+        "purpose": "Frontend error tracking",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "plotly.js",
+        "purpose": "2D scatter plot for embeddings demo",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react-plotly.js",
+        "purpose": "React bindings for Plotly",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "tailwindcss",
+        "purpose": "Utility-first styling",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "vite",
+        "purpose": "Dev server & bundler",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "oxlint",
+        "purpose": "Linter",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "vitest",
+        "purpose": "Test runner",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "typescript",
+        "purpose": "Type checking / compilation",
+        "source": "frontend/package.json"
+      }
+    ],
+    "commands": {
+      "build": "cd frontend && npm run build",
+      "test": "uv run pytest",
+      "lint": "cd frontend && npm run lint",
+      "typecheck": "cd frontend && tsc -b",
+      "run": "uv run uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT",
+      "dev": "cd frontend && npm run dev"
+    },
+    "entrypoints": {
+      "main": "backend/app/main.py",
+      "wsgi_app": "backend.app.main:app",
+      "dev_server": "cd frontend && npm run dev",
+      "ui_root": "frontend/index.html"
+    },
+    "directory_map": [
+      {
+        "path": "backend/app/api/",
+        "role": "FastAPI route handlers (health, rag, tools, embeddings)"
+      },
+      {
+        "path": "backend/app/core/",
+        "role": "Settings, logging, and Sentry observability setup"
+      },
+      {
+        "path": "backend/app/db/",
+        "role": "SQLAlchemy models, async session, Alembic env"
+      },
+      {
+        "path": "backend/app/db/migrations/versions/",
+        "role": "Alembic migration scripts (pgvector, embeddings, RAG interactions, usage limits)"
+      },
+      {
+        "path": "backend/app/rag/",
+        "role": "RAG pipeline \u2014 chunking, retrieval, prompt loading, answer generation"
+      },
+      {
+        "path": "backend/app/rag/dataset/",
+        "role": "Curated Markdown reference corpus for the RAG demo"
+      },
+      {
+        "path": "backend/app/rag/prompts/",
+        "role": "Versioned prompt templates (answer_v1/v2)"
+      },
+      {
+        "path": "backend/app/embeddings/",
+        "role": "Embedding placement/presets/service for the embeddings demo"
+      },
+      {
+        "path": "backend/app/tools/",
+        "role": "Tool-calling agent (web-search demo)"
+      },
+      {
+        "path": "backend/app/services/",
+        "role": "Shared framework services: generation, embedding, storage, model registry, web search"
+      },
+      {
+        "path": "backend/tests/",
+        "role": "pytest suite"
+      },
+      {
+        "path": "frontend/src/apps/",
+        "role": "Per-example React apps (embeddings, rag, tooluse)"
+      },
+      {
+        "path": "frontend/src/screens/",
+        "role": "Route-level screen components"
+      },
+      {
+        "path": "frontend/src/components/",
+        "role": "Shared UI shell/nav/theme components"
+      },
+      {
+        "path": "frontend/src/api/",
+        "role": "Typed API clients + React Query hooks per example"
+      },
+      {
+        "path": "frontend/tests/",
+        "role": "Vitest + Testing Library suite"
+      }
+    ],
+    "persistence": {
+      "databases": [
+        {
+          "engine": "PostgreSQL",
+          "role": "primary relational store and vector index (Neon serverless, pgvector)",
+          "source": "backend/app/db/migrations/versions/0001_enable_pgvector.py"
+        }
+      ],
+      "orm": {
+        "name": "SQLAlchemy",
+        "source": "pyproject.toml"
+      },
+      "migration_tool": {
+        "name": "Alembic",
+        "source": "backend/alembic.ini"
+      },
+      "migrations_path": "backend/app/db/migrations/versions/"
+    },
+    "env_vars": [
+      {
+        "name": "DATABASE_URL",
+        "purpose": "Neon pooled Postgres connection string",
+        "required": true,
+        "source": "README.md"
+      },
+      {
+        "name": "OPENROUTER_API_KEY",
+        "purpose": "LLM provider access via LiteLLM",
+        "required": true,
+        "source": "README.md"
+      },
+      {
+        "name": "EXA_API_KEY",
+        "purpose": "Web-search tool-use provider",
+        "required": true,
+        "source": "README.md"
+      },
+      {
+        "name": "SENTRY_DSN",
+        "purpose": "Backend error tracking (no-ops if unset)",
+        "required": false,
+        "source": "backend/app/main.py"
+      },
+      {
+        "name": "VITE_SENTRY_DSN",
+        "purpose": "Frontend error tracking (no-ops if unset)",
+        "required": false,
+        "source": "frontend/src/main.tsx"
+      },
+      {
+        "name": "EMBEDDING_MODEL_NAME",
+        "purpose": "Overrides default sentence-transformers model",
+        "required": false,
+        "source": "render.yaml"
+      },
+      {
+        "name": "CORS_ORIGIN",
+        "purpose": "Single allowed CORS origin for the deployed web client",
+        "required": true,
+        "source": "backend/app/main.py"
+      }
+    ],
+    "deployment": {
+      "paas": {
+        "platform": "Render",
+        "config_path": "render.yaml",
+        "source": "render.yaml"
+      }
+    },
+    "api_surface": [
+      {
+        "protocol": "http",
+        "path_or_method": "GET /health",
+        "handler": "health.health",
+        "summary": "Liveness + DB connectivity check",
+        "source": "backend/app/api/health.py"
+      },
+      {
+        "protocol": "http",
+        "path_or_method": "GET /api/embeddings/presets",
+        "handler": "embeddings.get_presets",
+        "summary": "Returns curated examples at projected 2D coordinates",
+        "source": "backend/app/api/embeddings.py"
+      },
+      {
+        "protocol": "http",
+        "path_or_method": "POST /api/embeddings/place",
+        "handler": "embeddings.place",
+        "summary": "Projects visitor's custom text onto the fixed 2D plot",
+        "source": "backend/app/api/embeddings.py"
+      }
+    ],
+    "auth": {
+      "model": "none",
+      "source": "backend/app/main.py"
+    },
+    "ui_summary": {
+      "has_ui": true,
+      "kind": "spa",
+      "framework": "React + React Router",
+      "styling": "Tailwind CSS with Plotly.js for the embeddings scatter-plot visualization",
+      "routing": "react-router, defined in frontend/src/routes.tsx, lazy-loading each example app per route",
+      "entry_files": [
+        "frontend/index.html",
+        "frontend/src/main.tsx",
+        "frontend/src/App.tsx"
+      ]
+    },
+    "coding_style": {
+      "linter": {
+        "value": "oxlint",
+        "source": "frontend/package.json"
+      },
+      "type_checker": {
+        "value": "tsc -b",
+        "source": "frontend/package.json"
+      },
+      "indentation": {
+        "value": "4 spaces",
+        "inferred_from": "backend/app/main.py"
+      },
+      "quotes": {
+        "value": "double",
+        "inferred_from": "backend/app/main.py"
+      },
+      "naming_conventions": {
+        "functions": {
+          "value": "snake_case",
+          "inferred_from": "backend/app/api/health.py"
+        }
+      }
+    },
+    "notes": {
+      "test_coverage": {
+        "has_tests": true,
+        "framework": "pytest",
+        "coverage_summary": "Backend has a broad pytest suite (backend/tests/) covering chunking, citations, dataset embeddings, embedding pipeline, generation service, health, model registry, observability, RAG generation/retrieval, shared services, tool agent/tool-use, and usage windows. Frontend has a Vitest suite (frontend/tests/) covering theming, navbar/nav-menu, landing, health, RAG, embeddings, and pattern-summary components.",
+        "inferred_from": "backend/tests/ and frontend/tests/ directory listings"
+      },
+      "ci_cd": {
+        "present": false
+      },
+      "change_risks": [
+        {
+          "area": "backend/app/services/model_registry.py free-tier model chains",
+          "risk": "Per-capability chains of free-tier OpenRouter/Groq model slugs rot as providers retire free tiers; README explicitly warns chains need periodic refresh.",
+          "mitigation_hint": "Verify each chain's models are still live on the provider's free tier before extending tool-calling or structured-generation capabilities."
+        }
+      ],
+      "security_observations": [
+        "CORS is restricted to a single configured origin (settings.cors_origin), never '*' (backend/app/main.py) \u2014 a deliberate exposure-policy choice.",
+        "No authentication/authorization on any API route; acceptable for a public demo but worth flagging if future phases add costly or mutable operations."
+      ],
+      "other_notes": [
+        "Google-style docstrings are used as an explicit, repeated project convention (e.g. backend/app/api/health.py, backend/app/api/embeddings.py).",
+        "render.yaml's buildCommand pre-downloads the sentence-transformers embedding model at build time to avoid Render cold-start latency and Hugging Face anonymous rate limits \u2014 operationally significant for redeploy planning.",
+        "render.yaml references .spec4/v0/stack.json for deployment target definitions, and source files are headed '# Built with Spec4 AI' \u2014 this project was itself previously scaffolded/managed by Spec4.",
+        "Secondary frontend command: `cd frontend && npm test` (vitest run).",
+        "Secondary frontend command: `cd frontend && npm run preview`.",
+        ".python-version file present, pinning the backend interpreter version alongside requires-python in pyproject.toml.",
+        "backend/app/api/rag.py and backend/app/api/tools.py register additional routers (imported in main.py) whose specific route paths were not present in the sampled evidence.",
+        "Secondary UI note: none \u2014 single primary SPA covers landing page and all example apps."
+      ]
+    }
+  }
+}

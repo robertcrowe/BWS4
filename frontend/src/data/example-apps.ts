@@ -89,4 +89,26 @@ export const exampleApps: ExampleApp[] = [
     status: 'live',
     route: '/chained-calls',
   },
+  {
+    id: 'planning_agent_example_app',
+    name: 'Planning-Agent Example App',
+    description:
+      'Watch a planner call decompose a trip-day goal into a visible plan of research and synthesis steps, then execute them — only after your explicit go-ahead — into a one-day itinerary.',
+    patternTag: 'Planning Agent',
+    patternSummary:
+      'A planning agent first calls a model to decompose a goal into a plan of discrete steps, then executes those steps one by one — here, research steps that use the shared web-search tool, ending in exactly one synthesis step that composes the final itinerary. Because the plan is produced and displayed before execution, you can inspect exactly what the agent intends to do, and nothing runs until you say so. To conserve shared usage, each run here is limited to one planner call plus up to three executor steps, and you get three runs per hour, which reset at the top of the hour. Planning agents in general can use any number of steps — these limits are a quota-conservation choice of this demo, not a limit of the pattern.',
+    status: 'live',
+    route: '/planning',
+  },
+  {
+    id: 'orchestrated_subagents_example_app',
+    name: 'Orchestrated-Subagents Example App',
+    description:
+      'Watch a coordinator pick two of four fixed specialists, brief each one differently, run them side by side, and merge their independent answers into one.',
+    patternTag: 'Orchestrated Subagents',
+    patternSummary:
+      'Orchestrated subagents split a question between independent workers and then put their answers back together. A coordinator chooses which specialists apply, writes each one a distinct brief naming the angle it must leave to the other, and shows you that decision before anything runs. On your go-ahead both specialists run at the same time — they can, because neither needs the other’s output, which is what separates this from a chain — and the coordinator then merges their two answers into one response organised by the question rather than by who wrote what. Both source answers stay on screen so you can judge the merge. To conserve shared usage, each run here uses a fixed budget of three model calls and you get three runs per hour, which reset at the top of the hour. The pattern itself supports any number of agents — these limits are a quota-conservation choice of this demo, not a limit of the pattern.',
+    status: 'live',
+    route: '/orchestrated',
+  },
 ]

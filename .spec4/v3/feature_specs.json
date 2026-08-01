@@ -1,0 +1,407 @@
+{
+  "version": 1,
+  "features": [
+    {
+      "id": "landing_page",
+      "name": "Landing_Page",
+      "purpose": "Introduces BWS4, explains that it and every example app were built using Spec4, and gives users a way to discover and open each available example app.",
+      "invocation": {
+        "trigger": "A user opens the application's home view."
+      },
+      "inputs": [
+        {
+          "name": "example app listings",
+          "type": "list of items",
+          "description": "Name, short description, and entry point for each currently available example app.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "An overview view introducing BWS4 and a navigable list of example apps.",
+        "format": "Text with a list of selectable entries",
+        "schema_notes": "Each listed entry includes a name, a short description, and a way to open that example app."
+      },
+      "success_criteria": [
+        "A user unfamiliar with the project understands, within seconds, that BWS4 is a collection of example apps built with Spec4.",
+        "Every currently available example app appears in the list and can be opened.",
+        "The overall introduction and navigation remain reachable from any example app the user visits."
+      ],
+      "failure_modes": [
+        {
+          "mode": "A newly added example app fails to appear in the list",
+          "likelihood": "medium",
+          "mitigation": "The list is generated from a single shared source of truth for available apps rather than being maintained separately."
+        },
+        {
+          "mode": "Description text becomes stale relative to what an app actually does",
+          "likelihood": "low",
+          "mitigation": "Each app's listing text is reviewed alongside its own educational overview."
+        }
+      ],
+      "dependencies": [
+        "rag_example_app",
+        "embeddings_example_app",
+        "single_call_example_app",
+        "chained_calls_example_app"
+      ],
+      "entities": [
+        "ExampleApp"
+      ],
+      "references": []
+    },
+    {
+      "id": "rag_example_app",
+      "name": "RAG_Example_App",
+      "purpose": "Demonstrates the retrieval-augmented generation pattern using a small, publicly available dataset, so a user can see how retrieved content shapes a generated answer.",
+      "invocation": {
+        "trigger": "A user opens the RAG example app and submits a question."
+      },
+      "inputs": [
+        {
+          "name": "user question",
+          "type": "text",
+          "description": "A free-form question the user wants answered using the example dataset.",
+          "required": true
+        },
+        {
+          "name": "example dataset",
+          "type": "list of items",
+          "description": "A small, fixed, publicly sourced collection of passages the app retrieves from.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "An answer to the user's question along with the specific passages that were retrieved and used to produce it.",
+        "format": "Text answer accompanied by a list of cited source passages",
+        "schema_notes": "Each cited passage is distinguishable from the generated answer text."
+      },
+      "success_criteria": [
+        "Passages retrieved for a question are topically related to that question.",
+        "The generated answer visibly reflects and can be traced back to at least one retrieved passage.",
+        "A short educational explanation of the retrieval-augmented generation pattern is shown to the user."
+      ],
+      "failure_modes": [
+        {
+          "mode": "Retrieval returns passages unrelated to the question",
+          "likelihood": "medium",
+          "mitigation": "The example dataset is small and curated so relevant matches are likely; the app tells the user which passages were used so mismatches are visible."
+        },
+        {
+          "mode": "No passages match the question at all",
+          "likelihood": "low",
+          "mitigation": "The app clearly informs the user that no relevant passage was found rather than fabricating a source."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Document",
+        "Question",
+        "RetrievedPassage",
+        "Answer"
+      ],
+      "references": []
+    },
+    {
+      "id": "shared_framework_services",
+      "name": "Shared_Framework_Services",
+      "purpose": "Provides the common capabilities every example app relies on \u2014 generating text with a model, producing embeddings, searching for information, and storing/retrieving small amounts of data \u2014 so each app doesn't need its own separate version.",
+      "invocation": {
+        "trigger": "An example app makes a request for generation, embedding, search, or data storage/retrieval while handling a user action."
+      },
+      "inputs": [
+        {
+          "name": "capability request",
+          "type": "text",
+          "description": "An indication of which capability is needed (generate text, produce embedding, search, or store/retrieve data).",
+          "required": true
+        },
+        {
+          "name": "request payload",
+          "type": "text or structured content",
+          "description": "The content the capability should act on, such as a prompt, text to embed, a search query, or a record to store or fetch.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A response appropriate to the requested capability.",
+        "format": "Varies by capability: generated text, a numeric embedding representation, a list of search results, or a stored/retrieved record.",
+        "schema_notes": "Every response is clearly tied to the capability that was requested."
+      },
+      "success_criteria": [
+        "Each capability returns a correct, usable response for valid requests from any example app.",
+        "Behavior of a given capability is consistent no matter which example app calls it.",
+        "The underlying model or provider behind a capability can be changed while the app keeps running, without interrupting users."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The generation or search capability is temporarily unavailable",
+          "likelihood": "medium",
+          "mitigation": "The calling app receives a clear failure signal it can show to the user instead of an unexplained delay or blank result."
+        },
+        {
+          "mode": "Usage quota for a shared capability is exhausted",
+          "likelihood": "medium",
+          "mitigation": "Requests are limited per app and the user is informed clearly rather than receiving a silent failure."
+        },
+        {
+          "mode": "Different apps configure a shared capability inconsistently, causing divergent behavior",
+          "likelihood": "low",
+          "mitigation": "Configuration for each capability lives in one shared place used by all apps."
+        }
+      ],
+      "dependencies": [],
+      "entities": [
+        "GenerationRequest",
+        "Embedding",
+        "SearchResult",
+        "StoredRecord"
+      ],
+      "references": []
+    },
+    {
+      "id": "tool_use_integration",
+      "name": "Tool_Use_Integration",
+      "purpose": "Gives example apps that need it the ability to look up current information from an external search capability as part of their reasoning, rather than relying only on a model's built-in knowledge.",
+      "invocation": {
+        "trigger": "An example app's workflow determines it needs to search for information to complete a step."
+      },
+      "inputs": [
+        {
+          "name": "search query",
+          "type": "text",
+          "description": "The question or topic the app needs external information about.",
+          "required": true
+        },
+        {
+          "name": "surrounding context",
+          "type": "text",
+          "description": "Relevant context from the ongoing user request that helps focus the search.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A list of search results relevant to the query.",
+        "format": "List of items",
+        "schema_notes": "Each result includes a short title, a snippet of relevant text, and a reference to its source."
+      },
+      "success_criteria": [
+        "Search results are topically relevant to the submitted query.",
+        "A calling example app can use the returned results to produce a more informed final answer.",
+        "The fact that a search was performed, and what was found, is visible and explainable to the end user."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The external search capability is unavailable",
+          "likelihood": "medium",
+          "mitigation": "The calling app degrades gracefully and tells the user the search step failed rather than stalling."
+        },
+        {
+          "mode": "Search results are irrelevant to the query",
+          "likelihood": "low",
+          "mitigation": "Results are shown to the user so relevance can be judged rather than hidden inside an opaque answer."
+        },
+        {
+          "mode": "Search usage limit is reached",
+          "likelihood": "medium",
+          "mitigation": "Usage is capped and the user is shown a clear message when the limit is hit."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "SearchQuery",
+        "SearchResult"
+      ],
+      "references": []
+    },
+    {
+      "id": "embeddings_example_app",
+      "name": "Embeddings_Example_App",
+      "purpose": "Illustrates the embedding pattern by visually plotting a curated set of texts in a two-dimensional space so users can see semantically similar items cluster together, and lets users add their own text to the same plot.",
+      "invocation": {
+        "trigger": "A user opens the Embeddings example app, and optionally submits custom text to add to the plot."
+      },
+      "inputs": [
+        {
+          "name": "curated text examples",
+          "type": "list of items",
+          "description": "A predefined set of words, short phrases, and full sentences spanning a few categories, used to populate the initial plot.",
+          "required": true
+        },
+        {
+          "name": "custom text",
+          "type": "text",
+          "description": "Text the user enters to see embedded and placed alongside the curated examples.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A two-dimensional visual plot of all embedded texts, with the user's custom entries visually distinguished from the curated ones.",
+        "format": "Interactive visual chart with labeled points",
+        "schema_notes": "Each point is labeled with its source text and marked as either a curated example or a user-added entry."
+      },
+      "success_criteria": [
+        "Curated examples belonging to the same category or meaning visibly cluster near each other in the plot.",
+        "When a user adds custom text, it appears merged into the same plot in a visually distinct way.",
+        "A short educational overview explains what an embedding is and why similar meanings cluster together.",
+        "The same shared embedding capability used elsewhere in the framework is used here, with no separate one introduced."
+      ],
+      "failure_modes": [
+        {
+          "mode": "Adding custom text causes the whole plot to shift unpredictably, confusing the user about what changed",
+          "likelihood": "medium",
+          "mitigation": "The plot is recomputed and redrawn clearly each time so the user can see the update happen rather than an unexplained jump."
+        },
+        {
+          "mode": "Custom text is unusual or nonsensical, producing a placement that seems arbitrary",
+          "likelihood": "low",
+          "mitigation": "User-added points are clearly labeled as exploratory rather than authoritative."
+        },
+        {
+          "mode": "A very long custom entry causes a noticeable delay before the plot updates",
+          "likelihood": "low",
+          "mitigation": "Guidance is given on a reasonable length for custom text."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "TextExample",
+        "Embedding",
+        "ProjectionPoint"
+      ],
+      "references": []
+    },
+    {
+      "id": "single_call_example_app",
+      "name": "Single_Call_Example_App",
+      "purpose": "Demonstrates the single-call pattern \u2014 one direct prompt producing one direct response, with no retrieval or multi-step chaining \u2014 in both a plain-text mode and a structured-output mode.",
+      "invocation": {
+        "trigger": "A user opens the Single-Call example app and submits or selects a prompt, choosing a mode."
+      },
+      "inputs": [
+        {
+          "name": "prompt text",
+          "type": "text",
+          "description": "A free-form prompt entered by the user.",
+          "required": false
+        },
+        {
+          "name": "preset prompt choice",
+          "type": "selection",
+          "description": "One of a small set of ready-made example prompts the user can pick instead of writing their own.",
+          "required": false
+        },
+        {
+          "name": "mode",
+          "type": "selection",
+          "description": "Whether the request should be handled as Simple (plain text) or Structured (schema-conforming response).",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "The model's response to the submitted prompt.",
+        "format": "Plain text in Simple mode; a structured response shown alongside the request that asked for it, in Structured mode.",
+        "schema_notes": "In Structured mode, both the request that specified the expected response shape and the response itself are shown together."
+      },
+      "success_criteria": [
+        "Simple mode returns a coherent free-text answer to the submitted prompt.",
+        "Structured mode returns a response whose shape matches what was requested, and both the request and response are visible to the user.",
+        "Selecting a preset prompt fills in a usable prompt without further editing required.",
+        "A short educational overview explains the single-call pattern and when it is appropriate."
+      ],
+      "failure_modes": [
+        {
+          "mode": "Structured mode's response does not match the expected shape",
+          "likelihood": "medium",
+          "mitigation": "The mismatch is detected and clearly flagged to the user rather than silently displayed as if valid."
+        },
+        {
+          "mode": "An empty or excessively long prompt produces a degraded or unusable response",
+          "likelihood": "low",
+          "mitigation": "Input guidance and a reasonable length limit are provided."
+        },
+        {
+          "mode": "The generation capability is temporarily unavailable",
+          "likelihood": "medium",
+          "mitigation": "A clear error is shown with no partial or misleading output."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Prompt",
+        "Response",
+        "StructuredSchema"
+      ],
+      "references": []
+    },
+    {
+      "id": "chained_calls_example_app",
+      "name": "Chained_Calls_Example_App",
+      "purpose": "Demonstrates the chained-calls pattern by routing an initial request through exactly two sequential model calls, showing the user each call's role, its intermediate output, and the final output.",
+      "invocation": {
+        "trigger": "A user opens the Chained-Calls example app and submits an initial request."
+      },
+      "inputs": [
+        {
+          "name": "initial request",
+          "type": "text",
+          "description": "The user's starting request that begins the two-step chain.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "The intermediate output produced by the first call and the final output produced by the second call.",
+        "format": "Two labeled text blocks",
+        "schema_notes": "Each block is labeled with the role of the call that produced it (e.g., first step vs. final step)."
+      },
+      "success_criteria": [
+        "The output of the first call is visibly used as the input to the second call.",
+        "Both the intermediate and final outputs are displayed to the user, each clearly labeled by role.",
+        "The user is told upfront what each of the two calls is meant to do before submitting a request.",
+        "The user is told that this demo is limited to exactly two chained calls to conserve usage, and that the pattern itself supports any number of chained calls.",
+        "A short educational overview explains the chained-calls pattern."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The second call fails after the first succeeds",
+          "likelihood": "medium",
+          "mitigation": "The intermediate output remains visible along with a clear notice that the final step failed."
+        },
+        {
+          "mode": "The user misunderstands what each call's role is meant to be",
+          "likelihood": "low",
+          "mitigation": "Each call's role is described to the user before they submit their request."
+        },
+        {
+          "mode": "The shared usage limit is reached partway through the chain",
+          "likelihood": "medium",
+          "mitigation": "A clear message is shown when the limit is hit, with no partial or misleading final output presented."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Request",
+        "IntermediateOutput",
+        "FinalOutput"
+      ],
+      "references": []
+    }
+  ],
+  "nfr_goals": [
+    "All example apps share a consistent layout and navigation so users can move between them without relearning the interface.",
+    "New example apps can be added and appear in navigation without disrupting existing apps or requiring users to notice any interruption.",
+    "Each example app's educational overview is understandable to a developer with no prior background in that specific pattern.",
+    "Typical interactions within an example app respond within a few seconds under normal conditions.",
+    "Shared capabilities (generation, embedding, search, storage) can be updated or swapped while the app keeps running, without interrupting users.",
+    "Overall usage stays within free-tier limits of underlying services so the collection of example apps remains sustainable for public, repeated use."
+  ]
+}

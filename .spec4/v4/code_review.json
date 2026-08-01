@@ -1,0 +1,501 @@
+{
+  "code_review": {
+    "schema_version": 1,
+    "is_software_project": true,
+    "project_type": "web application \u2014 React SPA frontend + FastAPI REST backend (AI-patterns showcase gallery)",
+    "existing_self_description": {
+      "text": "Built with Spec4 (BWS4) is a living showcase of common AI application patterns, presented as a collection of small, self-contained example apps behind a single landing page. Each example demonstrates one pattern end-to-end: how it's built, what it depends on, and how it behaves, so that visitors unfamiliar with the underlying technique can understand it by seeing it work rather than by reading about it abstractly.",
+      "source": "README.md"
+    },
+    "architecture": {
+      "summary": "Monorepo with a layered, feature-module backend: thin FastAPI routers per example app delegate to per-feature service modules, all built on a shared framework-services layer (model registry, generation, agent runtime, embedding, web search, storage) and a SQLAlchemy/Alembic DB layer. The frontend mirrors this with per-app directories lazy-loaded via route-based code-splitting.",
+      "pattern": "layered / feature-module monorepo",
+      "inferred_from": "backend/app/main.py"
+    },
+    "languages": [
+      {
+        "name": "Python",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "TypeScript",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "HTML",
+        "source": "frontend/index.html"
+      },
+      {
+        "name": "CSS",
+        "source": "frontend/postcss.config.js"
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "FastAPI",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "SQLAlchemy",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "PydanticAI",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "LiteLLM",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sentence-transformers",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "React",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "React Router",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "TanStack Query",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "Tailwind CSS",
+        "source": "frontend/package.json"
+      }
+    ],
+    "runtime_versions": {
+      "python": ">=3.12",
+      "node": "20+",
+      "_source": "pyproject.toml / README.md prerequisites / .python-version"
+    },
+    "build_system": {
+      "tool": "uv",
+      "manifest": "pyproject.toml"
+    },
+    "dependencies": [
+      {
+        "name": "fastapi",
+        "purpose": "REST API framework with auto-generated OpenAPI schema",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "uvicorn",
+        "purpose": "ASGI server",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sqlalchemy",
+        "purpose": "Async data access incl. pgvector cosine-distance queries",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "asyncpg",
+        "purpose": "Async PostgreSQL driver",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "alembic",
+        "purpose": "Database migrations",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pgvector",
+        "purpose": "Vector-column support for Postgres",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "litellm",
+        "purpose": "LLM routing lane to OpenRouter/Groq via shared model registry",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pydantic-ai",
+        "purpose": "Second model lane for typed/validated LLM output",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pydantic",
+        "purpose": "Schemas and validation",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pydantic-settings",
+        "purpose": "Settings/config loading",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sentence-transformers",
+        "purpose": "In-process embeddings (all-MiniLM-L6-v2)",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "torch",
+        "purpose": "CPU-only backend for sentence-transformers (custom pytorch-cpu uv index)",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "scikit-learn",
+        "purpose": "PCA projection of embeddings to 2D, fitted once at startup",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "numpy",
+        "purpose": "Numeric computation",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "httpx",
+        "purpose": "HTTP client (Exa web search, provider calls)",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "structlog",
+        "purpose": "Structured logging",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sentry-sdk",
+        "purpose": "Backend error tracking and LLM-call spans; no-ops when unset",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "tenacity",
+        "purpose": "Retry logic",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pytest",
+        "purpose": "Backend test framework (dev group)",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "react",
+        "purpose": "UI framework",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react-router",
+        "purpose": "Client-side routing with per-route lazy chunks",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "@tanstack/react-query",
+        "purpose": "Server state, loading/error states, no auto-retry on quota-spending calls",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "tailwindcss",
+        "purpose": "Styling with class-based light/dark theming",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "plotly.js",
+        "purpose": "Scatter plot for embeddings example (basic build, route-confined)",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react-plotly.js",
+        "purpose": "React bindings for Plotly",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "@sentry/react",
+        "purpose": "Frontend error tracking; skipped when VITE_SENTRY_DSN unset",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "vite",
+        "purpose": "Frontend build tool / dev server",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "oxlint",
+        "purpose": "Frontend linter",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "vitest",
+        "purpose": "Frontend test runner (with Testing Library + jsdom)",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "typescript",
+        "purpose": "Type checking and compilation",
+        "source": "frontend/package.json"
+      }
+    ],
+    "commands": {
+      "build": "npm run build",
+      "test": "uv run pytest",
+      "lint": "npm run lint",
+      "typecheck": "tsc -b",
+      "run": "uv run uvicorn backend.app.main:app",
+      "dev": "npm run dev"
+    },
+    "entrypoints": {
+      "main": "backend/app/main.py",
+      "wsgi_app": "backend.app.main:app",
+      "dev_server": "npm run dev",
+      "ui_root": "frontend/src/main.tsx"
+    },
+    "directory_map": [
+      {
+        "path": "backend/app/api/",
+        "role": "thin FastAPI routers, one per example app plus health"
+      },
+      {
+        "path": "backend/app/services/",
+        "role": "shared framework services: model registry, generation, agent runtime, embedding, web search, storage, model discovery"
+      },
+      {
+        "path": "backend/app/rag/",
+        "role": "RAG pipeline: chunking, retrieval, citation auditing, curated markdown dataset, prompts, dataset indexer"
+      },
+      {
+        "path": "backend/app/embeddings/",
+        "role": "embedding presets, fit-once PCA projection, custom-text placement"
+      },
+      {
+        "path": "backend/app/single_call/",
+        "role": "single-call example (simple + structured/JSON-Schema modes)"
+      },
+      {
+        "path": "backend/app/chained_calls/",
+        "role": "two-step writer\u2192critic chain pipeline, prompts, quote-overlap check"
+      },
+      {
+        "path": "backend/app/tools/",
+        "role": "tool-use (function-calling) agent example using Exa web search"
+      },
+      {
+        "path": "backend/app/db/",
+        "role": "SQLAlchemy models, async session, Alembic migrations (8 revisions)"
+      },
+      {
+        "path": "backend/app/core/",
+        "role": "pydantic-settings config, structlog setup, Sentry observability"
+      },
+      {
+        "path": "backend/tests/",
+        "role": "pytest suite (~22 test modules)"
+      },
+      {
+        "path": "frontend/src/apps/",
+        "role": "per-example React apps, lazy-loaded per route"
+      },
+      {
+        "path": "frontend/src/api/",
+        "role": "typed API client functions + TanStack Query hooks per example app"
+      }
+    ],
+    "persistence": {
+      "databases": [
+        {
+          "engine": "PostgreSQL",
+          "role": "primary relational store and pgvector vector index for RAG (Neon serverless)",
+          "source": "backend/app/db/migrations/versions/0001_enable_pgvector.py"
+        }
+      ],
+      "orm": {
+        "name": "SQLAlchemy",
+        "source": "pyproject.toml"
+      },
+      "migration_tool": {
+        "name": "Alembic",
+        "source": "pyproject.toml"
+      },
+      "migrations_path": "backend/app/db/migrations/"
+    },
+    "env_vars": [
+      {
+        "name": "SENTRY_DSN",
+        "purpose": "Backend Sentry error tracking; no-ops cleanly when unset",
+        "required": false,
+        "source": "backend/app/main.py"
+      },
+      {
+        "name": "VITE_SENTRY_DSN",
+        "purpose": "Frontend Sentry initialization; skipped when unset",
+        "required": false,
+        "source": "frontend/src/main.tsx"
+      },
+      {
+        "name": "EMBEDDING_MODEL_NAME",
+        "purpose": "Override the sentence-transformers model slug",
+        "required": false,
+        "source": "render.yaml"
+      },
+      {
+        "name": "HF_HOME",
+        "purpose": "Hugging Face cache location; set at Render build time so the model lands in the build output",
+        "required": false,
+        "source": "render.yaml"
+      },
+      {
+        "name": "CORS_ORIGIN",
+        "purpose": "Single allowed cross-origin frontend origin (exact variable name inferred from settings.cors_origin)",
+        "required": true,
+        "inferred_from": "backend/app/main.py"
+      }
+    ],
+    "deployment": {
+      "paas": {
+        "platform": "Render",
+        "config_path": "render.yaml",
+        "source": "render.yaml"
+      }
+    },
+    "api_surface": [
+      {
+        "protocol": "http",
+        "path_or_method": "GET /health",
+        "summary": "Health check",
+        "source": "backend/app/api/health.py"
+      },
+      {
+        "protocol": "http",
+        "path_or_method": "GET /api/embeddings/presets",
+        "handler": "api.embeddings.get_presets",
+        "summary": "Projected 2D coordinates for all curated preset texts",
+        "source": "backend/app/api/embeddings.py"
+      },
+      {
+        "protocol": "http",
+        "path_or_method": "POST /api/embeddings/place",
+        "handler": "api.embeddings.place",
+        "summary": "Place visitor text on the fixed 2D projection",
+        "source": "backend/app/api/embeddings.py"
+      },
+      {
+        "protocol": "http",
+        "path_or_method": "GET /api/chained-calls/plan",
+        "handler": "api.chained_calls.get_plan",
+        "summary": "Describe the writer\u2192critic chain before it runs",
+        "source": "backend/app/api/chained_calls.py"
+      }
+    ],
+    "auth": {
+      "model": "none",
+      "source": "README.md"
+    },
+    "ui_summary": {
+      "has_ui": true,
+      "kind": "spa",
+      "framework": "React 19 + React Router 8",
+      "styling": "Tailwind CSS with class-based light/dark theming (preference persisted in localStorage)",
+      "routing": "React Router route config in frontend/src/routes consumed by RouterProvider; per-example-app lazy-loaded chunks",
+      "entry_files": [
+        "frontend/index.html",
+        "frontend/src/main.tsx",
+        "frontend/src/App.tsx"
+      ]
+    },
+    "coding_style": {
+      "linter": {
+        "value": "oxlint (frontend only)",
+        "source": "frontend/package.json"
+      },
+      "type_checker": {
+        "value": "TypeScript tsc -b (frontend only)",
+        "source": "frontend/package.json"
+      },
+      "indentation": {
+        "value": "4 spaces (Python), 2 spaces (TypeScript)",
+        "inferred_from": "backend/app/main.py"
+      },
+      "quotes": {
+        "value": "double (Python), single without semicolons (TypeScript)",
+        "inferred_from": "frontend/src/main.tsx"
+      },
+      "naming_conventions": {
+        "functions": {
+          "value": "snake_case",
+          "inferred_from": "backend/app/api/embeddings.py"
+        },
+        "classes": {
+          "value": "PascalCase",
+          "inferred_from": "backend/app/api/chained_calls.py"
+        }
+      }
+    },
+    "notes": {
+      "test_coverage": {
+        "has_tests": true,
+        "framework": "pytest",
+        "covered_modules": [
+          "api routes (chained_calls, embeddings, single_call, health)",
+          "chained_calls pipeline",
+          "embeddings placement/projection",
+          "rag chunking/retrieval/generation/citations",
+          "services (model_registry, agent_runtime, generation, shared, embedding pipeline)",
+          "usage windows",
+          "observability",
+          "tool agent / tool use"
+        ],
+        "uncovered_modules": [
+          "db/models.py (no direct model tests visible)",
+          "db/migrations/",
+          "frontend (vitest configured but no test files visible in the truncated tree)"
+        ],
+        "inferred_from": "backend/tests/ directory listing"
+      },
+      "ci_cd": {
+        "present": false,
+        "type": null,
+        "path": null
+      },
+      "change_risks": [
+        {
+          "area": "backend/app/services/model_registry.py free-tier model chains",
+          "risk": "README explicitly warns the ordered chains of free-tier model slugs rot as providers retire them; both the tool-calling and text-generation chains decay independently",
+          "mitigation_hint": "any phase touching generation should plan for slug refresh and rely on the registry's fallback/bench mechanism rather than hardcoding slugs"
+        },
+        {
+          "area": "dual model lanes (LiteLLM + PydanticAI)",
+          "risk": "both lanes read slugs from the same registry and pass through the same usage-limit gate; changes that split those paths would let the lanes disagree about available models or spend unseen budget",
+          "mitigation_hint": "route any new model access through backend/app/services/model_registry.py and the shared usage-limit gate"
+        },
+        {
+          "area": "backend/app/embeddings/ PCA projection",
+          "risk": "projection is fitted once at startup over the curated preset set and only ever applied afterwards; re-fitting would move existing points and break the example's core demonstration",
+          "mitigation_hint": "never re-fit the projection when adding features; only apply the fitted transform to new texts"
+        },
+        {
+          "area": "chained-calls API contract",
+          "risk": "a chain whose second call failed is deliberately returned as HTTP 200 with status 'critique_failed' so call 1's output survives; converting this to 4xx/5xx would push clients into their error branch and discard the draft",
+          "mitigation_hint": "preserve the 200 + status-field contract in backend/app/api/chained_calls.py when extending the chain"
+        },
+        {
+          "area": "usage-limit gating",
+          "risk": "per-UTC-day caps are enforced before any provider call; new metered capabilities that bypass the gate could drain the shared free-tier quota of this unauthenticated demo",
+          "mitigation_hint": "route new metered capabilities through the shared usage-limit gate (see migration 0007_usage_limit_daily_window.py and backend/tests/test_usage_windows.py)"
+        }
+      ],
+      "security_observations": [
+        "Application is deliberately unauthenticated; abuse protection is per-UTC-day usage caps enforced before provider calls",
+        "CORS allows exactly one origin (the deployed web_client), never '*' (backend/app/main.py)",
+        "render.yaml marks secrets sync: false so they are entered in the Render dashboard rather than committed",
+        "Custom text submitted to the embeddings placement route is never persisted (backend/app/api/embeddings.py docstring)"
+      ],
+      "other_notes": [
+        "Monorepo split build systems: backend is uv-managed at repo root (pyproject.toml); frontend is npm + Vite 8 (frontend/package.json) \u2014 build/dev/lint/typecheck commands run from frontend/, test and run from repo root",
+        "Secondary test command: `npm test` (vitest) in frontend/",
+        "Deploy start command (Render): `uv run uvicorn backend.app.main:app --host 0.0...` per render.yaml",
+        "Alembic migrations configured via backend/alembic.ini; migration invocation not wrapped in a documented command",
+        "RAG dataset indexer module: backend/app/rag/index_dataset.py",
+        "Backend declares no linter, formatter, or type checker in pyproject.toml (frontend has oxlint + tsc)",
+        "torch is pinned to a CPU-only wheel index via [[tool.uv.index]] pytorch-cpu in pyproject.toml",
+        "render.yaml build pre-downloads the ~88 MB sentence-transformers model to avoid cold-start downloads and Hugging Face rate limits",
+        "CLAUDE.md, CONTRIBUTING.md, and CLA.md exist but their contents were not shown; they may document additional commands",
+        ".env.example exists at repo root; README prerequisites imply a Neon Postgres connection string, OpenRouter API key, and Exa API key are required, but exact variable names were not visible in the evidence",
+        ".python-version file present",
+        "Every source file carries a '# Built with Spec4 AI - https://spec4.ai' header comment"
+      ]
+    }
+  }
+}

@@ -15,6 +15,7 @@ from pydantic_ai.models.fallback import FallbackModel
 from backend.app.services import agent_runtime, model_registry
 from backend.app.services.agent_runtime import (
     AGENT_LANE_KNOWN_BAD,
+    TOOL_LANE_KNOWN_BAD,
     AgentLaneError,
     ProviderAdapter,
     lane_chain,
@@ -76,6 +77,46 @@ def test_a_probe_exclusion_applies_to_this_lane_only() -> None:
 
     assert "groq/llama-3.1-8b-instant" in model_registry.GENERATION_MODEL_CHAIN
     assert "groq/llama-3.1-8b-instant" in model_registry.TOOL_MODEL_CHAIN
+
+
+def test_a_step_with_tools_gets_a_narrower_chain_than_one_without() -> None:
+    """A fourth capability, with a fourth probe result behind it.
+
+    Offering a function tool and a typed-output tool at once is not implied by
+    doing either alone: four slugs that return clean typed output cannot do it
+    while calling a tool -- two never stop calling it, one emits malformed
+    call syntax, one returns an empty answer.
+    """
+    plain = lane_chain()
+    with_tools = lane_chain(tools=True)
+
+    assert set(with_tools) < set(plain)
+    assert set(plain) - set(with_tools) == set(TOOL_LANE_KNOWN_BAD) & set(plain)
+
+
+def test_the_tool_capable_chain_still_spans_both_providers() -> None:
+    """Failover that survives one provider must survive the narrowing too.
+
+    The exclusions cut the chain to three entries; if they all sat on one
+    provider, an outage there would take the planning app's executors down with
+    no fallback at all.
+    """
+    providers = {model_registry.provider_of(slug) for slug in lane_chain(tools=True)}
+
+    assert providers == {"groq", "openrouter"}
+
+
+def test_a_tool_exclusion_does_not_leak_into_the_toolless_chain() -> None:
+    """The standing rule again, in the direction this list makes tempting.
+
+    These models are fine for the chained-calls app, which asks for typed output
+    and offers no tools. Excluding them there would remove working capacity for
+    a fault they do not have in that use.
+    """
+    plain = lane_chain()
+
+    assert "groq/llama-3.3-70b-versatile" in plain
+    assert "groq/llama-3.3-70b-versatile" not in lane_chain(tools=True)
 
 
 def test_a_benched_model_disappears_from_this_lane_too() -> None:

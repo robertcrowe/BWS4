@@ -1,0 +1,12 @@
+{
+  "ai_catalog": [
+    {
+      "name": "trip_day_planning_agent",
+      "scope": "feature",
+      "rough_description": "Takes a user's city and free-form interests and produces a one-day itinerary: a planner model call decomposes the fuzzy goal into a small displayed plan of research and synthesis steps, and executor model calls carry out those steps using the shared Exa web search tool to compose the final itinerary.",
+      "tier_recommendation": "planning_agent",
+      "tier_decision": "planning_agent",
+      "tier_decision_rationale": ""
+    }
+  ]
+}

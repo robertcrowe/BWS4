@@ -210,7 +210,7 @@ def test_a_provider_failure_is_reported_as_unavailable_not_as_an_answer() -> Non
 def test_a_spent_usage_cap_is_reported_differently_from_a_provider_outage() -> None:
     """Two different operator problems; one shared status code, distinct codes.
 
-    A spent cap resets at 00:00 UTC and an unreachable provider does not, so
+    A spent cap resets at the top of the hour and an unreachable provider does not, so
     reporting them identically would tell an operator nothing about which
     happened. The queued row is already at its cap, so reserve_capability
     raises before the provider is reached.

@@ -22,5 +22,13 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     globals: true,
+    // Vitest's 5s default is a poor fit for this suite: fourteen files each
+    // stand up their own jsdom environment and run them in parallel, so under
+    // contention a `userEvent` interaction can wait seconds for a turn. That
+    // surfaced as unrelated files timing out at random once the suite grew --
+    // a flake, not a failure, since every one of them passes in isolation.
+    // Raised rather than worked around by trimming tests: a timeout catches a
+    // hang, and 15s still catches one.
+    testTimeout: 15_000,
   },
 })

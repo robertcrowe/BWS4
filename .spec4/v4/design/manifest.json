@@ -1,0 +1,1068 @@
+{
+  "entities": [
+    {
+      "name": "ExampleApp",
+      "fields": [
+        "name",
+        "pattern_tag",
+        "description",
+        "target_screen",
+        "status"
+      ]
+    },
+    {
+      "name": "Question",
+      "fields": [
+        "text",
+        "submitted_at"
+      ]
+    },
+    {
+      "name": "Passage",
+      "fields": [
+        "title",
+        "source",
+        "text",
+        "match_score"
+      ]
+    },
+    {
+      "name": "Dataset",
+      "fields": [
+        "title",
+        "documents"
+      ]
+    },
+    {
+      "name": "Answer",
+      "fields": [
+        "text",
+        "confidence",
+        "grounding_passages",
+        "warning"
+      ]
+    },
+    {
+      "name": "SearchQuery",
+      "fields": [
+        "text"
+      ]
+    },
+    {
+      "name": "SearchResult",
+      "fields": [
+        "rank",
+        "title",
+        "summary",
+        "source"
+      ]
+    },
+    {
+      "name": "Prompt",
+      "fields": [
+        "text",
+        "preset_id",
+        "intent"
+      ]
+    },
+    {
+      "name": "PresetPrompt",
+      "fields": [
+        "id",
+        "label",
+        "intent",
+        "prompt_text"
+      ]
+    },
+    {
+      "name": "Mode",
+      "fields": [
+        "value"
+      ]
+    },
+    {
+      "name": "StructuredResponse",
+      "fields": [
+        "request_payload",
+        "response_object",
+        "schema",
+        "conforms",
+        "missing_fields"
+      ]
+    },
+    {
+      "name": "UserRequest",
+      "fields": [
+        "story_prompt"
+      ]
+    },
+    {
+      "name": "IntermediateOutput",
+      "fields": [
+        "role",
+        "text",
+        "step_number"
+      ]
+    },
+    {
+      "name": "FinalOutput",
+      "fields": [
+        "role",
+        "text",
+        "step_number"
+      ]
+    },
+    {
+      "name": "AgentRole",
+      "fields": [
+        "name",
+        "description",
+        "call_number"
+      ]
+    },
+    {
+      "name": "Goal",
+      "fields": [
+        "city",
+        "interests"
+      ]
+    },
+    {
+      "name": "Plan",
+      "fields": [
+        "steps",
+        "trimmed_note"
+      ]
+    },
+    {
+      "name": "PlanStep",
+      "fields": [
+        "number",
+        "kind",
+        "label",
+        "purpose",
+        "query",
+        "status"
+      ]
+    },
+    {
+      "name": "StepResult",
+      "fields": [
+        "step_number",
+        "text",
+        "failed"
+      ]
+    },
+    {
+      "name": "Itinerary",
+      "fields": [
+        "city",
+        "morning",
+        "afternoon",
+        "evening",
+        "gap_notes"
+      ]
+    },
+    {
+      "name": "RunAllowance",
+      "fields": [
+        "used",
+        "cap"
+      ]
+    },
+    {
+      "name": "TextExample",
+      "fields": [
+        "text",
+        "category",
+        "color",
+        "x",
+        "y"
+      ]
+    },
+    {
+      "name": "ProjectedPoint",
+      "fields": [
+        "text",
+        "category",
+        "x",
+        "y",
+        "neighbors",
+        "is_custom"
+      ]
+    },
+    {
+      "name": "Category",
+      "fields": [
+        "name",
+        "color",
+        "words"
+      ]
+    },
+    {
+      "name": "GenerationRequest",
+      "fields": [
+        "type",
+        "payload"
+      ]
+    },
+    {
+      "name": "EmbeddingVector",
+      "fields": [
+        "source_text",
+        "vector_preview",
+        "dimensions"
+      ]
+    },
+    {
+      "name": "StoredRecord",
+      "fields": [
+        "key",
+        "value",
+        "written_by"
+      ]
+    },
+    {
+      "name": "UsageQuota",
+      "fields": [
+        "capability",
+        "used",
+        "cap"
+      ]
+    },
+    {
+      "name": "ServiceLogEntry",
+      "fields": [
+        "time",
+        "app",
+        "capability",
+        "summary"
+      ]
+    }
+  ],
+  "screens": [
+    {
+      "id": "screen-landing",
+      "audience": "Developers evaluating Spec4 / learning agentic patterns",
+      "purpose": "Introduce BWS4, state Spec4 provenance, and present the catalog of example apps (Embeddings, Single-Call, RAG, Tool-Use, Chained-Calls, Planning Agent).",
+      "surfaces": [
+        "landing_intro",
+        "app_catalog"
+      ]
+    },
+    {
+      "id": "screen-rag",
+      "audience": "Developers learning the RAG pattern",
+      "purpose": "Demonstrate retrieval-augmented generation over a small visible dataset.",
+      "surfaces": [
+        "rag_dataset_browser",
+        "rag_question_form",
+        "rag_answer_panel"
+      ]
+    },
+    {
+      "id": "screen-tooluse",
+      "audience": "Developers learning tool-use patterns",
+      "purpose": "Demonstrate an agent calling a live search tool mid-response.",
+      "surfaces": [
+        "tool_query_form",
+        "tool_run_panel"
+      ]
+    },
+    {
+      "id": "screen-singlecall",
+      "audience": "Developers learning the single-call pattern",
+      "purpose": "Demonstrate one prompt in, one response out, in simple and structured modes.",
+      "surfaces": [
+        "sc_overview",
+        "sc_prompt_form",
+        "sc_result_panel"
+      ]
+    },
+    {
+      "id": "screen-chained",
+      "audience": "Developers learning the chained-calls pattern",
+      "purpose": "Demonstrate exactly two sequential model calls (writer \u2192 critic) with visible hand-off.",
+      "surfaces": [
+        "chained_overview",
+        "chained_prompt_form",
+        "chained_result_panel"
+      ]
+    },
+    {
+      "id": "screen-planning",
+      "audience": "Developers learning the planning-agent pattern",
+      "purpose": "Demonstrate goal decomposition into a visible plan, explicit user go-ahead, sequential executor steps, and a final itinerary under strict quota limits.",
+      "surfaces": [
+        "plan_overview",
+        "plan_goal_form",
+        "plan_review_execute_panel"
+      ]
+    },
+    {
+      "id": "screen-embeddings",
+      "audience": "Developers learning about embeddings",
+      "purpose": "Visualize semantic clustering of curated texts and let users add their own text to the plot.",
+      "surfaces": [
+        "embed_overview",
+        "embed_custom_text_form",
+        "embed_plot",
+        "embed_placement_panel"
+      ]
+    },
+    {
+      "id": "screen-console",
+      "audience": "Spec4 team / maintainers",
+      "purpose": "Test the shared framework services directly, watch usage limits, and view the cross-app request log (reachable via hamburger menu only; no landing-page card).",
+      "surfaces": [
+        "console_request_tester",
+        "console_usage_limits",
+        "console_request_log"
+      ]
+    }
+  ],
+  "surfaces": [
+    {
+      "name": "landing_intro",
+      "kind": "non_ai",
+      "screen": "screen-landing",
+      "implements_features": [
+        "Landing_Page"
+      ],
+      "inputs": [],
+      "output": "Hero introduction stating BWS4's purpose and Spec4 provenance, with pattern badges.",
+      "states": [
+        "idle"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "landing_page"
+      ]
+    },
+    {
+      "name": "app_catalog",
+      "kind": "non_ai",
+      "screen": "screen-landing",
+      "implements_features": [
+        "Landing_Page"
+      ],
+      "inputs": [
+        "app card click"
+      ],
+      "output": "Grid of example-app cards ordered Embeddings, Single-Call, RAG, Tool-Use, Chained-Calls, Planning Agent (Framework Services Console card removed); clicking navigates to that app.",
+      "states": [
+        "idle",
+        "hover"
+      ],
+      "reads": [
+        "ExampleApp"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "landing_page"
+      ]
+    },
+    {
+      "name": "rag_dataset_browser",
+      "kind": "non_ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "RAG_Example_App"
+      ],
+      "inputs": [
+        "document expand/collapse"
+      ],
+      "output": "Expandable list of the 5 reference documents with sources.",
+      "states": [
+        "collapsed",
+        "expanded"
+      ],
+      "reads": [
+        "Dataset",
+        "Passage"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "rag_question_form",
+      "kind": "ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "rag_example_app"
+      ],
+      "inputs": [
+        "question text input",
+        "suggested question chips",
+        "submit button"
+      ],
+      "output": "Triggers retrieval + grounded generation.",
+      "states": [
+        "idle",
+        "submitting"
+      ],
+      "reads": [
+        "Question"
+      ],
+      "writes": [
+        "Question"
+      ],
+      "depends_on": [],
+      "affordance": "synchronous with staged progress lines",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "rag_example_app",
+      "catalog_surface_id": "rag_example_app",
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "rag_answer_panel",
+      "kind": "ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "rag_example_app"
+      ],
+      "inputs": [],
+      "output": "Grounded answer with citations, confidence badge, retrieved passages with match scores; dataset-gap warning; quota-exhausted error.",
+      "states": [
+        "empty",
+        "retrieving",
+        "generating",
+        "answered",
+        "low-relevance-warning",
+        "quota-error"
+      ],
+      "reads": [
+        "Answer",
+        "Passage",
+        "UsageQuota"
+      ],
+      "writes": [
+        "UsageQuota",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [
+        "rag_question_form"
+      ],
+      "affordance": "visible retrieve-then-generate stages",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "rag_example_app",
+      "catalog_surface_id": "rag_example_app",
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "tool_query_form",
+      "kind": "ai",
+      "screen": "screen-tooluse",
+      "implements_features": [
+        "rag_example_app"
+      ],
+      "inputs": [
+        "query text input",
+        "suggested query chips",
+        "run agent button"
+      ],
+      "output": "Triggers the 3-step agent run.",
+      "states": [
+        "idle",
+        "submitting"
+      ],
+      "reads": [
+        "SearchQuery"
+      ],
+      "writes": [
+        "SearchQuery"
+      ],
+      "depends_on": [],
+      "affordance": "multi-step progress indicator",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "rag_example_app",
+      "catalog_surface_id": "rag_example_app",
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "tool_run_panel",
+      "kind": "ai",
+      "screen": "screen-tooluse",
+      "implements_features": [
+        "rag_example_app"
+      ],
+      "inputs": [],
+      "output": "Step tracker (parse \u2192 search \u2192 synthesize), routing line, synthesized answer, ranked search results with sources; tool-unavailable error.",
+      "states": [
+        "empty",
+        "step1",
+        "step2",
+        "step3",
+        "complete",
+        "tool-unavailable"
+      ],
+      "reads": [
+        "SearchResult",
+        "UsageQuota"
+      ],
+      "writes": [
+        "UsageQuota",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [
+        "tool_query_form"
+      ],
+      "affordance": "show multi-step progress while it runs",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "rag_example_app",
+      "catalog_surface_id": "rag_example_app",
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "sc_overview",
+      "kind": "non_ai",
+      "screen": "screen-singlecall",
+      "implements_features": [
+        "Single_Call_Example_App"
+      ],
+      "inputs": [],
+      "output": "Educational card explaining the single-call pattern and when it fits.",
+      "states": [
+        "idle"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "single_call_example_app"
+      ]
+    },
+    {
+      "name": "sc_prompt_form",
+      "kind": "ai",
+      "screen": "screen-singlecall",
+      "implements_features": [
+        "single_call_example_app"
+      ],
+      "inputs": [
+        "preset prompt chips (summarize/classify/extract)",
+        "free-text prompt textarea",
+        "mode toggle (simple/structured)",
+        "run button"
+      ],
+      "output": "Triggers exactly one generation call in the selected mode.",
+      "states": [
+        "idle",
+        "validation-error",
+        "submitting"
+      ],
+      "reads": [
+        "PresetPrompt",
+        "Prompt",
+        "Mode"
+      ],
+      "writes": [
+        "Prompt",
+        "Mode"
+      ],
+      "depends_on": [],
+      "affordance": "synchronous single call",
+      "invocation": {
+        "trigger": "User enters or selects a preset prompt, chooses a response mode (plain or structured), and submits the form.",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "single_call_generation",
+      "catalog_surface_id": "single_call_generation",
+      "implements_feature_ids": [
+        "single_call_example_app"
+      ]
+    },
+    {
+      "name": "sc_result_panel",
+      "kind": "ai",
+      "screen": "screen-singlecall",
+      "implements_features": [
+        "single_call_example_app"
+      ],
+      "inputs": [],
+      "output": "Simple mode: plain-text response. Structured mode: side-by-side request payload and JSON response with schema-conformance check and mismatch warning; quota-exhausted error.",
+      "states": [
+        "empty",
+        "loading",
+        "simple-result",
+        "structured-valid",
+        "structured-mismatch",
+        "quota-error"
+      ],
+      "reads": [
+        "StructuredResponse",
+        "UsageQuota"
+      ],
+      "writes": [
+        "UsageQuota",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [
+        "sc_prompt_form"
+      ],
+      "affordance": "show both request and response in structured mode",
+      "invocation": {
+        "trigger": "User enters or selects a preset prompt, chooses a response mode (plain or structured), and submits the form.",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "single_call_generation",
+      "catalog_surface_id": "single_call_generation",
+      "implements_feature_ids": [
+        "single_call_example_app"
+      ]
+    },
+    {
+      "name": "chained_overview",
+      "kind": "non_ai",
+      "screen": "screen-chained",
+      "implements_features": [
+        "Chained_Calls_Example_App"
+      ],
+      "inputs": [],
+      "output": "Educational card explaining the chained-calls pattern, the writer\u2192critic data flow, and the two-call quota-conservation limit.",
+      "states": [
+        "idle"
+      ],
+      "reads": [
+        "AgentRole"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "chained_calls_example_app"
+      ]
+    },
+    {
+      "name": "chained_prompt_form",
+      "kind": "ai",
+      "screen": "screen-chained",
+      "implements_features": [
+        "Chained_Calls_Example_App"
+      ],
+      "inputs": [
+        "story prompt text input",
+        "suggested prompt chips",
+        "run chain button"
+      ],
+      "output": "Triggers the two-call chain; step tracker shows each call's role before and during the run.",
+      "states": [
+        "idle",
+        "submitting"
+      ],
+      "reads": [
+        "UserRequest",
+        "AgentRole"
+      ],
+      "writes": [
+        "UserRequest"
+      ],
+      "depends_on": [],
+      "affordance": "show multi-step progress/status while it runs",
+      "invocation": {
+        "trigger": "User submits a free-form story prompt in the Chained-Calls example app",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "chained_role_play_generation",
+      "catalog_surface_id": "chained_role_play_generation",
+      "implements_feature_ids": [
+        "chained_calls_example_app"
+      ]
+    },
+    {
+      "name": "chained_result_panel",
+      "kind": "ai",
+      "screen": "screen-chained",
+      "implements_features": [
+        "Chained_Calls_Example_App"
+      ],
+      "inputs": [
+        "retry step 2 button (on final-step failure)"
+      ],
+      "output": "Labeled intermediate output (writer draft) and final output (critic critique) shown in order; mid-chain quota halt and step-2 failure states preserve the intermediate output.",
+      "states": [
+        "empty",
+        "call1-running",
+        "intermediate-shown",
+        "call2-running",
+        "complete",
+        "step2-failed-retryable",
+        "quota-halted-mid-chain",
+        "quota-error"
+      ],
+      "reads": [
+        "IntermediateOutput",
+        "FinalOutput",
+        "UsageQuota"
+      ],
+      "writes": [
+        "UsageQuota",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [
+        "chained_prompt_form"
+      ],
+      "affordance": "show multi-step progress/status while it runs",
+      "invocation": {
+        "trigger": "User submits a free-form story prompt in the Chained-Calls example app",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "chained_role_play_generation",
+      "catalog_surface_id": "chained_role_play_generation",
+      "implements_feature_ids": [
+        "chained_calls_example_app"
+      ]
+    },
+    {
+      "name": "plan_overview",
+      "kind": "non_ai",
+      "screen": "screen-planning",
+      "implements_features": [
+        "Planning_Agent_Example_App"
+      ],
+      "inputs": [],
+      "output": "Educational card explaining the planning-agent pattern, the 1-planner + 3-executor per-run limit, the 3-runs-per-session limit, and the pattern's general unboundedness.",
+      "states": [
+        "idle"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "planning_agent_example_app"
+      ]
+    },
+    {
+      "name": "plan_goal_form",
+      "kind": "ai",
+      "screen": "screen-planning",
+      "implements_features": [
+        "planning_agent_example_app"
+      ],
+      "inputs": [
+        "city text input",
+        "interests text input",
+        "preset chips",
+        "generate plan button",
+        "runs-remaining tag"
+      ],
+      "output": "Invokes the planner call, decrementing the session run allowance.",
+      "states": [
+        "idle",
+        "validation-error",
+        "planning",
+        "run-limit-reached",
+        "quota-error"
+      ],
+      "reads": [
+        "Goal",
+        "RunAllowance",
+        "UsageQuota"
+      ],
+      "writes": [
+        "Goal",
+        "RunAllowance",
+        "UsageQuota",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [],
+      "affordance": "require explicit confirmation before the action commits; show multi-step progress/status while it runs",
+      "invocation": {
+        "trigger": "Two-phase: (1) user submits city + interests in the example app UI, which invokes the planner call and returns the displayed plan; (2) user's explicit advance signal triggers sequential execution of the planned steps.",
+        "mode": "asynchronous"
+      },
+      "catalog_surface": "trip_day_planning_agent",
+      "catalog_surface_id": "trip_day_planning_agent",
+      "implements_feature_ids": [
+        "planning_agent_example_app"
+      ]
+    },
+    {
+      "name": "plan_review_execute_panel",
+      "kind": "ai",
+      "screen": "screen-planning",
+      "implements_features": [
+        "planning_agent_example_app"
+      ],
+      "inputs": [
+        "execute plan button (explicit go-ahead)"
+      ],
+      "output": "Displayed plan of discrete steps with purposes and statuses (with trim warning if planner over-planned); on go-ahead, executor step results appear sequentially, ending with a morning/afternoon/evening itinerary; failed research steps and mid-run quota exhaustion are shown honestly.",
+      "states": [
+        "empty",
+        "plan-displayed-awaiting-goahead",
+        "plan-trimmed-warning",
+        "executing-step",
+        "step-failed",
+        "synthesis-halted-quota",
+        "itinerary-complete",
+        "itinerary-with-gaps"
+      ],
+      "reads": [
+        "Plan",
+        "PlanStep",
+        "StepResult",
+        "Itinerary",
+        "UsageQuota"
+      ],
+      "writes": [
+        "StepResult",
+        "Itinerary",
+        "UsageQuota",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [
+        "plan_goal_form"
+      ],
+      "affordance": "require explicit confirmation before execution; show multi-step progress/status while it runs",
+      "invocation": {
+        "trigger": "Two-phase: (1) user submits city + interests in the example app UI, which invokes the planner call and returns the displayed plan; (2) user's explicit advance signal triggers sequential execution of the planned steps.",
+        "mode": "asynchronous"
+      },
+      "catalog_surface": "trip_day_planning_agent",
+      "catalog_surface_id": "trip_day_planning_agent",
+      "implements_feature_ids": [
+        "planning_agent_example_app"
+      ]
+    },
+    {
+      "name": "embed_overview",
+      "kind": "non_ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "Embeddings_Example_App"
+      ],
+      "inputs": [],
+      "output": "Educational card explaining embeddings and the shared embedding model.",
+      "states": [
+        "idle"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "embed_custom_text_form",
+      "kind": "ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "embeddings_example_app"
+      ],
+      "inputs": [
+        "custom text input",
+        "suggestion chips",
+        "add to plot button"
+      ],
+      "output": "Triggers embedding + projection of custom text.",
+      "states": [
+        "idle",
+        "submitting"
+      ],
+      "reads": [],
+      "writes": [
+        "ProjectedPoint"
+      ],
+      "depends_on": [],
+      "affordance": "synchronous, plot updates within a moment",
+      "invocation": {
+        "trigger": "User submits custom text in the Embeddings Example App (preset examples are embedded and projected once at build/deploy time, not per-request)",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "custom_text_semantic_placement",
+      "catalog_surface_id": "custom_text_semantic_placement",
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "embed_plot",
+      "kind": "ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "embeddings_example_app"
+      ],
+      "inputs": [
+        "point hover"
+      ],
+      "output": "SVG scatter of 24 curated points colored by category plus distinct diamond markers for user texts; presets stay fixed so additions are comparable.",
+      "states": [
+        "presets-only",
+        "with-custom-points"
+      ],
+      "reads": [
+        "TextExample",
+        "ProjectedPoint",
+        "Category"
+      ],
+      "writes": [],
+      "depends_on": [
+        "embed_custom_text_form"
+      ],
+      "affordance": "stable projection \u2014 preset points never move",
+      "invocation": {
+        "trigger": "User submits custom text in the Embeddings Example App (preset examples are embedded and projected once at build/deploy time, not per-request)",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "custom_text_semantic_placement",
+      "catalog_surface_id": "custom_text_semantic_placement",
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "embed_placement_panel",
+      "kind": "ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "embeddings_example_app"
+      ],
+      "inputs": [],
+      "output": "Placement summary: matched cluster (or central placement warning) and nearest preset neighbors with distances; quota-exhausted error.",
+      "states": [
+        "empty",
+        "loading",
+        "placed-near-cluster",
+        "no-category-match",
+        "quota-error"
+      ],
+      "reads": [
+        "ProjectedPoint",
+        "UsageQuota"
+      ],
+      "writes": [
+        "UsageQuota",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [
+        "embed_custom_text_form"
+      ],
+      "affordance": "nearest-neighbor explanation of placement",
+      "invocation": {
+        "trigger": "User submits custom text in the Embeddings Example App (preset examples are embedded and projected once at build/deploy time, not per-request)",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "custom_text_semantic_placement",
+      "catalog_surface_id": "custom_text_semantic_placement",
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "console_request_tester",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [
+        "request type select",
+        "payload textarea",
+        "send request button",
+        "simulate limit button"
+      ],
+      "output": "Formatted service response (generated text, vector preview, or stored records) or a categorized quota-rejection message.",
+      "states": [
+        "idle",
+        "sending",
+        "success",
+        "quota-rejected"
+      ],
+      "reads": [
+        "GenerationRequest",
+        "EmbeddingVector",
+        "StoredRecord",
+        "UsageQuota"
+      ],
+      "writes": [
+        "StoredRecord",
+        "UsageQuota",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    },
+    {
+      "name": "console_usage_limits",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [],
+      "output": "Live usage bars for generation, representation, storage, and search capabilities with warn coloring near caps.",
+      "states": [
+        "normal",
+        "warn",
+        "exhausted"
+      ],
+      "reads": [
+        "UsageQuota"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    },
+    {
+      "name": "console_request_log",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [],
+      "output": "Table of recent cross-app requests (time, app, capability, summary).",
+      "states": [
+        "empty",
+        "populated"
+      ],
+      "reads": [
+        "ServiceLogEntry"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    }
+  ],
+  "shared_layout": {
+    "nav": "Sticky top bar with BWS4 brand, theme toggle, and a hamburger menu (top right) opening a dropdown listing Home, all six example apps, and the Framework Console.",
+    "shell": [
+      "topnav with brand + theme toggle + hamburger dropdown",
+      "screen-switching main container",
+      "global footer stating Spec4 provenance"
+    ]
+  }
+}

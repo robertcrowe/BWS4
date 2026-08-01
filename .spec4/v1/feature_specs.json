@@ -1,0 +1,303 @@
+{
+  "version": 1,
+  "features": [
+    {
+      "id": "landing_page",
+      "name": "Landing_Page",
+      "purpose": "Introduces BWS4 to visitors, explains that the platform and all its example apps were built using Spec4, and provides a navigable list of the available example apps.",
+      "invocation": {
+        "trigger": "A user navigates to the application's entry point."
+      },
+      "inputs": [
+        {
+          "name": "example_app_listing",
+          "type": "list of items",
+          "description": "Name, short description, and entry point for each available example app.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "An introductory explanation of BWS4 and a browsable list of example apps",
+        "format": "Structured page with text and navigable entries",
+        "schema_notes": "Each list entry includes a name, short description, and a way to open that example app."
+      },
+      "success_criteria": [
+        "Every currently available example app appears in the list",
+        "Selecting an entry opens the corresponding example app",
+        "The explanation clearly states BWS4 and its apps were built with Spec4"
+      ],
+      "failure_modes": [
+        {
+          "mode": "A newly added example app does not appear in the list",
+          "likelihood": "medium",
+          "mitigation": "Maintain a single authoritative source describing all available example apps that this page always reads from"
+        },
+        {
+          "mode": "An entry links to an app that fails to open",
+          "likelihood": "low",
+          "mitigation": "Verify each listed entry resolves to a working example app before it is shown"
+        }
+      ],
+      "dependencies": [
+        "rag_example_app",
+        "embeddings_example_app"
+      ],
+      "entities": [
+        "ExampleApp"
+      ],
+      "references": []
+    },
+    {
+      "id": "rag_example_app",
+      "name": "RAG_Example_App",
+      "purpose": "Demonstrates the retrieval-augmented generation pattern by answering user questions using a small public dataset, showing how retrieved information grounds a generated answer.",
+      "invocation": {
+        "trigger": "A user opens the RAG example app and submits a question."
+      },
+      "inputs": [
+        {
+          "name": "reference_dataset",
+          "type": "collection of documents",
+          "description": "A small, publicly available set of documents the app can search over.",
+          "required": true
+        },
+        {
+          "name": "user_question",
+          "type": "text",
+          "description": "The question the user wants answered.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A generated answer grounded in retrieved passages",
+        "format": "Text answer accompanied by the source passages used",
+        "schema_notes": "Includes the answer text plus a list of the specific passages that informed it."
+      },
+      "success_criteria": [
+        "Retrieved passages are topically relevant to the question",
+        "The generated answer reflects content actually present in the retrieved passages",
+        "Sources used are visibly shown alongside the answer"
+      ],
+      "failure_modes": [
+        {
+          "mode": "Retrieval returns passages unrelated to the question",
+          "likelihood": "medium",
+          "mitigation": "Use a curated, well-scoped dataset and verify retrieval quality against sample questions"
+        },
+        {
+          "mode": "Language generation is temporarily unavailable",
+          "likelihood": "medium",
+          "mitigation": "Fall back to an alternate available language provider"
+        },
+        {
+          "mode": "User submits an empty question",
+          "likelihood": "low",
+          "mitigation": "Reject empty input before attempting retrieval"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Document",
+        "Query",
+        "Answer",
+        "EmbeddingVector"
+      ],
+      "references": []
+    },
+    {
+      "id": "shared_framework_services",
+      "name": "Shared_Framework_Services",
+      "purpose": "Provides the common capabilities every example app relies on: generating language responses across multiple providers (including free-tier options), producing text embeddings with a single shared embedding model, and storing and retrieving small amounts of app data.",
+      "invocation": {
+        "trigger": "An example app requests language generation, a text embedding, or a data read/write operation."
+      },
+      "inputs": [
+        {
+          "name": "generation_request",
+          "type": "text prompt",
+          "description": "Text an example app wants a language response for.",
+          "required": false
+        },
+        {
+          "name": "embedding_request",
+          "type": "text",
+          "description": "Text an example app wants converted into a numeric semantic representation.",
+          "required": false
+        },
+        {
+          "name": "data_operation",
+          "type": "structured request",
+          "description": "A request to save or fetch small pieces of app data.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "Language responses, embedding vectors, and stored/retrieved data made available to requesting example apps",
+        "format": "Text responses, numeric vectors, and structured records",
+        "schema_notes": "The same embedding representation and storage behavior is used consistently across all example apps."
+      },
+      "success_criteria": [
+        "Any example app can obtain a language response without separately configuring its own provider",
+        "Any example app can obtain an embedding vector using the one shared embedding model",
+        "Data saved by an app can later be retrieved correctly",
+        "Behavior is consistent no matter which example app is calling"
+      ],
+      "failure_modes": [
+        {
+          "mode": "A given language provider is temporarily unavailable or rate-limited",
+          "likelihood": "medium",
+          "mitigation": "Automatically try an alternate available free-tier provider"
+        },
+        {
+          "mode": "Different apps end up using inconsistent embedding representations",
+          "likelihood": "low",
+          "mitigation": "Enforce a single shared embedding model used by all apps"
+        },
+        {
+          "mode": "Stored data becomes unavailable or unreadable",
+          "likelihood": "low",
+          "mitigation": "Detect and clearly report data access issues rather than failing silently"
+        }
+      ],
+      "dependencies": [],
+      "entities": [
+        "ModelProvider",
+        "EmbeddingModel",
+        "DataStore"
+      ],
+      "references": []
+    },
+    {
+      "id": "tool_use_integration",
+      "name": "Tool_Use_Integration",
+      "purpose": "Lets example apps that need real-world, up-to-date information issue external search lookups, illustrating the tool-use agentic pattern.",
+      "invocation": {
+        "trigger": "An example app's logic determines it needs external information and issues a search request."
+      },
+      "inputs": [
+        {
+          "name": "search_query",
+          "type": "text",
+          "description": "The query text to search for.",
+          "required": true
+        },
+        {
+          "name": "result_limit",
+          "type": "number",
+          "description": "Optional cap on how many results to return.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A list of relevant external search results",
+        "format": "List of items, each with a title, short snippet, and reference link",
+        "schema_notes": "Results are ordered by relevance to the query."
+      },
+      "success_criteria": [
+        "Returned results are topically relevant to the search query",
+        "Requesting example app can incorporate results into its own response",
+        "No results is communicated clearly rather than treated as an error"
+      ],
+      "failure_modes": [
+        {
+          "mode": "Free usage allowance for search is exhausted",
+          "likelihood": "medium",
+          "mitigation": "Detect the limit and inform the requesting app so it can degrade gracefully"
+        },
+        {
+          "mode": "Search returns no results",
+          "likelihood": "low",
+          "mitigation": "Report the empty outcome explicitly to the requesting app"
+        },
+        {
+          "mode": "Query is malformed or empty",
+          "likelihood": "low",
+          "mitigation": "Validate the query before issuing the search"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "SearchQuery",
+        "SearchResult"
+      ],
+      "references": []
+    },
+    {
+      "id": "embeddings_example_app",
+      "name": "Embeddings_Example_App",
+      "purpose": "Visually demonstrates the embedding pattern by plotting a curated set of texts in a 2D space based on semantic similarity, letting users add their own text and see it placed among the rest, alongside a short explanation of what embeddings are.",
+      "invocation": {
+        "trigger": "A user opens the embeddings example app, or submits custom text within it."
+      },
+      "inputs": [
+        {
+          "name": "preconfigured_examples",
+          "type": "list of text items",
+          "description": "A built-in curated set of words, short phrases, and sentences spanning multiple categories.",
+          "required": true
+        },
+        {
+          "name": "custom_text",
+          "type": "text",
+          "description": "Text entered by the user to be embedded and placed among the existing examples.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A 2D visual plot of all texts positioned by semantic similarity, plus an educational explanation of the embedding pattern",
+        "format": "Interactive visual plot with distinctly marked custom entries, accompanied by explanatory text",
+        "schema_notes": "Each plotted point is labeled with its source text; custom-entered points are visually distinguishable from the preconfigured ones."
+      },
+      "success_criteria": [
+        "Preconfigured examples visibly cluster by semantic category (e.g. animals near animals, emotions near emotions)",
+        "Submitting custom text adds it to the same plot, recalculated to include it",
+        "Custom text points are clearly visually distinct from preconfigured points",
+        "The explanation of the embedding pattern is present and understandable",
+        "The app follows the same layout as other example apps and is reachable from the landing page and navigation menu"
+      ],
+      "failure_modes": [
+        {
+          "mode": "The plot layout shifts drastically each time custom text is added, making comparison hard",
+          "likelihood": "medium",
+          "mitigation": "Apply the same projection approach consistently across recalculations"
+        },
+        {
+          "mode": "Custom text points are not visually distinguishable from preconfigured points",
+          "likelihood": "low",
+          "mitigation": "Enforce a distinct visual treatment for user-submitted points"
+        },
+        {
+          "mode": "This app ends up using a different embedding representation than other apps",
+          "likelihood": "low",
+          "mitigation": "Require use of the one shared embedding model rather than a separate one"
+        },
+        {
+          "mode": "User submits empty custom text",
+          "likelihood": "low",
+          "mitigation": "Validate input before attempting to embed and plot it"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "TextExample",
+        "EmbeddingVector",
+        "Projection",
+        "CustomText"
+      ],
+      "references": []
+    }
+  ],
+  "nfr_goals": [
+    "All example apps present a consistent, unified look and navigation experience",
+    "The platform operates using only free-tier language, embedding, and search resources",
+    "New example apps can be added without disrupting existing ones",
+    "Interactions within example apps feel responsive enough for live demonstration",
+    "The system degrades gracefully and communicates clearly when a free-tier usage limit is reached"
+  ]
+}

@@ -1,0 +1,280 @@
+```json
+{
+  "purpose": "Give the showcase visitor a single question box whose answer is produced by a visible fan-out/fan-in: one coordinator picks exactly two of four fixed specialists, writes a distinct brief for each, runs them side by side after the visitor confirms dispatch, and merges their independent answers into one integrated final response.",
+  "invocation": {
+    "trigger": "Two-phase, both visitor-initiated in the Orchestrated_Subagents_Example_App UI: (1) visitor submits a curated preset or free-form question -> coordinator delegation call runs immediately and the DelegationDecision is rendered; (2) visitor clicks the explicit 'Dispatch specialists' confirmation -> the two selected specialists run concurrently and the merged answer is streamed. No dispatch occurs without phase-2 confirmation.",
+    "mode": "streaming"
+  },
+  "inputs": [
+    {
+      "name": "question",
+      "type": "string (1–500 chars, UTF-8)",
+      "description": "The visitor's question, either the text of a chosen curated preset or free-form text typed into the box.",
+      "required": true
+    },
+    {
+      "name": "question_origin",
+      "type": "enum: preset | freeform",
+      "description": "Whether the question came from the curated preset list (carries a preset_id) or was typed. Used for eval bucketing and for the 'no good specialist fit' guardrail messaging.",
+      "required": true
+    },
+    {
+      "name": "specialist_roster",
+      "type": "array of 4 Specialist objects (id, display_name, expertise_summary, style_guidance)",
+      "description": "Fixed, deploy-time roster: systems_analyst, historian, skeptic, practitioner. Injected verbatim into the coordinator prompt and used as the enum domain for the delegation schema.",
+      "required": true
+    },
+    {
+      "name": "dispatch_confirmation",
+      "type": "boolean event (with delegation_decision_id)",
+      "description": "Explicit visitor confirmation that the shown delegation decision should be dispatched. Bound to the specific DelegationDecision so a stale decision cannot be dispatched.",
+      "required": true
+    },
+    {
+      "name": "session_runs_remaining",
+      "type": "integer 0–3",
+      "description": "Runs left in this app's per-session allowance (3), read from the shared_framework_services usage store keyed by the anonymous session cookie.",
+      "required": true
+    },
+    {
+      "name": "showcase_daily_allowance_state",
+      "type": "enum: available | exhausted",
+      "description": "Showcase-wide daily model budget state from shared_framework_services, so the UI can distinguish 'you used your 3 runs here' from 'the whole showcase is out for today'.",
+      "required": true
+    }
+  ],
+  "outputs": {
+    "primary": "One RunResult containing: the DelegationDecision (two chosen specialist ids, one-paragraph rationale, one distinct Brief per chosen specialist), two SubagentResults produced concurrently, and one MergedAnswer that integrates both.",
+    "format": "JSON object streamed to the UI as server-sent events (delegation.ready, specialist.delta[specialist_id], specialist.done, merge.delta, run.done, run.error)",
+    "schema_notes": "RunResult { run_id, session_id, question, question_origin, delegation: { decision_id, chosen: [specialist_id, specialist_id] (exactly 2, distinct, drawn from the 4-item roster enum), rationale: string(<=600 chars), briefs: [{ specialist_id, brief: string(40–400 chars), focus_tags: [string] }] (exactly 2, one per chosen id) }, results: [{ specialist_id, brief, answer_markdown, status: ok|failed|timeout, latency_ms, tokens }], merged: { answer_markdown, attribution: [{ claim_span, source_specialist_ids: [..] }], degraded: boolean }, call_ledger: { coordinator_logical_calls, specialist_calls, provider_requests } }. CALL BUDGET (authoritative): exactly three logical model calls per run — coordinator (1) + specialist A (2) + specialist B (3). The coordinator is a single logical agent invocation whose synthesis turn resumes the same delegation conversation/context after fan-in; the orchestrator hard-caps the run at 3 logical calls / 4 provider requests and aborts rather than exceeding it. The counter surfaced in the UI is the 3-logical-call ledger.",
+  },
+  "decision_authority": "confirm",
+  "success_criteria": [
+    "100% of delegation decisions select exactly two distinct specialists from the four-item roster (schema-validated; zero out-of-roster or wrong-count decisions reach the UI).",
+    "The DelegationDecision (rationale + both briefs) is rendered before any specialist call is issued in 100% of runs; zero dispatches without a matching dispatch_confirmation for that decision_id.",
+    "Both specialist calls are issued within 250ms of each other and their in-progress states overlap for >=80% of the shorter call's duration (measured from the call ledger).",
+    "Brief distinctness: cosine similarity between the two briefs' embeddings < 0.85 in >=95% of runs; median < 0.70.",
+    "Merge integration: LLM-judge rubric scores the merged answer >=4/5 on 'draws materially on both specialist answers' in >=90% of sampled runs; automated check finds >=1 distinctive claim from each specialist in >=95% of runs; verbatim concatenation detector fires in <2%.",
+    "Call ledger shows exactly 3 logical model calls (<=4 provider requests) in 100% of completed runs; hard cap never breached.",
+    "Runs-remaining counter matches the server-side usage store on every render; at 0 the input and dispatch button are disabled with an explanatory message and all previous run results remain on screen.",
+    "Exhaustion messaging correctly distinguishes session-limit vs showcase-daily-limit in 100% of exhausted states (verified by e2e tests for both).",
+    "Across the curated preset set, at least 4 distinct specialist pairings appear and no single pairing accounts for >40% of preset runs.",
+    "Session allowance survives navigating away and back within the session TTL: >=99% of returning sessions see the same runs-remaining value they left with."
+  ],
+  "failure_modes": [
+    {
+      "mode": "Coordinator selects an out-of-roster specialist, selects one or three, or duplicates a specialist.",
+      "likelihood": "low",
+      "mitigation": "Constrained structured output: chosen is an array with minItems/maxItems 2, uniqueItems, items restricted to the 4-id enum; server-side validation on top of provider schema enforcement. On violation, deterministic repair without an extra model call: dedupe, then fill the second slot from a keyword/embedding-ranked fallback over the roster; log a validation_repair event."
+    },
+    {
+      "mode": "Briefs are near-duplicates, so the two columns show effectively the same instruction.",
+      "likelihood": "medium",
+      "mitigation": "Prompt requires each brief to name a different angle plus non-overlapping focus_tags; post-generation embedding similarity check (>=0.85) triggers a deterministic differentiation pass that appends the roster's style_guidance-derived angle constraint to the second brief and flags the run for eval review. No extra model call."
+    },
+    {
+      "mode": "One specialist fails, errors, or is much slower than the other.",
+      "likelihood": "medium",
+      "mitigation": "Per-specialist 30s timeout and one cheap retry only for transport-level errors (not counted as a new logical call). Fan-in proceeds when the deadline passes: merge runs with the available answer, merged.degraded=true, and the failed column shows an explicit 'this specialist did not return' state. Streaming keeps both columns visibly active so slowness is legible rather than invisible."
+    },
+    {
+      "mode": "Merged answer concatenates the two specialist answers instead of integrating them.",
+      "likelihood": "medium",
+      "mitigation": "Synthesis prompt forbids per-specialist section headers, requires naming at least one point of agreement and one of tension, and requires attribution spans. Automated concatenation detector (longest common substring with either source > 200 chars, or answer ≈ A followed by B) flags the run; flagged runs still render but are sampled into the offline eval queue."
+    },
+    {
+      "mode": "A free-form question fits no specialist well, producing a forced or unhelpful pairing.",
+      "likelihood": "medium",
+      "mitigation": "Delegation schema includes fit_confidence (0–1) per chosen specialist; when both are below 0.4 the rationale must state the stretch, the UI shows a 'this question is outside the roster's sweet spot' note above the decision, and the visitor can revise the question before confirming dispatch (revision replaces the decision and re-runs delegation only — see budget note)."
+    },
+    {
+      "mode": "Allowance (session or showcase-daily) is exhausted between the delegation decision and dispatch confirmation.",
+      "likelihood": "medium",
+      "mitigation": "Allowance is re-checked and atomically decremented server-side at dispatch, not at delegation. If unavailable, the dispatch is refused with the correct limit-specific message, the delegation decision stays on screen labelled 'not dispatched', and the button is disabled."
+    },
+    {
+      "mode": "Visitor loses remaining runs after navigating away and back.",
+      "likelihood": "medium",
+      "mitigation": "Allowance is server-side, keyed by a signed HttpOnly session cookie with TTL >= session length; no reliance on in-memory client state. Completed runs are persisted per session and rehydrated on return."
+    },
+    {
+      "mode": "Prompt injection in a free-form question tries to change the roster, force a specific pairing, or make a specialist impersonate the coordinator.",
+      "likelihood": "medium",
+      "mitigation": "Question is passed as delimited untrusted data; roster and call budget live in system prompt and are enforced in code, not by the model. Specialist outputs are treated as untrusted content by the synthesis step and cannot alter routing or budgets."
+    },
+    {
+      "mode": "Run aborts mid-stream (network drop, provider 5xx on the synthesis turn) leaving specialist answers with no merged answer.",
+      "likelihood": "low",
+      "mitigation": "Partial RunResult is persisted; UI keeps both specialist columns visible with a 'merge failed' banner and a single free retry of the synthesis turn only (does not consume a run, does not exceed the 4-provider-request cap because the failed request is not counted)."
+    }
+  ],
+  "escalation": "No human operator is in the loop at runtime; this is a public demo. Degradation ladder: (1) schema violation -> deterministic repair, run continues, event logged; (2) one specialist down -> merge on the surviving answer with degraded=true and an on-screen explanation; (3) both specialists down or coordinator call fails -> refund the run to the session allowance, show a plain-language error plus the preserved delegation decision, and offer retry; (4) provider outage or showcase daily allowance exhausted -> disable input and dispatch with limit-specific messaging, keep all prior results on screen; (5) safety block on input or output -> refuse with a neutral message, do not consume a run. All (2)–(5) events emit structured logs and increment alerting counters; sustained error rate >5% over 15 minutes pages the showcase owner.",
+  "eval_approach": {
+    "offline": "Golden set of the ~8 curated presets plus ~40 free-form questions (including 8 deliberately off-roster ones), run through the full pipeline in a harness that records the call ledger. Automated checks per run: schema validity and roster membership (must be 100%), brief-pair embedding similarity, per-specialist distinctive-claim coverage in the merged answer, concatenation detector, pairing-diversity across presets, and logical-call count == 3. Plus an LLM-judge rubric (0–5) on: brief distinctness, specialist-answer relevance to its own brief, merge integration, and merge faithfulness (no claims absent from both sources). Regression gate in CI on prompt changes: no metric may drop more than 5% versus the recorded baseline. Fault-injection suite: kill specialist B, delay specialist A by 45s, force an invalid delegation JSON, exhaust allowance between decision and dispatch.",
+    "online": "Per-run structured telemetry: chosen pairing, fit_confidence, brief similarity, per-call and end-to-end latency, specialist latency skew, call ledger, degraded flag, validation_repair and concatenation-detector fires, error and refund rates, cost per run. Dashboards on pairing distribution (alert if one pairing >40% of preset runs), degraded-run rate (alert >5%), and p95 latency. Lightweight in-UI feedback (thumbs up/down on the merged answer) sampled into the review queue. Weekly human spot-check of 20 sampled runs against the same rubric used offline.",
+    "ground_truth": "Team hand-labels an expected/acceptable specialist pair (usually a set of 1–2 acceptable pairs) for each curated preset and for the free-form eval questions — that is the routing ground truth. For merge quality there is no single correct answer, so ground truth is a written rubric plus 30 human-scored reference runs used to calibrate the LLM judge (target: judge-vs-human agreement within 1 point on >=85% of items, re-calibrated whenever the judge model changes). Concatenation and distinctness checks are deterministic and need no labels."
+  },
+  "budgets": {
+    "cost_per_call": "$0.04 per completed run (all model calls combined: coordinator delegation ~$0.006, two specialists ~$0.012 each, coordinator synthesis ~$0.010 at mid-tier model pricing). Hard per-session ceiling $0.12 (3 runs).",
+    "p95_latency": "Delegation decision rendered (first token) 1.5s / complete 6s; dispatch -> both specialists complete 18s (parallel, not summed); dispatch -> merged answer complete 26s; first merged token within 20s of dispatch. Per-specialist hard timeout 30s."
+  },
+  "privacy_safety": [
+    "Free-form questions are untrusted user input: moderation-filtered on submission (refuse and do not consume a run on a block) and passed to the model inside explicit delimiters as data, never as instructions.",
+    "No account or identity is collected. Session state is keyed by a signed, HttpOnly, SameSite=Lax anonymous cookie; questions and run results are stored server-side with the session and purged at TTL (24h) or on session end.",
+    "Visitors are told above the input box not to enter personal or confidential information; a lightweight PII detector redacts obvious emails, phone numbers, and long digit strings before the text reaches any model or log.",
+    "Prompts, briefs, specialist answers, and merged answers are logged for eval, but logs store the redacted question text only and are access-controlled to the showcase team; retention 30 days.",
+    "Roster membership, pair count, dispatch gating, and the 3-call budget are enforced in application code, not by model compliance — no model output can widen them.",
+    "Merged output passes an output moderation check before rendering; on a block, the specialist columns are retained and the merged answer is replaced with a neutral refusal.",
+    "Model provider calls are made with zero-data-retention / no-training settings enabled where the provider offers them."
+  ],
+  "mechanisms": [
+    {
+      "name": "human_in_the_loop",
+      "rationale": "The product requires the delegation decision (pair + rationale + both briefs) to be inspected by the visitor and explicitly confirmed before any specialist is dispatched — that gate is the whole point of making orchestration visible, and it is also where the allowance is spent.",
+      "configuration": {
+        "gate_point": "after delegation call, before specialist fan-out",
+        "presented_artifact": "chosen pair, rationale, both briefs verbatim, fit_confidence warning when both < 0.4",
+        "actions": ["confirm_dispatch", "revise_question", "abandon"],
+        "binding": "confirmation carries delegation_decision_id; stale or mismatched ids are rejected",
+        "allowance_effect": "run is decremented atomically at confirm_dispatch, never at delegation",
+        "timeout": "decision stays valid for the session; no auto-dispatch ever"
+      }
+    },
+    {
+      "name": "parallel_fanout",
+      "rationale": "The two selected specialists work on independent briefs over the same question with no dependency between them; running them concurrently both halves latency and makes the side-by-side in-progress state visible, which is a stated success criterion.",
+      "configuration": {
+        "degree": 2,
+        "dispatch": "both calls issued within 250ms of each other from the same async scheduler",
+        "isolation": "each specialist receives only the question + its own brief + its own roster persona; never the other brief or the other answer",
+        "per_branch_timeout_ms": 30000,
+        "aggregation_policy": "wait_all_or_deadline; proceed to synthesis with >=1 successful branch, mark degraded when <2",
+        "streaming": "per-branch token deltas streamed to their own UI column, each column headed by its brief"
+      }
+    },
+    {
+      "name": "structured_outputs",
+      "rationale": "The delegation decision must be machine-checkable — exactly two distinct ids from a four-item enum, one brief per chosen id — so the roster and pair-count guarantees can be enforced by the schema and by code rather than by prompt compliance.",
+      "configuration": {
+        "applies_to": "coordinator delegation call only (specialist answers and the merged answer are free-form markdown)",
+        "enforcement": "provider-native JSON Schema / strict structured output mode plus server-side re-validation",
+        "schema": {
+          "chosen": "array<enum[systems_analyst, historian, skeptic, practitioner]>, minItems 2, maxItems 2, uniqueItems true",
+          "rationale": "string, <=600 chars",
+          "briefs": "array of exactly 2 objects { specialist_id (must match a chosen id), brief (40–400 chars), focus_tags (1–3 strings), fit_confidence (0–1) }"
+        },
+        "on_validation_failure": "deterministic repair (dedupe + ranked fallback fill), no additional model call, event logged"
+      }
+    }
+  ],
+  "references": [
+    "Anthropic — 'How we built our multi-agent research system' (orchestrator/subagent decomposition, parallel fan-out, synthesis): https://www.anthropic.com/engineering/built-multi-agent-research-system",
+    "OpenAI — Structured Outputs guide (schema-constrained generation, strict mode): https://platform.openai.com/docs/guides/structured-outputs",
+    "Anthropic — 'Building effective agents' (orchestrator-workers and parallelisation patterns, and when a single agent suffices): https://www.anthropic.com/engineering/building-effective-agents",
+    "OWASP Top 10 for LLM Applications — LLM01 Prompt Injection, LLM02 Insecure Output Handling: https://owasp.org/www-project-top-10-for-large-language-model-applications/",
+    "Internal: shared_framework_services spec — model gateway, usage allowance store, showcase layout and navigation contracts (build dependency)"
+  ],
+  "knowledge_sources": [
+    {
+      "name": "specialist_roster_config",
+      "type": "file_system",
+      "content_description": "Deploy-time YAML/JSON defining the four fixed specialists: id, display_name, expertise_summary, style_guidance, system prompt fragment, and the routing hints used by the deterministic fallback ranker.",
+      "update_frequency": "static (changes only on deploy)"
+    },
+    {
+      "name": "curated_presets",
+      "type": "file_system",
+      "content_description": "The ~8 curated preset questions shown in the UI, each tagged with its expected/acceptable specialist pairing for eval and chosen to demonstrate visibly different pairings.",
+      "update_frequency": "static (changes only on deploy)"
+    },
+    {
+      "name": "session_usage_store",
+      "type": "relational_db",
+      "content_description": "Per-session run allowance (3 per session), atomic decrement ledger, and persisted RunResults for rehydration after navigation. Provided by shared_framework_services.",
+      "update_frequency": "real-time"
+    },
+    {
+      "name": "showcase_daily_allowance",
+      "type": "api",
+      "content_description": "Showcase-wide daily model spend/call budget state, used to distinguish app-level exhaustion from showcase-level exhaustion in messaging.",
+      "update_frequency": "real-time"
+    },
+    {
+      "name": "run_telemetry_store",
+      "type": "document_store",
+      "content_description": "Structured per-run eval records: call ledger, pairing, brief similarity, judge scores, detector fires, latencies, costs.",
+      "update_frequency": "real-time (append-only), 30-day retention"
+    }
+  ],
+  "tool_access": {
+    "capabilities_needed": [
+      {
+        "purpose": "Issue the coordinator delegation call with strict structured output, the two specialist completions, and the coordinator synthesis turn — with per-run call-budget accounting.",
+        "source": "to_build_internal",
+        "mcp_server": null,
+        "protocol": "sdk_wrapped",
+        "rationale": "Thin internal wrapper over the shared_framework_services model gateway (provider SDK underneath). It owns the hard 3-logical-call cap, the ledger, timeouts, retries, and ZDR settings — behaviour that must be enforced in code, so a general-purpose tool protocol would only add indirection."
+      },
+      {
+        "purpose": "Read and atomically decrement the per-session run allowance at dispatch, and refund on hard failure.",
+        "source": "to_build_internal",
+        "mcp_server": null,
+        "protocol": "direct",
+        "rationale": "Provided by shared_framework_services as an in-process/DB call. Must be transactional and must never be model-invokable, so it is deliberately not exposed as a model-facing tool."
+      },
+      {
+        "purpose": "Query showcase-wide daily allowance state for limit-specific messaging.",
+        "source": "to_build_internal",
+        "mcp_server": null,
+        "protocol": "direct",
+        "rationale": "Same shared service; a simple read used by the UI/orchestrator, not by any model."
+      },
+      {
+        "purpose": "Moderate inbound questions and outbound merged answers.",
+        "source": "existing_third_party_non_mcp",
+        "mcp_server": null,
+        "protocol": "sdk_wrapped",
+        "rationale": "Provider moderation endpoint via its SDK — a single deterministic classification call on a fixed path; MCP would add a server hop with no discovery or interoperability benefit."
+      },
+      {
+        "purpose": "Embed briefs (and specialist answers) for the distinctness and integration checks.",
+        "source": "existing_third_party_non_mcp",
+        "mcp_server": null,
+        "protocol": "sdk_wrapped",
+        "rationale": "Small embedding model call used by deterministic guardrails and eval, invoked by application code rather than by any agent; not counted against the 3-call model budget since it is not a generative call (documented explicitly in the ledger as 'aux')."
+      }
+    ]
+  },
+  "topology": {
+    "coordinator_role": "Owns the entire user-facing voice and the run lifecycle. Turn 1 (delegation): reads the question plus the four-item roster and emits a strict-schema DelegationDecision — exactly two specialist ids, a rationale addressed to the visitor, a distinct brief per chosen specialist with focus_tags and fit_confidence. It then stops and waits for the visitor's dispatch confirmation. On confirmation the orchestrator (code, not the model) decrements the allowance and fans out. Turn 2 (synthesis): resuming the same conversation context, the coordinator receives both specialist answers as untrusted content and writes one integrated MergedAnswer — no per-specialist sections, at least one point of agreement and one of tension, attribution spans linking claims back to their source specialist(s). The coordinator never answers the question itself in turn 1 and never invents content absent from both specialist answers in turn 2. Roster membership, pair count, dispatch gating and the call cap are enforced by the orchestrator in code; the coordinator cannot widen them.",
+    "subagents": [
+      {
+        "name": "systems_analyst",
+        "role": "Breaks the question into mechanisms, components, causal structure and trade-offs; thinks in models, constraints and second-order effects.",
+        "input": "The visitor's question plus its own coordinator-written brief and persona/style guidance. Never sees the other brief or the other specialist's answer.",
+        "output": "Markdown answer (target 150–350 words) addressing only its brief, in its own analytical voice, streamed to its own UI column."
+      },
+      {
+        "name": "historian",
+        "role": "Supplies precedent and context — how the question has been answered before, what changed, what the trajectory suggests.",
+        "input": "The visitor's question plus its own coordinator-written brief and persona/style guidance. Never sees the other brief or the other specialist's answer.",
+        "output": "Markdown answer (target 150–350 words) grounded in precedent and change over time, streamed to its own UI column."
+      },
+      {
+        "name": "skeptic",
+        "role": "Stress-tests the question: risks, failure cases, counterarguments, hidden assumptions and where the obvious answer breaks.",
+        "input": "The visitor's question plus its own coordinator-written brief and persona/style guidance. Never sees the other brief or the other specialist's answer.",
+        "output": "Markdown answer (target 150–350 words) of concrete objections and conditions under which they bite, streamed to its own UI column."
+      },
+      {
+        "name": "practitioner",
+        "role": "Gives the concrete, do-it-tomorrow view: steps, tooling, cost, what actually happens in practice.",
+        "input": "The visitor's question plus its own coordinator-written brief and persona/style guidance. Never sees the other brief or the other specialist's answer.",
+        "output": "Markdown answer (target 150–350 words) of actionable specifics, streamed to its own UI column."
+      }
+    ],
+    "communication_pattern": "parallel",
+    "synthesis_approach": "Strict fan-in after both branches complete or the 30s deadline passes. The coordinator resumes its delegation context (so it already holds the question, its own rationale and both briefs) and receives the two answers labelled by specialist and delimited as untrusted content. It writes a single integrated answer: no per-specialist headings, an explicit statement of where the two views agree and where they pull apart, and attribution spans mapping claims to source specialist(s). Deterministic post-checks run before render — concatenation detector, per-specialist distinctive-claim coverage, and a faithfulness check that every attributed claim traces to a source answer. If only one branch succeeded, synthesis proceeds on that answer with merged.degraded=true and the UI says so plainly. There is no aggregation-by-voting and no re-dispatch: the run is capped at three logical model calls and the merge is the coordinator's final turn."
+  }
+}
+```

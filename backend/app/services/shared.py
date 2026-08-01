@@ -32,6 +32,21 @@ CAPABILITY_REPRESENTATION = "representation"
 CAPABILITY_STORAGE = "storage"
 CAPABILITY_SEARCH = "search"
 
+#: Whole planning-agent runs, capped per UTC hour.
+#:
+#: The one capability here that meters a *unit of work* rather than a provider
+#: call, and it does not replace the per-call gates -- a planning run reserves
+#: generation per model call and search per query as well. What it adds is a
+#: bound on one app's share of a pool five apps draw from: a run costs up to 7
+#: generation units, so without this a handful of runs could spend the whole
+#: hourly generation budget and take the other four example apps dark until
+#: the top of the hour.
+#:
+#: No migration was needed to add it. `reserve_capability` inserts a
+#: `usage_limits` row the first time a capability is seen, and no migration
+#: seeds that table -- 0005 creates it empty and 0007 only adds `window_start`.
+CAPABILITY_PLANNING = "planning"
+
 #: The two kinds of generation call, as recorded on
 #: language_generation_requests.mode. "structured" means a schema was demanded
 #: of the response and validated after it came back -- whether that schema was
@@ -47,9 +62,9 @@ MODE_STRUCTURED = "structured"
 #: against generation's 100, and because the RAG app spends a representation
 #: unit on *every* question but a generation unit only on above-threshold
 #: ones, the local model was mathematically guaranteed to take the whole
-#: showcase dark first. A daily cap is also the wrong instrument for the one
-#: real cost (CPU on a free dyno): it bounds the day, not the burst, and it
-#: disables the app until 00:00 UTC instead of shedding load. That job
+#: showcase dark first. A windowed cap is also the wrong instrument for the one
+#: real cost (CPU on a free dyno): it bounds the window, not the burst, and it
+#: disables the app until the window rolls instead of shedding load. That job
 #: belongs to a rate limit.
 UNMETERED_CAPABILITIES = frozenset({CAPABILITY_REPRESENTATION})
 
@@ -73,17 +88,18 @@ class ServiceUnavailableError(Exception):
     def __init__(self, capability: str) -> None:
         self.capability = capability
         super().__init__(
-            f"The '{capability}' capability has reached its free-tier usage limit "
-            "for today. It resets at 00:00 UTC."
+            f"The '{capability}' capability has reached the showcase-wide usage "
+            "limit for this hour. It resets at the top of the hour."
         )
 
 
 def _default_cap(capability: str) -> int:
-    """Look up the configured daily cap for a metered capability.
+    """Look up the configured hourly cap for a metered capability.
 
     Args:
-        capability: One of CAPABILITY_GENERATION, CAPABILITY_STORAGE, or
-            CAPABILITY_SEARCH. Each guards a real external quota.
+        capability: One of CAPABILITY_GENERATION, CAPABILITY_STORAGE,
+            CAPABILITY_SEARCH, or CAPABILITY_PLANNING. The first three guard a
+            real external quota; the last bounds one app's share of the first.
 
     Returns:
         The configured free-tier default cap for that capability.
@@ -95,9 +111,10 @@ def _default_cap(capability: str) -> int:
     """
     settings = get_settings()
     caps = {
-        CAPABILITY_GENERATION: settings.generation_daily_limit,
-        CAPABILITY_STORAGE: settings.storage_daily_limit,
-        CAPABILITY_SEARCH: settings.search_daily_limit,
+        CAPABILITY_GENERATION: settings.generation_hourly_limit,
+        CAPABILITY_STORAGE: settings.storage_hourly_limit,
+        CAPABILITY_SEARCH: settings.search_hourly_limit,
+        CAPABILITY_PLANNING: settings.planning_hourly_limit,
     }
     if capability in UNMETERED_CAPABILITIES:
         raise ValueError(
@@ -109,27 +126,35 @@ def _default_cap(capability: str) -> int:
     return caps[capability]
 
 
-def utc_today() -> date:
-    """Return today's date in UTC.
+def utc_window() -> datetime:
+    """Return the start of the current UTC hour.
 
-    The window boundary is UTC rather than server-local so the reset happens
-    at the same instant regardless of where the service is deployed.
+    The one place the window boundary is computed. Every metered capability on
+    both model lanes -- LiteLLM via `services/generation.py` and PydanticAI via
+    `services/agent_runtime.py` -- reaches the gate through
+    `reserve_capability`, which calls this; there is deliberately no second
+    implementation for any app to drift from.
+
+    UTC rather than server-local, so the reset happens at the same instant
+    regardless of where the service is deployed. Hourly since v5 (migration
+    0009): a filled allowance recovers at the top of the hour instead of
+    holding the showcase dark until midnight.
 
     Returns:
-        Today's UTC date.
+        The current UTC hour, with minutes and finer truncated.
     """
-    return datetime.now(timezone.utc).date()
+    return datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
 
 
 async def reserve_capability(
     session: AsyncSession, capability: str, *, app_name: str, units: int = 1
 ) -> None:
-    """Check a capability's daily usage_limits row and increment it, or reject.
+    """Check a capability's hourly usage_limits row and increment it, or reject.
 
-    The cap is a per-UTC-day budget. When the stored `window_start` predates
-    today the counter is rolled over to zero before the cap is checked, so a
-    capability that filled up yesterday serves again today without operator
-    intervention.
+    The cap is a per-UTC-hour budget. When the stored `window_start` predates
+    the current hour the counter is rolled over to zero before the cap is
+    checked, so a capability that filled up an hour ago serves again at the top
+    of the next one without operator intervention.
 
     Google-style docstring per project convention.
 
@@ -150,29 +175,29 @@ async def reserve_capability(
 
     Raises:
         ServiceUnavailableError: If the capability's usage counter has
-            already reached its configured cap *for today*, or if `units`
+            already reached its configured cap *for this hour*, or if `units`
             would take it past the cap.
     """
     del app_name  # not yet used to partition usage, kept for interface symmetry
-    today = utc_today()
+    window = utc_window()
 
     result = await session.execute(select(UsageLimit).where(UsageLimit.capability == capability))
     limit = result.scalar_one_or_none()
     if limit is None:
         limit = UsageLimit(
-            capability=capability, used=0, cap=_default_cap(capability), window_start=today
+            capability=capability, used=0, cap=_default_cap(capability), window_start=window
         )
         session.add(limit)
     elif limit.window_start is None:
         # Defensive only: the column is NOT NULL in the database, so a missing
-        # window means an in-memory row. Adopt today's date WITHOUT zeroing the
+        # window means an in-memory row. Adopt this hour WITHOUT zeroing the
         # counter -- for a spend limit, an unknown window must fail closed. The
         # opposite reading would let a null silently disable the cap entirely.
-        limit.window_start = today
-    elif limit.window_start < today:
-        # A new day: yesterday's total says nothing about today's budget.
+        limit.window_start = window
+    elif limit.window_start < window:
+        # A new hour: the previous one's total says nothing about this budget.
         limit.used = 0
-        limit.window_start = today
+        limit.window_start = window
 
     if limit.used + units > limit.cap:
         raise ServiceUnavailableError(capability)

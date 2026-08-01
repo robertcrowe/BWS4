@@ -117,8 +117,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000
 /**
  * A failure the backend described, carrying its machine-readable code.
  *
- * The code separates a spent daily budget (`usage_limit_reached`, which resets
- * at 00:00 UTC and cannot be retried into working) from an unreachable provider
+ * The code separates a spent hourly budget (`usage_limit_reached`, which resets
+ * at the top of the hour and cannot be retried into working) from an unreachable provider
  * (`generation_unavailable`, which can), without matching on prose.
  */
 export class ChainedCallsRequestError extends Error {

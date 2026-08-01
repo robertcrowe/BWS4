@@ -34,20 +34,74 @@ class Settings(BaseSettings):
     #: OpenRouter entries serve alone.
     groq_api_key: str | None = None
 
+    #: Optional, and read before it is used: the shared moderation service that
+    #: needs it arrives in the next phase. Optional rather than required
+    #: because the moderation gate guards *free-form* questions only — curated
+    #: preset questions are pre-vetted and skip it — so a deployment without
+    #: this key must still start and serve every existing example app.
+    #:
+    #: OpenAI's moderation endpoint is free of charge and does not draw on the
+    #: OpenRouter allowance, which is why the safety gate costs nothing against
+    #: the orchestrated run's three-call budget.
+    openai_api_key: str | None = None
+
+    #: Salt for the moderation log's question hash.
+    #:
+    #: Optional, and its absence is not fatal -- `services/moderation.py`
+    #: generates a process-stable salt and logs that it did. What is lost then
+    #: is only *comparability across restarts*: the same question hashes
+    #: differently after a redeploy, so "this question keeps arriving" stops
+    #: being answerable. What is never lost is the property that matters, since
+    #: an unsalted hash of a short question is effectively reversible by
+    #: guessing -- the space of plausible questions is small enough to
+    #: enumerate.
+    moderation_hash_salt: str | None = None
+
     #: Optional error tracking. Unset (the default) disables Sentry entirely
     #: rather than failing startup — see core/observability.py.
     sentry_dsn: str | None = None
     sentry_environment: str = "development"
 
-    #: Per-capability daily usage caps for shared_framework_services, chosen
-    #: to comfortably fit inside OpenRouter's/Neon's/Exa's free tiers.
+    #: Per-capability **hourly** usage caps for shared_framework_services.
+    #:
+    #: The window moved from per-UTC-day to per-UTC-hour in v5 (migration
+    #: 0009), and these values were re-based at the same time rather than
+    #: carried across. Leaving the old daily numbers on an hourly window would
+    #: have multiplied the showcase's worst-case spend by 24 -- 100/day becomes
+    #: 100/hour, or 2,400/day -- silently, and in the one direction that costs
+    #: the operator money.
+    #:
+    #: **An hourly window necessarily raises the theoretical daily ceiling**;
+    #: that is inherent to the change, not an oversight. What it buys is
+    #: recovery: a visitor who arrives just after the allowance filled waits
+    #: minutes rather than most of a day. The values below are chosen so the
+    #: saturated-every-hour worst case still lands inside the free tiers:
+    #:
+    #:   generation  25/hour ->   600/day worst case (OpenRouter funded: 1,000/day)
+    #:   storage     75/hour -> 1,800/day worst case (Neon: comfortably inside)
+    #:   search       5/hour ->   120/day worst case (Exa: **the tight one**)
+    #:
+    #: Search is the one to watch. The old cap was 30/day and Exa's free tier
+    #: is the smallest of the three, so an operator on a tighter Exa plan
+    #: should lower `SEARCH_HOURLY_LIMIT`; note too that one tool-use request
+    #: can spend up to 3 search units, so 5/hour is already only ~2 requests.
     #:
     #: There is deliberately no embedding/representation cap: that model runs
     #: in-process, so it spends local CPU and nobody's quota. See
     #: services/shared.UNMETERED_CAPABILITIES for the full reasoning.
-    generation_daily_limit: int = 100
-    storage_daily_limit: int = 300
-    search_daily_limit: int = 30
+    generation_hourly_limit: int = 25
+    storage_hourly_limit: int = 75
+    search_hourly_limit: int = 5
+
+    #: Planning-agent runs per UTC hour.
+    #:
+    #: Not a duplicate of `generation_hourly_limit`, which this app also spends
+    #: per model call: it caps this app's *share* of that shared pool. One run
+    #: costs up to 7 generation units, so uncapped planning could consume the
+    #: whole hourly allowance and take RAG, single call, tool use and chained
+    #: calls dark with it. At 3 runs the worst case is ~21 units against 25,
+    #: which is tight by design -- planning is the most expensive app here.
+    planning_hourly_limit: int = 3
 
 
 @lru_cache

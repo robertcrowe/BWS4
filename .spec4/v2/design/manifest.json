@@ -1,0 +1,566 @@
+{
+  "entities": [
+    {
+      "name": "ExampleApp",
+      "fields": [
+        "name",
+        "description",
+        "tag",
+        "target",
+        "status"
+      ]
+    },
+    {
+      "name": "Dataset",
+      "fields": [
+        "documents (title, source, text)"
+      ]
+    },
+    {
+      "name": "Query",
+      "fields": [
+        "text",
+        "timestamp"
+      ]
+    },
+    {
+      "name": "Answer",
+      "fields": [
+        "text",
+        "confidence",
+        "citations"
+      ]
+    },
+    {
+      "name": "RetrievedPassage",
+      "fields": [
+        "title",
+        "source",
+        "text",
+        "score"
+      ]
+    },
+    {
+      "name": "GenerationRequest",
+      "fields": [
+        "prompt",
+        "requestingApp",
+        "mode"
+      ]
+    },
+    {
+      "name": "EmbeddingRequest",
+      "fields": [
+        "text",
+        "requestingApp"
+      ]
+    },
+    {
+      "name": "SearchResult",
+      "fields": [
+        "title",
+        "summary",
+        "source"
+      ]
+    },
+    {
+      "name": "StoredRecord",
+      "fields": [
+        "key",
+        "value",
+        "writtenBy"
+      ]
+    },
+    {
+      "name": "ToolRequest",
+      "fields": [
+        "query",
+        "resultCount"
+      ]
+    },
+    {
+      "name": "TextSample",
+      "fields": [
+        "text",
+        "category"
+      ]
+    },
+    {
+      "name": "EmbeddingPoint",
+      "fields": [
+        "text",
+        "x",
+        "y",
+        "category",
+        "isCustom"
+      ]
+    },
+    {
+      "name": "Projection",
+      "fields": [
+        "viewW",
+        "viewH",
+        "categoryCenters"
+      ]
+    },
+    {
+      "name": "Prompt",
+      "fields": [
+        "text",
+        "sourcePresetId"
+      ]
+    },
+    {
+      "name": "PresetPrompt",
+      "fields": [
+        "id",
+        "label",
+        "intent",
+        "promptText"
+      ]
+    },
+    {
+      "name": "Response",
+      "fields": [
+        "mode",
+        "plainText",
+        "structuredObject",
+        "schemaConforming"
+      ]
+    },
+    {
+      "name": "UsageLimit",
+      "fields": [
+        "capabilityLabel",
+        "used",
+        "cap"
+      ]
+    },
+    {
+      "name": "ServiceLogEntry",
+      "fields": [
+        "time",
+        "app",
+        "capability",
+        "summary"
+      ]
+    }
+  ],
+  "screens": [
+    {
+      "id": "screen-landing",
+      "audience": "developers evaluating Spec4 / learners",
+      "purpose": "Introduce BWS4, state Spec4 provenance, list all example apps",
+      "surfaces": [
+        "app_directory_listing"
+      ]
+    },
+    {
+      "id": "screen-rag",
+      "audience": "developers learning agentic patterns",
+      "purpose": "Demonstrate retrieval-augmented generation end-to-end",
+      "surfaces": [
+        "dataset_browser",
+        "rag_example_app"
+      ]
+    },
+    {
+      "id": "screen-tooluse",
+      "audience": "developers learning agentic patterns",
+      "purpose": "Demonstrate tool-use / function calling via a live search step",
+      "surfaces": [
+        "tool_use_example_app"
+      ]
+    },
+    {
+      "id": "screen-singlecall",
+      "audience": "developers learning agentic patterns",
+      "purpose": "Demonstrate the single-call pattern in plain and structured response modes",
+      "surfaces": [
+        "single_call_explainer",
+        "single_call_generation"
+      ]
+    },
+    {
+      "id": "screen-embeddings",
+      "audience": "developers learning agentic patterns",
+      "purpose": "Visualize semantic clustering of preset text and placement of custom text",
+      "surfaces": [
+        "embeddings_explainer",
+        "embeddings_plot",
+        "custom_text_semantic_placement"
+      ]
+    },
+    {
+      "id": "screen-console",
+      "audience": "Spec4 team / maintainers",
+      "purpose": "Inspect and exercise shared framework services directly",
+      "surfaces": [
+        "service_request_tester",
+        "usage_limit_display",
+        "cross_app_request_log"
+      ]
+    }
+  ],
+  "surfaces": [
+    {
+      "name": "app_directory_listing",
+      "kind": "non_ai",
+      "screen": "screen-landing",
+      "implements_features": [
+        "Landing_Page"
+      ],
+      "inputs": [],
+      "output": "Grid of app cards with name, description, tag, and open action (or 'coming soon')",
+      "states": [
+        "default"
+      ],
+      "reads": [
+        "ExampleApp"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "landing_page"
+      ]
+    },
+    {
+      "name": "dataset_browser",
+      "kind": "non_ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "RAG_Example_App"
+      ],
+      "inputs": [
+        "expand/collapse toggle per document"
+      ],
+      "output": "Expandable list of the 5 reference documents",
+      "states": [
+        "collapsed",
+        "expanded"
+      ],
+      "reads": [
+        "Dataset"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "rag_example_app",
+      "kind": "ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "rag_example_app"
+      ],
+      "affordance": "form submit -> staged retrieval then generation, answer + passages rendered",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "rag_example_app",
+      "inputs": [
+        "question text input",
+        "preset question chips"
+      ],
+      "output": "Generated answer with citations plus list of retrieved passages and match scores",
+      "states": [
+        "idle",
+        "retrieving",
+        "generating",
+        "low-confidence/dataset-gap",
+        "service-unavailable"
+      ],
+      "reads": [
+        "Dataset",
+        "Query"
+      ],
+      "writes": [
+        "Answer",
+        "RetrievedPassage",
+        "UsageLimit",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [
+        "dataset_browser"
+      ],
+      "catalog_surface_id": "rag_example_app",
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "tool_use_example_app",
+      "kind": "ai",
+      "screen": "screen-tooluse",
+      "implements_features": [
+        "Tool_Use_Integration"
+      ],
+      "affordance": "multi-step progress (parse -> search -> synthesize) then answer + result list",
+      "invocation": "Visitor submits a live-lookup query (typed or preset chip)",
+      "catalog_surface": "tool_use_example_app",
+      "inputs": [
+        "query text input",
+        "preset query chips"
+      ],
+      "output": "Synthesized answer citing live search results, with routing indicator",
+      "states": [
+        "idle",
+        "parsing",
+        "searching",
+        "synthesizing",
+        "tool-unavailable"
+      ],
+      "reads": [
+        "Query"
+      ],
+      "writes": [
+        "SearchResult",
+        "Answer",
+        "UsageLimit",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [],
+      "catalog_surface_id": "tool_use_example_app",
+      "implements_feature_ids": [
+        "tool_use_integration"
+      ]
+    },
+    {
+      "name": "single_call_explainer",
+      "kind": "non_ai",
+      "screen": "screen-singlecall",
+      "implements_features": [
+        "Single_Call_Example_App"
+      ],
+      "inputs": [],
+      "output": "Short explanation of the single-call pattern and when it's appropriate",
+      "states": [
+        "default"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "single_call_example_app"
+      ]
+    },
+    {
+      "name": "single_call_generation",
+      "kind": "ai",
+      "screen": "screen-singlecall",
+      "implements_features": [
+        "single_call_example_app"
+      ],
+      "affordance": "preset chips + prompt textarea + mode toggle (Simple/Structured) + submit -> single response shown; structured mode shows request+response side by side with conformance check",
+      "invocation": {
+        "trigger": "User enters or selects a preset prompt, chooses a response mode (plain or structured), and submits the form.",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "single_call_generation",
+      "inputs": [
+        "preset prompt chips (labeled by intent: summarize/classify/extract)",
+        "free-text prompt textarea",
+        "mode toggle (Simple/Structured)"
+      ],
+      "output": "Simple mode: plain-text answer. Structured mode: request payload and schema-conforming (or flagged non-conforming) JSON response shown together",
+      "states": [
+        "idle",
+        "blocked-empty-prompt",
+        "loading",
+        "simple-result",
+        "structured-result-conforming",
+        "structured-result-mismatch",
+        "service-unavailable"
+      ],
+      "reads": [
+        "PresetPrompt",
+        "Prompt"
+      ],
+      "writes": [
+        "Response",
+        "UsageLimit",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [],
+      "catalog_surface_id": "single_call_generation",
+      "implements_feature_ids": [
+        "single_call_example_app"
+      ]
+    },
+    {
+      "name": "embeddings_explainer",
+      "kind": "non_ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "Embeddings_Example_App"
+      ],
+      "inputs": [],
+      "output": "Short explanation of what embeddings are and what the plot shows",
+      "states": [
+        "default"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "embeddings_plot",
+      "kind": "non_ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "Embeddings_Example_App"
+      ],
+      "inputs": [],
+      "output": "Fixed 2D SVG scatter of 24 preset texts across 4 categories, with legend",
+      "states": [
+        "default",
+        "with-custom-points"
+      ],
+      "reads": [
+        "TextSample",
+        "EmbeddingPoint",
+        "Projection"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "custom_text_semantic_placement",
+      "kind": "ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "embeddings_example_app"
+      ],
+      "affordance": "form submit -> loading -> new distinct-colored point merged into existing plot + nearest-neighbor list",
+      "invocation": {
+        "trigger": "User submits custom text in the Embeddings Example App (preset examples are embedded and projected once at build/deploy time, not per-request)",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "custom_text_semantic_placement",
+      "inputs": [
+        "custom text input",
+        "preset suggestion chips"
+      ],
+      "output": "New point rendered in a distinct color/shape on the shared plot, plus its nearest preset neighbors and distances",
+      "states": [
+        "idle",
+        "embedding",
+        "placed-in-cluster",
+        "no-strong-match",
+        "service-unavailable"
+      ],
+      "reads": [
+        "EmbeddingPoint",
+        "Projection"
+      ],
+      "writes": [
+        "EmbeddingPoint",
+        "UsageLimit",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [
+        "embeddings_plot"
+      ],
+      "catalog_surface_id": "custom_text_semantic_placement",
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "service_request_tester",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [
+        "request type select",
+        "request payload textarea",
+        "send button",
+        "simulate-limit button"
+      ],
+      "output": "Simulated response text for generation/representation/storage requests, or a clear limit-reached error",
+      "states": [
+        "idle",
+        "sending",
+        "response",
+        "error-limit-reached"
+      ],
+      "reads": [
+        "GenerationRequest",
+        "EmbeddingRequest",
+        "StoredRecord"
+      ],
+      "writes": [
+        "UsageLimit",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    },
+    {
+      "name": "usage_limit_display",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [],
+      "output": "Progress bars for each shared capability's daily usage vs cap",
+      "states": [
+        "normal",
+        "near-limit",
+        "exhausted"
+      ],
+      "reads": [
+        "UsageLimit"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    },
+    {
+      "name": "cross_app_request_log",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [],
+      "output": "Table of recent requests across all example apps (time, app, capability, summary)",
+      "states": [
+        "empty",
+        "populated"
+      ],
+      "reads": [
+        "ServiceLogEntry"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    }
+  ],
+  "shared_layout": {
+    "nav": "Sticky top nav with brand mark, screen-switch buttons (Home, RAG Example, Tool-Use Example, Single-Call Example, Embeddings Example, Framework Console), and theme toggle",
+    "shell": [
+      "topnav",
+      "main screen container (single active .screen at a time)",
+      "footer"
+    ]
+  }
+}

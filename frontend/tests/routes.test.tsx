@@ -45,6 +45,24 @@ describe('the app directory and the router', () => {
     }
   })
 
+  it('has a catalogue entry for every example-app route, and vice versa', () => {
+    // The feature's first-named failure runs in **both** directions: a
+    // catalogue that lists an app which cannot be opened, and a route that
+    // exists with no way to reach it. Set equality catches duplication and
+    // divergence in one assertion, so the next app added cannot register in
+    // only one of the two places.
+    //
+    // The exclusions are the routes that are not example apps. Listing them
+    // explicitly means a new infrastructure route is a deliberate line here
+    // rather than something that quietly slips past the check.
+    const NON_APP_PATHS = new Set(['/', '/health'])
+
+    const appRoutes = new Set([...declaredPaths].filter((path) => !NON_APP_PATHS.has(path)))
+    const catalogueRoutes = new Set(exampleApps.map((app) => app.route))
+
+    expect([...appRoutes].sort()).toEqual([...catalogueRoutes].sort())
+  })
+
   it('gives every entry a distinct route', () => {
     const routes = exampleApps.map((app) => app.route)
 
@@ -72,6 +90,8 @@ describe('the app directory and the router', () => {
         'single_call_example_app',
         'embeddings_example_app',
         'chained_calls_example_app',
+        'planning_agent_example_app',
+        'orchestrated_subagents_example_app',
       ]),
     )
   })

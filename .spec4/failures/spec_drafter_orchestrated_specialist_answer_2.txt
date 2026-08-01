@@ -1,0 +1,261 @@
+```json
+{
+  "purpose": "Demonstrate orchestrated sub-agents end-to-end: one coordinator reads a visitor's question, picks exactly two of four fixed specialists, writes a distinct brief for each, and — after the visitor confirms — runs both specialists side by side and returns one merged answer that visibly draws on both.",
+  "invocation": {
+    "trigger": "Two-phase visitor action in the showcase example app: (1) visitor submits a question (curated preset or free-form) → coordinator delegation call; (2) visitor clicks 'Dispatch specialists' on the displayed delegation decision → parallel specialist fan-out and synthesis. No dispatch occurs without the explicit second confirmation.",
+    "mode": "streaming"
+  },
+  "inputs": [
+    {
+      "name": "question",
+      "type": "string (<= 600 chars)",
+      "description": "The visitor's question, either the text of a curated preset or free-form input.",
+      "required": true
+    },
+    {
+      "name": "question_source",
+      "type": "enum: preset | freeform",
+      "description": "Whether the question came from the curated preset list or was typed by the visitor. Used for telemetry (preset → pairing diversity metric) and for prompt framing.",
+      "required": true
+    },
+    {
+      "name": "preset_id",
+      "type": "string | null",
+      "description": "Identifier of the curated preset when question_source = preset; null otherwise.",
+      "required": false
+    },
+    {
+      "name": "specialist_roster",
+      "type": "array of 4 Specialist objects {id, display_name, expertise_summary, scoping_clause}",
+      "description": "The fixed roster of four specialists, loaded from static config. Serves as the closed enum for coordinator selection.",
+      "required": true
+    },
+    {
+      "name": "session_id",
+      "type": "string (opaque, cookie-backed)",
+      "description": "Server-side session key used to look up and persist the three-run session allowance and all prior run results so they survive navigation.",
+      "required": true
+    },
+    {
+      "name": "dispatch_confirmation",
+      "type": "boolean event {run_id, confirmed_at}",
+      "description": "Explicit visitor confirmation on the shown delegation decision. Phase 2 does not start without it.",
+      "required": true
+    },
+    {
+      "name": "remaining_run_allowance",
+      "type": "integer (0..3)",
+      "description": "Runs left in this app's three-run session limit, read from the session store at request time. Distinct from the showcase-wide daily allowance.",
+      "required": true
+    }
+  ],
+  "outputs": {
+    "primary": "A DelegationDecision (two chosen specialists, selection rationale, one distinct Brief per specialist, integration outline), two SubagentResults streamed concurrently under their briefs, and one MergedAnswer that weaves both — plus the updated runs-remaining count.",
+    "format": "JSON object streamed as phased server-sent events: delegation → subagent_a_delta / subagent_b_delta (interleaved) → merged_answer → run_complete",
+    "schema_notes": "DelegationDecision { run_id, chosen: [ {specialist_id (enum from roster), brief: {focus, questions_to_answer[], out_of_scope, tone}} ] (length exactly 2, distinct ids), rationale (<=60 words), fit_confidence (0-1), integration_outline: [ {section_title, requires_from: ['a','b'|both], connective_framing} ] }. SubagentResult { specialist_id, status: ok|timeout|error, claim_units: [ {id, heading, text, confidence} ] (3-6 units), prose_answer, tokens, latency_ms }. MergedAnswer { sections: [ {title, body, sourced_from: [specialist_ids], claim_unit_refs[]} ], coverage: {a_share, b_share}, degraded: bool, degraded_reason }. Model-call ledger { count: 3 } is attached to every run and is a hard invariant.",
+  },
+  "decision_authority": "confirm",
+  "success_criteria": [
+    "100% of runs select exactly two specialist_ids, both drawn from the four-item roster, with no duplicates (validated post-generation, before display).",
+    "Delegation rationale and both briefs are rendered before any specialist call is issued in 100% of runs (enforced by the confirmation gate; measured as zero specialist calls with confirmed_at == null).",
+    "Brief distinctness: token-level Jaccard similarity between the two briefs <= 0.5 in >= 95% of runs; zero runs ship with similarity > 0.7.",
+    "Parallelism is visible: the two specialist streams overlap for >= 80% of the shorter stream's duration; both columns show 'in progress' simultaneously.",
+    "Merged answer integrates both: each specialist contributes >= 30% of merged content units, and >= 50% of sections cite both specialists, in >= 90% of non-degraded runs.",
+    "Exactly three model calls per run, never more — asserted by a hard per-run call budget that throws rather than issuing a fourth call; 0 violations in telemetry.",
+    "Runs-remaining is displayed and decrements by exactly one per run; at zero, the input and dispatch button are disabled with an explanation and all prior results remain rendered.",
+    "Session-limit exhaustion and showcase-wide daily-allowance exhaustion produce visibly different messages (two distinct copy strings, verified by test).",
+    ">= 4 distinct specialist pairings appear across the curated preset set (>= 6 presets), demonstrating routing is question-dependent.",
+    "Prior run results and the allowance count survive navigating away and back (session-store restore verified in E2E test)."
+  ],
+  "failure_modes": [
+    {
+      "mode": "Coordinator selects a specialist outside the roster, or fewer/more than two.",
+      "likelihood": "low",
+      "mitigation": "Constrained decoding with specialist_id as a closed enum and an exactly-2 array constraint; post-parse validator. On violation there is NO repair call (would break the 3-call budget): fall back deterministically to a keyword-overlap ranking over roster expertise_summary, pick the top two, and flag delegation_source='fallback' in telemetry (still displayed as a normal decision, rationale from template)."
+    },
+    {
+      "mode": "The two briefs are near-duplicates, so the fan-out looks pointless.",
+      "likelihood": "medium",
+      "mitigation": "Prompt requires each brief to name what it deliberately leaves to the other specialist ('out_of_scope' field, must reference the sibling). Deterministic Jaccard check; if > 0.5, append each specialist's roster scoping_clause to its brief and re-run the check — text surgery only, no extra model call."
+    },
+    {
+      "mode": "One specialist errors out or is far slower than the other.",
+      "likelihood": "medium",
+      "mitigation": "Independent per-specialist 25s timeout and error boundary per column; a failed column shows an inline error card while the other keeps streaming. Synthesis proceeds from the surviving specialist with degraded=true and an on-screen note. No retry (call budget)."
+    },
+    {
+      "mode": "Merged answer is a concatenation of the two specialist answers rather than an integration.",
+      "likelihood": "medium",
+      "mitigation": "Synthesis is not free-form: the coordinator commits an integration_outline in call 1 whose sections are typed (convergence / tension / combined recommendation) and require claim units from both sides; the deterministic composer weaves claim_units into those sections using the coordinator's connective_framing and refuses to emit a section-per-specialist layout. Coverage validator (a_share/b_share) flags any run below the 30% threshold."
+    },
+    {
+      "mode": "A free-form question fits no specialist well, forcing an unhelpful pairing.",
+      "likelihood": "medium",
+      "mitigation": "Coordinator emits fit_confidence; below 0.4 the UI renders a 'best-effort pairing — this roster is fixed for demo purposes' banner above the decision and the briefs are asked to state their angle explicitly. The visitor can decline to confirm dispatch and rewrite the question at no allowance cost only if the run slot has not yet been reserved (see next mode)."
+    },
+    {
+      "mode": "Allowance is exhausted between showing the delegation decision and the visitor confirming dispatch.",
+      "likelihood": "low",
+      "mitigation": "The session run slot is atomically reserved (decremented) when the delegation call is issued, not at dispatch, so a shown decision is always dispatchable. Reservations expire after 15 minutes and are returned. If the showcase-wide daily allowance runs out in the gap, the dispatch button is disabled with the daily-allowance-specific message and the decision stays on screen."
+    },
+    {
+      "mode": "Visitor loses remaining runs after navigating away and back.",
+      "likelihood": "medium",
+      "mitigation": "Allowance and full run history are server-side, keyed by a persistent session cookie (SameSite=Lax, 24h), never client-only state; page load rehydrates from the session store."
+    },
+    {
+      "mode": "Prompt injection in the free-form question tries to change the roster, the number of specialists, or the merged answer.",
+      "likelihood": "medium",
+      "mitigation": "Question is passed as clearly delimited data, never as instructions; selection is enum-constrained so injection cannot invent a specialist; validators run on structure regardless of model output; system prompt states that user text cannot alter roster, count, or call budget."
+    }
+  ],
+  "escalation": "No human operator is in the loop at runtime. Layered degradation: invalid delegation → deterministic keyword fallback pairing; one specialist down → single-source merged answer marked degraded; both specialists down → show the delegation decision plus a 'specialists unavailable' card, refund the reserved run slot, and offer retry; model gateway unavailable at phase 1 → error state with retry, no allowance consumed. All validator violations (off-roster selection, duplicate briefs, coverage below threshold, call-budget assertion) emit structured alerts to the showcase ops channel for maintainer review; call-budget violations are treated as P1 because the three-call invariant is a headline claim of the demo.",
+  "eval_approach": {
+    "offline": "Golden set of ~40 questions (all curated presets plus free-form spanning clear-fit, cross-cutting, and poor-fit cases). Automated checks per case: roster validity, exactly-two, brief Jaccard, integration coverage (a_share/b_share), call-count == 3, latency. Pairing diversity measured across presets. Separate offline-only LLM-as-judge (a stronger model, not part of the runtime budget) scores merged answers on 'integrates vs. concatenates' and 'briefs are genuinely different' on a 1-5 scale; ship gate is mean >= 4.0 and no case < 3. Fault-injection suite: forced specialist timeout, forced error, forced off-roster output, allowance exhaustion mid-run, session restore after reload.",
+    "online": "Per-run telemetry: model_call_count (hard assert), delegation_source (model|fallback), brief similarity, fit_confidence distribution, per-specialist latency and timeout rate, stream overlap ratio, coverage shares, degraded-run rate, pairing distribution by preset_id, allowance events (reserve/consume/expire/refund), and distinct-message rate for session vs. daily exhaustion. Dashboard alerts on call-count != 3 (any), degraded-run rate > 5%/day, coverage failures > 10%/day, or a single pairing exceeding 60% of preset runs (routing collapse).",
+    "ground_truth": "Maintainers hand-label the golden set with an acceptable-pairings list per question (multi-valid: any pairing in the set counts as correct) and write a reference brief pair for 10 anchor cases. Merged-answer quality ground truth comes from two maintainer reviews per anchor case (integrates / concatenates / single-sided), with the LLM judge calibrated against those labels and re-checked whenever the prompt or model version changes."
+  },
+  "budgets": {
+    "cost_per_call": "$0.015 per complete run (3 model calls: coordinator delegation ~$0.003 with structured output, two specialists ~$0.006 each at ~600 output tokens); hard ceiling $0.03/run",
+    "p95_latency": "Delegation decision on screen: 5s p95 (first token < 1.5s). Full run after confirmation: 18s p95 end-to-end, with both specialist streams starting within 400ms of each other; per-specialist hard timeout 25s."
+  },
+  "privacy_safety": [
+    "Free-form questions may contain incidental PII; store the raw question only in the session record with 24h TTL, redact emails/phone numbers/long digit strings before writing to analytics or logs, and never send question text to third-party analytics.",
+    "Session identifier is a random opaque token — no accounts, no IP storage beyond the rate-limiter's rolling window.",
+    "Input moderation on free-form questions before the coordinator call (provider moderation endpoint, non-model-budget); blocked categories return a refusal card and consume no allowance.",
+    "Output safety: specialist and merged text pass the same moderation filter before render; a flagged specialist column is replaced with a safety notice and the run continues degraded.",
+    "Prompt-injection containment: question is delimited data; roster, specialist count, and call budget are enforced in code, not by the prompt, so no user text can change them.",
+    "Specialists have no tool access and no network egress — they are pure text generators over their brief and the question, which bounds the blast radius of injected instructions.",
+    "Abuse control: per-session three-run limit plus a per-IP hourly cap and the showcase-wide daily allowance; all three are enforced server-side."
+  ],
+  "mechanisms": [
+    {
+      "name": "human_in_the_loop",
+      "rationale": "The product requires the delegation decision (chosen pair, rationale, both briefs) to be visible and explicitly confirmed before any specialist runs — this gate is the pedagogical point of the demo, not just a safety measure.",
+      "configuration": {
+        "gate_point": "between coordinator delegation call and specialist fan-out",
+        "surface": "delegation card with both briefs shown side by side and a 'Dispatch both specialists' button",
+        "default_on_no_action": "no dispatch; reservation expires after 15 minutes and the run slot is refunded",
+        "visitor_can_edit": false,
+        "visitor_can_cancel": true
+      }
+    },
+    {
+      "name": "parallel_fanout",
+      "rationale": "Both specialists work from independent briefs on the same question with no dependency between them; concurrent execution is both faster and the visible demonstration of fan-out/fan-in.",
+      "configuration": {
+        "concurrency": 2,
+        "dispatch": "both requests issued in the same tick, streamed to separate UI columns",
+        "per_branch_timeout_ms": 25000,
+        "partial_results": "accepted — synthesis proceeds with one branch if the other fails",
+        "no_retry": "true (retries would breach the exactly-three-model-calls invariant)"
+      }
+    },
+    {
+      "name": "structured_outputs",
+      "rationale": "Closed-enum specialist selection, an exactly-two constraint, typed briefs, and typed claim_units are what make the invariants machine-checkable without spending a repair call.",
+      "configuration": {
+        "delegation_schema": "JSON Schema with chosen: minItems 2, maxItems 2, uniqueItems true, specialist_id enum from roster ids; brief requires focus, questions_to_answer, out_of_scope, tone; integration_outline required",
+        "specialist_schema": "JSON Schema with claim_units (3-6, each {heading, text<=80 words, confidence}) plus prose_answer",
+        "enforcement": "provider-native constrained decoding where available, plus server-side validation and deterministic fallback (never a repair model call)"
+      }
+    }
+  ],
+  "references": [
+    "Anthropic — 'How we built our multi-agent research system' (orchestrator + parallel subagents, brief-writing patterns): https://www.anthropic.com/engineering/built-multi-agent-research-system",
+    "OpenAI — Structured Outputs / JSON Schema constrained decoding: https://platform.openai.com/docs/guides/structured-outputs",
+    "Anthropic — Building effective agents (orchestrator-workers and parallelisation patterns): https://www.anthropic.com/engineering/building-effective-agents",
+    "OWASP Top 10 for LLM Applications — LLM01 Prompt Injection: https://owasp.org/www-project-top-10-for-large-language-model-applications/",
+    "Internal: shared_framework_services spec (model gateway, session store, showcase daily allowance, shared layout/navigation)"
+  ],
+  "knowledge_sources": [
+    {
+      "name": "specialist_roster",
+      "type": "file_system",
+      "content_description": "The fixed four specialists — id, display name, expertise summary, and a scoping_clause used to force brief differentiation. Ships as versioned config with the app.",
+      "update_frequency": "static (changes only on deploy)"
+    },
+    {
+      "name": "curated_presets",
+      "type": "file_system",
+      "content_description": "6-8 preset questions chosen so that they provoke visibly different specialist pairings, each with its acceptable-pairings label used by the offline eval.",
+      "update_frequency": "static (changes only on deploy)"
+    },
+    {
+      "name": "session_state_store",
+      "type": "relational_db",
+      "content_description": "Per-session run allowance (0-3), slot reservations with expiry, and the full history of prior runs (delegation decisions, specialist results, merged answers) so results persist across navigation.",
+      "update_frequency": "real-time"
+    },
+    {
+      "name": "showcase_allowance_service",
+      "type": "api",
+      "content_description": "Showcase-wide daily model-call allowance and its remaining balance, shared across all example apps; consulted before each phase so exhaustion can be reported with its own distinct message.",
+      "update_frequency": "real-time"
+    }
+  ],
+  "tool_access": {
+    "capabilities_needed": [
+      {
+        "purpose": "Issue the three model calls (coordinator delegation, specialist A, specialist B) with structured-output constraints, streaming, per-call timeouts, and a per-run call-budget counter.",
+        "source": "to_build_internal",
+        "mcp_server": null,
+        "protocol": "sdk_wrapped",
+        "rationale": "The shared_framework_services model gateway already wraps the provider SDK and is where the hard three-call budget assertion, cost accounting, and daily allowance checks live; going through it is required for the showcase-wide invariants."
+      },
+      {
+        "purpose": "Read, reserve, decrement, and refund the three-run session allowance, and persist/rehydrate run history.",
+        "source": "to_build_internal",
+        "mcp_server": null,
+        "protocol": "direct",
+        "rationale": "Trivial in-process data access against the app's own session store; atomicity of the reserve/refund is the whole point, so no indirection."
+      },
+      {
+        "purpose": "Moderate free-form input before the coordinator call and specialist/merged text before render.",
+        "source": "existing_third_party_non_mcp",
+        "mcp_server": null,
+        "protocol": "direct",
+        "rationale": "Provider moderation endpoint is a single cheap HTTP call, does not count against the model-call budget, and needs no tool-discovery layer."
+      },
+      {
+        "purpose": "Compose the merged answer deterministically by weaving specialist claim_units into the coordinator's integration_outline.",
+        "source": "to_build_internal",
+        "mcp_server": null,
+        "protocol": "direct",
+        "rationale": "Deliberately non-LLM: the exactly-three-model-calls invariant leaves no budget for a synthesis call, so integration is pre-planned by the coordinator in call 1 and executed in code. This makes the merge auditable (every merged sentence traces to a claim_unit id) at the cost of less fluent prose — an accepted trade for the demo."
+      }
+    ]
+  },
+  "topology": {
+    "coordinator_role": "Owns the entire user-facing voice and all routing. In its single model call it (a) reads the question, (b) selects exactly two specialist_ids from the closed four-item roster, (c) writes a distinct brief for each — including what each should leave to the other, (d) states a short rationale and a fit_confidence, and (e) commits an integration_outline that pre-specifies how the two forthcoming answers will be woven together. It never speaks to the visitor again as a model: the merged answer is assembled in code from that outline plus the specialists' structured claim units, which is what keeps the run at exactly three model calls.",
+    "subagents": [
+      {
+        "name": "technical_systems_specialist",
+        "role": "Mechanisms, architecture, feasibility, and how something actually works under the hood.",
+        "input": "The question plus its coordinator-written brief (focus, questions_to_answer, out_of_scope, tone).",
+        "output": "3-6 structured claim_units (heading, <=80-word text, confidence) plus a short prose answer, streamed into column A."
+      },
+      {
+        "name": "business_strategy_specialist",
+        "role": "Market context, cost/benefit, adoption dynamics, and commercial trade-offs.",
+        "input": "The question plus its coordinator-written brief.",
+        "output": "3-6 structured claim_units plus a short prose answer, streamed into its column."
+      },
+      {
+        "name": "risk_ethics_specialist",
+        "role": "Failure modes, second-order effects, regulatory and ethical exposure, what could go wrong.",
+        "input": "The question plus its coordinator-written brief.",
+        "output": "3-6 structured claim_units plus a short prose answer, streamed into its column."
+      },
+      {
+        "name": "practitioner_specialist",
+        "role": "Concrete first steps, hands-on tactics, tooling, and what to do on Monday morning.",
+        "input": "The question plus its coordinator-written brief.",
+        "output": "3-6 structured claim_units plus a short prose answer, streamed into its column."
+      }
+    ],
+    "communication_pattern": "parallel",
+    "synthesis_approach": "Fan-in is deterministic and traceable. The composer walks the coordinator's integration_outline section by section; each section declares whether it needs claims from A, B, or both, and carries coordinator-written connective framing. Claim units are matched into sections by their headings and interleaved — convergence sections pair agreeing units, tension sections pair conflicting ones, and the closing section combines both sides into a single recommendation. A coverage validator computes each specialist's share of merged content and rejects any layout that degenerates into one block per specialist; if one specialist failed, the surviving units fill the outline and the answer is rendered with a visible 'degraded — one specialist unavailable' marker. Every merged sentence carries a claim_unit reference so the UI can highlight which specialist contributed what."
+  }
+}
+```

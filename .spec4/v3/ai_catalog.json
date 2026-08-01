@@ -1,0 +1,12 @@
+{
+  "ai_catalog": [
+    {
+      "name": "chained_role_play_generation",
+      "scope": "feature",
+      "rough_description": "Takes a user's free-form story prompt and produces two sequential, role-conditioned outputs \u2014 a short story from a 'struggling writer' persona, then a critique from a 'harsh critic' persona reacting to that story.",
+      "tier_recommendation": "chained_calls",
+      "tier_decision": "chained_calls",
+      "tier_decision_rationale": ""
+    }
+  ]
+}

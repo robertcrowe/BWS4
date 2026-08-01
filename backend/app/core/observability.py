@@ -50,3 +50,32 @@ def configure_sentry(settings: Settings | None = None) -> bool:
     )
     logger.info("sentry_enabled", environment=settings.sentry_environment)
     return True
+
+
+def report_abort(reason: str, **context: object) -> None:
+    """Report a run that ended without producing what it set out to.
+
+    Sentry's auto-enabling integrations capture anything that *raises* through
+    a request. They see nothing here, because an aborted orchestrated run is
+    caught deliberately and turned into a stream event so the visitor keeps the
+    partial results — which means the operator would otherwise learn about a
+    100% abort rate from nowhere at all. This is the explicit report for those
+    paths.
+
+    Safe to call unconditionally: with no DSN, `sentry_sdk` was never
+    initialized and `capture_message` is a no-op, so the whole path costs
+    nothing and raises nothing.
+
+    **Pass no visitor text.** The context reaches Sentry, `send_default_pii` is
+    off precisely so questions and generated answers stay out of error reports,
+    and a caller passing one here would defeat that.
+
+    Args:
+        reason: The abort's machine-readable outcome, used as the message.
+        **context: Identifiers and counts only -- a run id, an outcome, request
+            totals. Never a question, a brief, or an answer.
+    """
+    with sentry_sdk.new_scope() as scope:
+        for key, value in context.items():
+            scope.set_tag(key, value)
+        sentry_sdk.capture_message(f"orchestrated_abort:{reason}", level="warning")

@@ -113,7 +113,7 @@ export function SingleCallApp() {
             event.preventDefault()
             // Guarded as well as disabled: a button is not the only way to
             // submit a form, and a second in-flight request would spend a
-            // second unit of a shared daily quota.
+            // second unit of a shared hourly quota.
             if (!call.isPending) {
               submit()
             }
@@ -214,8 +214,8 @@ function activeSchemaName(
 /**
  * The `service-unavailable` state, naming which failure it was.
  *
- * A spent daily cap and an unreachable provider both arrive as a 503 but are
- * different problems: one resets at 00:00 UTC and the other needs someone to
+ * A spent hourly cap and an unreachable provider both arrive as a 503 but are
+ * different problems: one resets at the top of the hour and the other needs someone to
  * look at it. The backend's `code` separates them, so the retry offer is
  * withheld when retrying cannot possibly help.
  */
@@ -232,7 +232,7 @@ function CallError({ error, onRetry }: { error: unknown; onRetry: () => void }) 
     >
       <p className="text-sm font-medium text-red-700 dark:text-red-300">
         {code === 'usage_limit_reached'
-          ? 'The shared generation quota for today is spent.'
+          ? 'The shared generation quota for this hour is spent.'
           : 'The single call did not complete.'}
       </p>
       <p className="mt-1 text-xs text-red-700/90 dark:text-red-300/90">{message}</p>

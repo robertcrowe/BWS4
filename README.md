@@ -4,7 +4,7 @@
 <a href='https://spec4.ai' style='float:right'><img src='BWS4-white-100.png'></a>
 Built with Spec4 (BWS4) is a living showcase of common AI application patterns, presented as a collection of small, self-contained example apps behind a single landing page. Each example demonstrates one pattern end-to-end: how it's built, what it depends on, and how it behaves, so that visitors unfamiliar with the underlying technique can understand it by seeing it work rather than by reading about it abstractly.
 
-Five examples ship today. Four are listed in order of how much machinery each pattern needs — **embeddings** (turn text into a position and compare positions), **single-call** (one prompt in, one response out), **RAG** (retrieve first, then answer from what you retrieved), and **tool use** (let the model decide what to call) — followed by the newest addition, **chained calls** (one call's output becomes the next call's input), which by machinery alone would sit just after single-call. Seeing them side by side is the point: each one exists partly to show what the cheaper tier below it cannot do.
+Seven examples ship today. The first four are listed in order of how much machinery each pattern needs — **embeddings** (turn text into a position and compare positions), **single-call** (one prompt in, one response out), **RAG** (retrieve first, then answer from what you retrieved), and **tool use** (let the model decide what to call). Three more are appended after them, each adding a way of composing calls rather than a new kind of call: **chained calls** (one call's output becomes the next call's input), **planning agent** (one call decomposes a goal into a plan you approve before any step runs, then executes the steps and composes an itinerary), and **orchestrated subagents** (a coordinator picks two of four fixed specialists, briefs each differently, runs them at the same time, and merges their independent answers). Seeing them side by side is the point: each one exists partly to show what the cheaper tier below it cannot do.
 
 The gallery is designed to grow. New example apps can be added over time without disrupting the availability of existing ones, thanks to per-example code-splitting on the frontend and a shared set of backend framework services (generation, embedding, web search, storage) that every example app draws on. Adding an app to the landing page, the header menu, and the router is a single entry in one file. Every example runs entirely within free, no-cost usage limits, making the whole project easy to fork, run locally, and deploy without a billing surprise.
 
@@ -133,11 +133,22 @@ The app will be available at `http://localhost:5173` (or the port Vite reports),
 **Tests, lint, and typecheck:**
 
 ```shell
-uv run pytest backend/tests          # 161 tests, no database or provider required
-npm run test --prefix frontend       # 93 tests
+uv run pytest backend/tests          # no database or provider required
+uv run ruff check backend            # Python lint
+uv run ruff format --check backend   # Python formatting
+uv run mypy backend/app              # Python typecheck (strict on v5 code)
+npm run test --prefix frontend
 npm run lint --prefix frontend
 npm run build --prefix frontend      # `tsc -b` runs here, so this is also the typecheck
 ```
+
+Ruff and mypy arrived with the orchestrated-subagents revision, against a backend
+that had never had either. Both are **scoped on purpose**: the gate covers code
+written from that revision onward, and the paths that predate it are listed one
+per line in `pyproject.toml`. Running Ruff across the whole backend reports 366
+findings and would reformat 57 files, which would bury a feature diff in
+whitespace. Removing a path from those lists is a deliberate cleanup, not
+something to do by accident.
 
 The backend suite needs neither a live Postgres nor a live model provider: `conftest.py` supplies
 fake-but-valid config so `Settings` validates, DB-touching routes are exercised through an
@@ -169,12 +180,15 @@ platform's secrets manager.
 | `OPENROUTER_API_KEY` | ✅ | Text generation via OpenRouter, reached by both model lanes — LiteLLM for the RAG, tool-use, and single-call apps, PydanticAI for the chained-calls app. Serves as the deep fallback in both model chains. |
 | `GROQ_API_KEY` | — | Optional second LLM provider, used by **both** model chains (tool calling and text generation) and by **both** lanes (LiteLLM and PydanticAI). Groq's free tier is metered **per model** (1,000+ requests/day each) rather than as one account-wide pool, so it leads both chains when set. Unset → `groq/` entries are dropped everywhere and OpenRouter serves alone. |
 | `EXA_API_KEY` | ✅ | Live web search, called by the tool-use agent when *it* decides to search. |
+| `OPENAI_API_KEY` | — | The OpenAI moderation endpoint, used as the safety gate on **free-form** questions in the orchestrated-subagents app. Free of charge and separate from the free-model pool, so it costs the run nothing. **Unset → the gate fails closed and every free-form question is refused** with `moderation_unavailable`; curated presets still run, because they are verified server-side and skip the gate by design. |
+| `MODERATION_HASH_SALT` | — | Salt for the question hashes written to `moderation_log` and to the orchestrated run summary. Unset → a process-stable salt is generated and a warning is logged, so hashes stop comparing across restarts. Raw question text is never stored either way. |
 | `PORT` | — | Defaults to `8000`; supplied automatically by Render. Don't leave it blank in `.env` — an empty value fails `int` parsing at startup. |
 | `EMBEDDING_MODEL_NAME` | — | Defaults to `sentence-transformers/all-MiniLM-L6-v2`. |
-| `GENERATION_DAILY_LIMIT` | — | Daily cap on generation calls (free-tier guardrail, default 100). Shared by the RAG, tool-use, single-call, and chained-calls apps — they draw on one counter, because they draw on one provider quota. Note that one chained-calls submission reserves **2** units up front, so a chain that can't be finished is never started. |
+| `GENERATION_HOURLY_LIMIT` | — | Cap on generation calls **per UTC hour** (free-tier guardrail, default 25). Shared by every app that generates text — they draw on one counter, because they draw on one provider quota. Reservations are made up front, so a run that can't be finished is never started: a chained-calls submission reserves **2** units and an orchestrated run reserves **4**. |
 | *(no embedding cap)* | — | Embedding is deliberately **uncapped** — the model runs in-process, so it spends local CPU and no third-party quota. It is still logged to `service_log_entries`. |
-| `STORAGE_DAILY_LIMIT` | — | Daily cap on storage calls (default 300). |
-| `SEARCH_DAILY_LIMIT` | — | Daily cap on Exa search calls (default 30). One tool-use request may run up to 3 searches, so 30 is a floor of ~10 agent runs per day. |
+| `STORAGE_HOURLY_LIMIT` | — | Cap on storage calls per UTC hour (default 75). |
+| `SEARCH_HOURLY_LIMIT` | — | Cap on Exa search calls per UTC hour (default 5). One tool-use request may run up to 3 searches, so this is the tightest of the caps — lower it first on a smaller Exa plan. |
+| `PLANNING_HOURLY_LIMIT` | — | Cap on planning-agent runs per UTC hour (default 3). Not a duplicate of the generation cap: one planning run can spend up to 7 generation units, so this bounds that app's share of a pool every app draws on. |
 
 | `SENTRY_DSN` | — | Optional error tracking. **Unset → Sentry is never initialized** and the app runs normally. |
 | `SENTRY_ENVIRONMENT` | — | Environment tag on Sentry events (default `development`). |

@@ -85,10 +85,10 @@ class InvalidPromptError(SingleCallError):
 
 
 class UsageLimitReachedError(SingleCallError):
-    """Raised when the shared generation capability's daily cap is spent.
+    """Raised when the shared generation capability's hourly cap is spent.
 
     Kept distinct from GenerationUnavailableError on purpose: a spent cap is a
-    quota problem that resets at 00:00 UTC, an unreachable provider is an
+    quota problem that resets at the top of the hour, an unreachable provider is an
     outage. Reporting both with one message would tell the operator nothing
     about which of the two happened.
     """
@@ -196,7 +196,7 @@ async def run_plain_call(session: AsyncSession, *, prompt_text: str) -> SingleCa
     calling the provider directly, so this app's spend is capped and logged
     like every other app's. The cap is not decoration: the endpoint is public
     and unauthenticated, and OpenRouter's free tier is a single account-wide
-    daily pool shared with the RAG example -- an uncapped generation route
+    hourly pool shared with the RAG example -- an uncapped generation route
     would let one visitor take the whole showcase dark.
 
     A unit is reserved *before* the provider call, so a request that reaches
@@ -216,7 +216,7 @@ async def run_plain_call(session: AsyncSession, *, prompt_text: str) -> SingleCa
 
     Raises:
         InvalidPromptError: If the prompt is blank or over-long.
-        UsageLimitReachedError: If the generation capability's daily cap is
+        UsageLimitReachedError: If the generation capability's hourly cap is
             already spent.
         GenerationUnavailableError: If every model in the chain failed.
     """
@@ -295,7 +295,7 @@ async def run_structured_call(
 
     Raises:
         InvalidPromptError: If the prompt is blank or over-long.
-        UsageLimitReachedError: If the generation capability's daily cap is
+        UsageLimitReachedError: If the generation capability's hourly cap is
             already spent.
         GenerationUnavailableError: If every model in the chain failed.
     """
