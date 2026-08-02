@@ -96,13 +96,20 @@ STEP_TIMEOUT_SECONDS = 90
 #: cannot finish, so starting one only burns a call to prove it.
 MIN_RESEARCH_REQUESTS = 2
 
-#: Calls held back from research so the synthesis step can always run.
+#: Requests held back from research so the synthesis step can always run.
 #:
 #: Without this the run spends everything on research and halts with notes and
 #: no itinerary -- observed on a live run. An itinerary composed from partial
 #: research and honest about the gap is worth more than complete research with
 #: nothing composed from it.
-SYNTHESIS_RESERVE = 1
+#:
+#: It matches `agents.SYNTHESIS_REQUEST_LIMIT` rather than counting one call,
+#: and the difference is the schema retry. Reserving one held back enough for
+#: synthesis to be *attempted* but not enough for PydanticAI to re-ask when the
+#: first response failed validation -- so the run could still reach the end with
+#: nothing composed, by a narrower route than the one this constant was added to
+#: close.
+SYNTHESIS_RESERVE = agents.SYNTHESIS_REQUEST_LIMIT
 
 #: Attempts per research step: the initial one plus the single retry the
 #: capability allows. Retries cost model calls, which the ceiling counts -- so a
@@ -371,7 +378,11 @@ async def execute_plan(
             continue
 
         allowance = budget.allowance(
-            agents.RESEARCH_REQUEST_LIMIT, reserve=SYNTHESIS_RESERVE
+            agents.RESEARCH_REQUEST_LIMIT,
+            reserve=SYNTHESIS_RESERVE,
+            # A failed step is retried, and `_run_step` applies this figure to
+            # *each* attempt -- so the run must be able to afford all of them.
+            attempts=STEP_ATTEMPTS,
         )
         if allowance < MIN_RESEARCH_REQUESTS:
             # Not enough left to finish this step, so it is reported as failed

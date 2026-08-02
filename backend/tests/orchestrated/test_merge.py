@@ -189,7 +189,7 @@ class TestTheCallCount:
 
         _run(synth, budget=budget)
 
-        assert budget.used <= MAX_PROVIDER_REQUESTS == 8
+        assert budget.used <= MAX_PROVIDER_REQUESTS
 
     def test_the_disagreement_note_costs_no_extra_call(self) -> None:
         """The note rides on the synthesis response, which is the entire point.

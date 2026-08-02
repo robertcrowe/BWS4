@@ -27,10 +27,11 @@ export interface ExampleApp {
  * generate nothing), single call (one prompt, one response), RAG (retrieve
  * first, then answer from what you retrieved), tool use (let the model decide
  * what to call) — so a visitor reading top to bottom meets each pattern after
- * the cheaper one it builds on. Chained calls sits at the end as the newest
- * addition rather than at its place in that progression, which would be
- * directly after single call. Newest-last is the rule to follow when adding
- * the sixth. Reordering here reorders the landing cards *and* the header menu,
+ * the cheaper one it builds on. Everything after those four is appended in the
+ * order it shipped rather than slotted into the progression: chained calls
+ * would otherwise sit directly after single call, and each later app would
+ * shuffle the ones before it. **Newest last** is the rule — append, never
+ * insert. Reordering here reorders the landing cards *and* the header menu,
  * since `NavMenu` maps the same array.
  */
 export const exampleApps: ExampleApp[] = [
@@ -110,5 +111,16 @@ export const exampleApps: ExampleApp[] = [
       'Orchestrated subagents split a question between independent workers and then put their answers back together. A coordinator chooses which specialists apply, writes each one a distinct brief naming the angle it must leave to the other, and shows you that decision before anything runs. On your go-ahead both specialists run at the same time — they can, because neither needs the other’s output, which is what separates this from a chain — and the coordinator then merges their two answers into one response organised by the question rather than by who wrote what. Both source answers stay on screen so you can judge the merge. To conserve shared usage, each run here uses a fixed budget of three model calls and you get three runs per hour, which reset at the top of the hour. The pattern itself supports any number of agents — these limits are a quota-conservation choice of this demo, not a limit of the pattern.',
     status: 'live',
     route: '/orchestrated',
+  },
+  {
+    id: 'multi_agent_collaboration_example_app',
+    name: 'Multi-Agent Collaboration Example App',
+    description:
+      'Watch a buyer agent negotiate with two rival sellers that hold private constraints neither can see — then unseal every hidden position.',
+    patternTag: 'Multi-Agent Collaboration (peer-to-peer)',
+    patternSummary:
+      'In collaboration the agents are peers rather than workers: no agent owns the others’ reasoning, each holds its own goals and its own private information, and they communicate only through explicit sender→recipient messages. That is the line separating this from orchestrated subagents, where one coordinator writes both briefs and sees everything that comes back — here nobody has that view, and the buyer learns what a seller will concede only by asking it. What makes the pattern worth its cost is exactly what makes it harder: because the parties genuinely hold information the others must not see, opacity has to be enforced by the plumbing rather than by asking a model nicely, so each agent is only ever handed the messages addressed to it and a rival’s bid is unreachable rather than merely off-limits. The exchanges here use the data model and interaction pattern of the A2A collaboration protocol — inspectable identity cards, peer messages with an explicit sender and recipient, work items attached to each reply — without its network transport.',
+    status: 'live',
+    route: '/collab',
   },
 ]

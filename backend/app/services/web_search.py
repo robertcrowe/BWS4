@@ -34,6 +34,17 @@ class ExaResult:
     title: str
     summary: str
     source: str
+    #: ISO-8601 date Exa reports for the page, or None when it could not
+    #: determine one (common for package indexes and docs pages).
+    #:
+    #: **Carried because relevance is not recency.** Exa ranks purely on
+    #: relevance, so a 2023 article can out-rank a current one for a
+    #: time-sensitive question -- observed live: "Who is the CEO of Twitter?"
+    #: returned two 2023 pieces at the top. Dropping this field left the model
+    #: unable to weigh how current a source was and left the visitor unable to
+    #: see it, which reads as the demo answering from stale training data when
+    #: it is in fact reporting a stale *page*.
+    published_date: str | None = None
 
 
 class ExaClientError(Exception):
@@ -76,6 +87,11 @@ async def search(query: str) -> list[ExaResult]:
                     "numResults": NUM_RESULTS,
                     "contents": {"summary": True},
                 },
+                # No `startPublishedDate` filter, deliberately. It would make
+                # recent results dominate -- and it would also break every
+                # legitimately historical question ("who founded Twitter?").
+                # The honest fix is to *surface* the date and let the model and
+                # the visitor weigh it, not to hide old pages from both.
             )
         except httpx.HTTPError as exc:
             raise ExaClientError(str(exc)) from exc
@@ -100,6 +116,7 @@ async def search(query: str) -> list[ExaResult]:
             title=item.get("title") or "Untitled result",
             summary=item.get("summary") or "",
             source=item.get("url", ""),
+            published_date=item.get("publishedDate"),
         )
         for item in raw_results
     ]

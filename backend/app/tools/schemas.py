@@ -19,6 +19,10 @@ class SearchResultOut(BaseModel):
     summary: str
     source: str
     rank: int
+    #: When Exa says the page was published, or None when it could not tell.
+    #: Shown to the visitor so a stale *page* is distinguishable from a stale
+    #: *answer* -- see `services/web_search.ExaResult`.
+    published_date: str | None = None
 
 
 class AgentStepOut(BaseModel):

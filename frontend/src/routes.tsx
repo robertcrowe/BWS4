@@ -49,6 +49,11 @@ const OrchestratedScreen = lazy(() =>
     default: module.OrchestratedScreen,
   })),
 )
+const CollabScreen = lazy(() =>
+  import('./screens/collab/CollabScreen').then((module) => ({
+    default: module.CollabScreen,
+  })),
+)
 
 /** Wraps a lazy-loaded route element in the fallback every route shares while its chunk loads. */
 function withSuspense(element: ReactNode) {
@@ -95,6 +100,10 @@ export const router = createBrowserRouter([
   {
     path: '/orchestrated',
     element: withSuspense(<OrchestratedScreen />),
+  },
+  {
+    path: '/collab',
+    element: withSuspense(<CollabScreen />),
   },
   ...exampleApps
     .filter((app) => app.status === 'coming-soon')

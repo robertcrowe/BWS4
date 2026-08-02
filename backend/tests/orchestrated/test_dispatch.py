@@ -708,7 +708,7 @@ class TestTheArithmetic:
         with patch.object(runtime.agent_runtime, "run_typed_step", fake_typed_step):
             asyncio.run(go())
 
-        assert captured["request_limit"] == STEP_REQUEST_LIMIT == 2
+        assert captured["request_limit"] == STEP_REQUEST_LIMIT
 
     def test_the_visitor_facing_count_stays_three(self) -> None:
         session = _Session()

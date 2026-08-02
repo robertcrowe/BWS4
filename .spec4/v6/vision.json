@@ -1,0 +1,250 @@
+{
+  "vision_statement": {
+    "name": "Built with Spec4 (BWS4)",
+    "vision": {
+      "purpose": "BWS4 is an **overall framework and collection of example apps**, all built with Spec4, designed to give developers evaluating Spec4 concrete example apps demonstrating its capabilities for building agentic applications, and to educate users generally about different patterns and styles of using agents and AI in applications. Although presented as separate 'example apps,' they are all part of one unified BWS4 application.",
+      "ui_surface": "Web app (browser-based) \u2014 one unified application presenting multiple example apps",
+      "target_audience": [
+        "Developers evaluating Spec4 for their own projects (primary)",
+        "Developers learning agentic AI patterns generally (primary)",
+        "The Spec4 team/maintainers, as a showcase for Spec4 itself (secondary)",
+        "Educators/students learning about agentic AI (secondary, possible)"
+      ],
+      "key_features_mvp": [
+        {
+          "Landing_Page": {
+            "description": "Introduces BWS4, explains that it and all example apps were built using Spec4, and lists the available example apps for users to explore.",
+            "example": "A single landing page acts as the entry point to all example apps within the unified BWS4 application.",
+            "id": "landing_page"
+          }
+        },
+        {
+          "RAG_Example_App": {
+            "description": "A single example app illustrating the Retrieval-Augmented Generation (RAG) pattern, using a small, publicly downloadable dataset. Designed to be illustrative and educational rather than practically useful for a specific task.",
+            "example": "Demonstrates how retrieval and generation combine in an agentic workflow, using a small public dataset.",
+            "id": "rag_example_app"
+          }
+        },
+        {
+          "Shared_Framework_Services": {
+            "description": "Core services shared across all example apps, including LLM model/provider access (via LiteLLM and OpenRouter free models), a small local embedding model, a web search tool, and a small local database.",
+            "example": "Each example app draws on the same underlying LLM access, embedding, web search, and database services rather than reimplementing them.",
+            "id": "shared_framework_services"
+          }
+        },
+        {
+          "Tool_Use_Integration": {
+            "description": "Example apps requiring tool use integrate with the free Exa search API.",
+            "example": "A tool-use example app calls Exa's free search API to retrieve real-time information.",
+            "id": "tool_use_integration"
+          }
+        },
+        {
+          "Embeddings_Example_App": {
+            "description": "An example app illustrating the model embeddings pattern via a visual embedding explorer. A curated set of pre-configured text examples \u2014 a mix of word/short-phrase categories (e.g., animals, emotions, tech terms) and full sentences \u2014 are embedded using the framework's shared local embedding model, then projected to 2D and plotted so users can visually see semantic clustering. Users can also enter their own custom text, which is embedded and merged into the same recalculated 2D projection, rendered in a distinct color so it stands out from the pre-configured points. Includes a short educational overview explaining the embedding pattern. Follows the same overall layout as the other example apps and is added to the landing page and hamburger menu. Must reuse the framework's existing shared embedding model rather than introducing a new one for this app.",
+            "example": "A user picks from pre-set examples across categories and sentences, sees them cluster by meaning in a 2D plot, then types their own sentence and watches it appear in a distinct color relative to the existing clusters.",
+            "id": "embeddings_example_app"
+          }
+        },
+        {
+          "Single_Call_Example_App": {
+            "description": "An example app illustrating the single-call pattern (per Spec4's pattern library tier 03: single_call) \u2014 one direct request to the LLM producing one direct response, with no retrieval, no tools, and no multi-step chaining. Users can enter a free-form prompt or choose from a set of preset example prompts (e.g., summarize, classify, extract). A toggle lets the user switch between Simple mode (plain text prompt \u2192 plain text response) and Structured mode (the request asks the LLM to return a JSON-schema-conforming response via structured-output prompting; both the structured request payload and the LLM's structured JSON response are displayed to the user). Includes a short educational overview explaining the single-call pattern and when it is appropriate. Uses only the framework's shared generation service (LiteLLM/OpenRouter) \u2014 no new services introduced. Follows the same overall layout as the other example apps and is added to the landing page and hamburger menu.",
+            "example": "A user picks a preset prompt like 'classify this review,' toggles to Structured mode, and sees both the JSON request payload and the LLM's JSON-schema-conforming response rendered side by side with their plain prompt/response equivalent in Simple mode.",
+            "id": "single_call_example_app"
+          }
+        },
+        {
+          "Chained_Calls_Example_App": {
+            "description": "An example app illustrating the chained calls pattern (per Spec4's pattern library tier 06: chained_calls) \u2014 a sequence of LLM calls where one model's output feeds into the next. Uses the framework's shared generation service and shared model/tool services, same as other examples. Includes a short educational overview explaining the chained calls pattern. Follows the same overall layout as the other example apps and is added to the landing page and hamburger menu. IMPORTANT: To conserve model quota, this example is limited to exactly 2 chained model calls \u2014 the first call takes the initial user request, and its response is routed as input to the second call, which produces the final output. The UI/description makes clear this 2-call limit is a quota-conservation choice for this demo, and that the chained calls pattern itself supports any number of chained calls. Both the intermediate output (from the first call) and the final output (from the second call) are displayed to the user, and the user is told each agent's role upfront so they know what to expect.",
+            "example": "The user submits a story prompt (e.g., 'Tell me a story about a lighthouse keeper'). The first model call acts as a struggling writer and produces a short story based on the prompt \u2014 shown to the user. That story is then passed to the second model call, which acts as a very opinionated and harsh critic, producing a critique of the story \u2014 also shown to the user.",
+            "id": "chained_calls_example_app"
+          }
+        },
+        {
+          "Planning_Agent_Example_App": {
+            "description": "An example app illustrating the planning agent pattern (per Spec4's pattern library tier 07: planning_agent) \u2014 a planner model call decomposes the user's goal into a plan of discrete steps, which are then carried out by separate executor model calls. The demo scenario is a trip-day planner: the user provides a city and their interests; a planner call produces a small plan (research steps using the framework's shared Exa web search tool, plus a final synthesis step that composes a one-day itinerary). The plan is displayed to the user first; the user then clicks a 'Next' button, which runs all executor steps in sequence, with each step's result displayed as it completes, ending with the final itinerary. Uses only the framework's shared model and tool services \u2014 no new services introduced. Includes a short educational overview explaining the planning agent pattern. Follows the same overall layout as the other example apps and is added to the landing page and hamburger menu. IMPORTANT: To conserve model quota, each run is limited to a small fixed number of model calls (approximately 1 planner call plus 2\u20133 executor calls), and the user is limited to a small number of runs per session (exact number left to implementation). Both limits are clearly noted in the description, which also makes clear that in general a planning agent can use any number of agents/steps to accomplish its task.",
+            "example": "A user enters 'Lisbon' and 'food and history.' The planner call produces a plan: (1) research notable historical sites via web search, (2) research well-regarded local food spots via web search, (3) synthesize a one-day itinerary. The user reviews the plan and clicks 'Next'; the executor steps run in sequence, each result appearing as it completes, and the final itinerary is presented.",
+            "id": "planning_agent_example_app"
+          }
+        },
+        {
+          "Orchestrated_Subagents_Example_App": {
+            "description": "An example app illustrating the orchestrated subagents pattern (per Spec4's pattern library tier 08: orchestrated_subagents) \u2014 a single orchestration agent receives the user's question, decides which specialists should handle it, delegates to them as independent subagents, and merges their results into one final answer. The orchestrator selects exactly two specialists from a fixed roster of four \u2014 Technical, Financial, Historical, and Practical \u2014 and first displays its delegation decision: which two specialists it chose, a short rationale for the pairing, and the specific brief (sub-question/instruction) it wrote for each specialist. The user then clicks a 'Next' button to dispatch. The two subagents run concurrently and are rendered as parallel columns with live per-subagent status, each column headed by that specialist's brief, so the fan-out and fan-in are visible on screen. When both subagents return, the orchestrator merges their answers into a single final response. Input is either a curated preset question \u2014 chosen to exercise different specialist pairings \u2014 or the user's own free-form question. The four specialists are knowledge-only with no tool access; the app uses only the framework's shared generation service and introduces no new services. Includes a short educational overview explaining the orchestrated subagents pattern and the demo, noting that subagents are independent workers that can run in parallel because neither depends on the other's output. Follows the same overall layout as the other example apps and is added to the landing page and hamburger menu. IMPORTANT: To conserve model quota, this example uses exactly 1 orchestration agent and 2 subagents (3 model calls per run) and limits the user to 3 runs per session. A visible 'runs remaining' counter is shown on the page; once the runs are exhausted the input and 'Next' button are disabled with a clear explanatory message while previous results remain on screen, and the messaging distinguishes between hitting this app's 3-run session limit and hitting the shared daily framework usage cap. Both limits are clearly noted in the description, which also makes clear that in general the orchestrated subagents pattern can use any number of agents to accomplish its task.",
+            "example": "A user picks the preset question 'Should I buy or rent a home?' The orchestrator decides the question is best answered by the Financial and Practical specialists, explains why, and shows the brief it wrote for each. The user clicks 'Next'; the two specialists run side by side in parallel columns with live status, each answering its own brief, and the orchestrator then merges their two answers into a single final response.",
+            "id": "orchestrated_subagents_example_app"
+          }
+        },
+        {
+          "Multi_Agent_Collaboration_Example_App": {
+            "description": "An example app illustrating the multi-agent collaboration pattern (per Spec4's pattern library tier 09: multi_agent_collaboration) \u2014 peer agents interacting as autonomous parties across a trust/ownership boundary, negotiating and exchanging work over a protocol such as A2A, rather than being workers controlled by a single owner as in orchestrated subagents. The demo scenario is competitive procurement with exactly 3 agents: a Buyer agent representing the visitor, plus two rival Seller agents owned by different (fictional) suppliers. Each seller holds private constraints \u2014 cost floor, stock level, delivery capability, support capacity \u2014 that neither the buyer nor the rival seller can see. The sellers compete on four deliberately non-comparable axes: price, delivery speed/lead time, quantity and partial fulfilment, and warranty terms, so the buyer must exercise judgment rather than pick a minimum. Input: the visitor selects a preset procurement scenario (each pre-tuned so the sellers' private constraints produce genuinely non-comparable bids) and sets a priority weighting (e.g., speed over price, full quantity required, longest warranty); there is no free-text input, and the same scenario can yield a different winner depending on the priorities chosen. Run flow \u2014 one negotiation round, exactly 6 model calls: (1) the RFQ is composed deterministically from the preset plus the visitor's priorities, with no model call; (2) the two sellers bid concurrently, blind to each other (2 calls); (3) the buyer reviews both bids and issues a targeted counter-offer to each seller (1 call); (4) the two sellers return best-and-final revised bids, still blind to each other (2 calls); (5) the buyer awards the deal with a rationale weighed against the visitor's stated priorities (1 call). Presentation: two parallel seller columns with live per-seller status (consistent with the Orchestrated Subagents app), plus a buyer track carrying the RFQ, the counter-offers, and the award; a private-position reveal at the end unseals each party's hidden constraints once the run completes, showing why a seller held firm or conceded; and an optional raw message-log toggle renders the same run as chronological sender-to-recipient protocol traffic, making visible that no message ever passes seller-to-seller. Protocol treatment is A2A-shaped and in-process: each agent publishes an inspectable Agent Card (name, provider, skills, capabilities), exchanges are structured A2A-style Task/Message/Artifact objects passed over an in-process message bus, and opacity is enforced in code rather than by prompt instruction so a peer can only ever see messages addressed to it; the overview states clearly that this uses A2A's data model and interaction pattern without the HTTP transport, and what a real deployment would add. Includes a short educational overview of the pattern and the demo, containing a candid note that all three agents ship in one BWS4 repo under one owner, that the trust boundary is staged for teaching purposes, and that the tier itself would treat this as over-engineering in a real system. Uses only the framework's shared model services \u2014 no new services introduced; the seller agents are knowledge-only with no tool access. Follows the same overall layout as the other example apps and is added to the landing page and hamburger menu. IMPORTANT: To conserve model quota, this example uses a maximum of 3 agents and exactly 6 model calls per run, and limits user runs per hour at the framework's existing standard rather than a tightened per-app limit, with the shared hourly and daily usage caps backstopping total spend. The limits are clearly noted in the description, which also makes clear that in general the multi-agent collaboration pattern can use any number of agents to accomplish its task.",
+            "example": "A visitor picks the preset scenario '500 laptop docking stations, needed in two weeks' and sets their priority to 'speed over price.' The RFQ goes out to both sellers, who bid concurrently without seeing each other: one offers a fast delivery at a premium with a short warranty, the other a cheaper full-quantity bid on a longer lead time. The buyer counters each seller on its weakest axis; both return best-and-final bids \u2014 the manufacture-to-order seller cannot concede on delivery and holds firm. The buyer awards the deal to the faster supplier and explains why, given the visitor's stated priorities. The private-position panels then unseal, revealing each seller's true cost floor and stock level, and the visitor can toggle to the raw message log to see that no message ever travelled between the two sellers.",
+            "id": "multi_agent_collaboration_example_app"
+          }
+        }
+      ],
+      "differentiators": [
+        "Built entirely with Spec4 itself \u2014 BWS4 is a living, dogfooding demonstration of the tool it promotes, not just documentation or tutorials about it."
+      ],
+      "monetization": {
+        "current": "Free, non-monetized project \u2014 exists purely for education and demonstration purposes.",
+        "future_options": []
+      },
+      "future_enhancements": [
+        {
+          "Additional_Example_Apps": {
+            "description": "Expand the collection of example apps to cover additional agentic patterns and styles beyond RAG, tool-use, embeddings, single call, chained calls, planning agent, orchestrated subagents, and multi-agent collaboration.",
+            "example": "Human-in-the-loop, MCP, parallel fanout, reflection, retrieval reranking, structured outputs, tool agent."
+          }
+        }
+      ],
+      "constraints": [
+        "Must be designed to be hosted on the Render free tier.",
+        "Must use LiteLLM to access only free LLMs provided by OpenRouter.",
+        "The Embeddings example app must reuse the framework's existing shared embedding model rather than introducing a new or separate embedding model.",
+        "The Single Call example app must use only the framework's shared generation service, introducing no new services.",
+        "The Chained Calls example app must be limited to exactly 2 model calls to conserve model quota, while the description/UI must make clear that the chained calls pattern generally supports any number of chained calls.",
+        "The Planning Agent example app must limit model calls per run to a small fixed number (approximately 1 planner call plus 2\u20133 executor calls) and limit the user to a small number of runs per session, with both limits clearly communicated in the description, while making clear that planning agents in general can use any number of agents/steps.",
+        "The Orchestrated Subagents example app must use exactly 1 orchestration agent and 2 subagents (3 model calls per run) and must limit the user to 3 runs per session, with both limits clearly communicated in the description, while making clear that the orchestrated subagents pattern in general can use any number of agents.",
+        "The Orchestrated Subagents example app must use only the framework's shared generation service and introduce no new services; its four specialist subagents are knowledge-only with no tool access.",
+        "The Multi-Agent Collaboration example app must include no more than 3 agents (1 buyer plus 2 sellers) and exactly 6 model calls per run, and must limit user runs per hour following the framework's existing standard practice, with both limits clearly communicated in the description, while making clear that the multi-agent collaboration pattern in general can use any number of agents.",
+        "The Multi-Agent Collaboration example app must use only the framework's shared model services and introduce no new services; its two seller agents are knowledge-only with no tool access.",
+        "The Multi-Agent Collaboration example app's RFQ must be composed deterministically from the preset scenario and the visitor's priority weighting, with no model call, to conserve quota.",
+        "The Multi-Agent Collaboration example app must enforce peer opacity in code rather than by prompt instruction \u2014 each agent can only see messages addressed to it, and no message may pass directly between the two seller agents.",
+        "The Multi-Agent Collaboration example app implements A2A's data model and interaction pattern (Agent Cards, Task/Message/Artifact) over an in-process message bus, without the HTTP transport; the educational overview must state this plainly and note what a real deployment would add.",
+        "The Multi-Agent Collaboration example app's educational overview must include a candid note that all three agents ship in one BWS4 repo under one owner, that the trust boundary is staged for teaching purposes, and that the tier itself would treat this as over-engineering in a real system."
+      ],
+      "references": [
+        {
+          "standard": "LiteLLM",
+          "url": "https://docs.litellm.ai/docs"
+        },
+        {
+          "standard": "OpenRouter",
+          "url": "https://openrouter.ai/docs"
+        },
+        {
+          "standard": "Render",
+          "url": "https://render.com/docs"
+        },
+        {
+          "standard": "Exa Search API",
+          "url": "https://exa.ai/docs/reference/search-api-guide"
+        },
+        {
+          "standard": "Model Context Protocol (MCP)",
+          "url": "https://modelcontextprotocol.io/"
+        },
+        {
+          "standard": "Agent2Agent (A2A) Protocol",
+          "url": "https://a2a-protocol.org/latest/",
+          "note": "Linux Foundation open standard for interoperability between independent, potentially opaque agent systems; specification at https://a2a-protocol.org/latest/specification/, repository at https://github.com/a2aproject/A2A"
+        },
+        {
+          "standard": "Spec4 pattern library \u2014 single_call tier",
+          "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/tiers/03_single_call.md",
+          "note": "unique to this project"
+        },
+        {
+          "standard": "Spec4 pattern library \u2014 chained_calls tier",
+          "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/tiers/06_chained_calls.md",
+          "note": "unique to this project"
+        },
+        {
+          "standard": "Spec4 pattern library \u2014 planning_agent tier",
+          "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/tiers/07_planning_agent.md",
+          "note": "unique to this project"
+        },
+        {
+          "standard": "Spec4 pattern library \u2014 orchestrated_subagents tier",
+          "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/tiers/08_orchestrated_subagents.md",
+          "note": "unique to this project"
+        },
+        {
+          "standard": "Spec4 pattern library \u2014 multi_agent_collaboration tier",
+          "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/tiers/09_multi_agent_collaboration.md",
+          "note": "unique to this project"
+        }
+      ]
+    },
+    "revision_history": [
+      {
+        "version": 1,
+        "based_on_version": 0,
+        "goal": "Add a new Embeddings example app to BWS4 that visually demonstrates the model embeddings pattern using the framework's shared embedding model.",
+        "changes": {
+          "added": [
+            "Embeddings_Example_App"
+          ],
+          "modified": [],
+          "removed": []
+        },
+        "rationale": "Embeddings is a well-defined pattern tier in the Spec4 pattern library and was previously listed only as a future example; this revision implements it now as a visual, educational explorer reusing existing shared framework services, consistent with how RAG and Tool-Use were built."
+      },
+      {
+        "version": 2,
+        "based_on_version": 1,
+        "goal": "Add a new Single Call example app to BWS4 that demonstrates the single-call agentic pattern, including both simple text and structured (schema-conforming) response modes.",
+        "changes": {
+          "added": [
+            "Single_Call_Example_App"
+          ],
+          "modified": [],
+          "removed": []
+        },
+        "rationale": "Single call is a well-defined foundational tier in Spec4's pattern library and was not yet represented among BWS4's example apps; this revision implements it as an educational demonstration reusing only the framework's shared generation service, and additionally showcases structured-output prompting by letting users toggle between simple text and schema-constrained JSON responses."
+      },
+      {
+        "version": 3,
+        "based_on_version": 2,
+        "goal": "Add a new Chained Calls example app to BWS4 that demonstrates the chained-calls agentic pattern via two role-played, sequential LLM calls, while conserving model quota.",
+        "changes": {
+          "added": [
+            "Chained_Calls_Example_App"
+          ],
+          "modified": [],
+          "removed": []
+        },
+        "rationale": "Chained calls is a well-defined tier in Spec4's pattern library and was not yet represented among BWS4's example apps; this revision implements it as an educational, quota-conscious demo where a 'struggling writer' agent generates a short story and a 'harsh critic' agent critiques it, capped at exactly 2 chained model calls while making clear the pattern generally supports any number of chained calls."
+      },
+      {
+        "version": 4,
+        "based_on_version": 3,
+        "goal": "Add a new Planning Agent example app to BWS4 that demonstrates the planning agent pattern via a trip-day planner scenario, with user-triggered execution and strict quota conservation.",
+        "changes": {
+          "added": [
+            "Planning_Agent_Example_App"
+          ],
+          "modified": [],
+          "removed": []
+        },
+        "rationale": "Planning agent is a well-defined tier in Spec4's pattern library and was not yet represented among BWS4's example apps; this revision implements it as an educational, quota-conscious demo where a planner call decomposes a trip request into a plan shown to the user, who then triggers the executor steps (web-search research plus final itinerary synthesis) with a single 'Next' click, capped by a small per-run call count and per-session run limit while making clear the pattern generally supports any number of agents/steps."
+      },
+      {
+        "version": 5,
+        "based_on_version": 4,
+        "goal": "Add a new Orchestrated Subagents example app to BWS4 that demonstrates the orchestrated subagents pattern via an orchestrator that chooses two specialists from a fixed roster, briefs them, runs them concurrently, and merges their answers \u2014 under strict quota conservation.",
+        "changes": {
+          "added": [
+            "Orchestrated_Subagents_Example_App"
+          ],
+          "modified": [],
+          "removed": []
+        },
+        "rationale": "Orchestrated subagents is a well-defined tier in Spec4's pattern library and was not yet represented among BWS4's example apps; this revision implements it as an educational, quota-conscious demo where the delegation decision and per-subagent briefs are made visible and two independent specialists run in parallel columns, capped at 1 orchestrator plus 2 subagents and 3 runs per session while making clear the pattern generally supports any number of agents."
+      },
+      {
+        "version": 6,
+        "based_on_version": 5,
+        "goal": "Add a new Multi-Agent Collaboration example app to BWS4 that demonstrates the multi-agent collaboration pattern via a competitive procurement negotiation between a buyer agent and two rival seller agents holding private constraints, exchanging A2A-shaped messages across a code-enforced opacity boundary \u2014 under strict quota conservation.",
+        "changes": {
+          "added": [
+            "Multi_Agent_Collaboration_Example_App"
+          ],
+          "modified": [],
+          "removed": []
+        },
+        "rationale": "Multi-agent collaboration is a well-defined tier in Spec4's pattern library and was not yet represented among BWS4's example apps; this revision implements it as an educational, quota-conscious demo in which two independently-owned seller agents bid and counter-bid blind to each other across price, delivery, quantity and warranty, and the buyer agent awards the deal against the visitor's own stated priorities \u2014 with A2A Agent Cards and Task/Message/Artifact exchanges over an in-process bus, opacity enforced in code, private positions revealed at the end, and a candid note that the trust boundary is staged for teaching since the tier itself warns this pattern is commonly over-reached."
+      }
+    ]
+  }
+}

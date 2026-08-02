@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from typing import Any
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
@@ -13,11 +14,13 @@ from sqlalchemy import (
     Date,
     DateTime,
     Float,
+    ForeignKey,
     Index,
     Integer,
     String,
     Text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base
@@ -302,6 +305,101 @@ class ModerationLogEntry(Base):
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     blocked: Mapped[bool] = mapped_column(Boolean, default=False)
     failed_closed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class NegotiationRecord(Base):
+    """One completed multi-agent collaboration run, written once at run end.
+
+    Maps to the stack spec's `negotiation_runs` collection (Run /
+    NegotiationRecord entity). The stage payloads -- the QuotationRequest, the
+    two rounds of Bids, the CounterOffers, the Award, the reveal and the
+    sensitivity note -- are JSONB, because they are read back whole and never
+    queried field by field.
+
+    **The call counts are top-level integer columns, deliberately not buried in
+    the JSONB.** They are the capability's own eval signal: the negotiation
+    stage count is alerted on when it differs from six, and that has to be a
+    `WHERE` clause rather than a scan-and-parse. A number that is expensive to
+    query is a number nobody checks.
+    """
+
+    __tablename__ = "negotiation_runs"
+    __table_args__ = (
+        Index("ix_negotiation_runs_created_at", "created_at"),
+        Index("ix_negotiation_runs_scenario_id", "scenario_id"),
+    )
+
+    #: The run's own identifier, shared with the `allowance_holds.hold_key`
+    #: that reserved its budget, so a run and its reservation are joinable.
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    scenario_id: Mapped[str] = mapped_column(String(64))
+    weighting_id: Mapped[str] = mapped_column(String(64))
+
+    #: How many of the six negotiation stages actually spent a model call.
+    #: Six on a clean run; fewer when a seller failed and its stage degraded.
+    negotiation_stage_call_count: Mapped[int] = mapped_column(Integer, default=0)
+    #: Every provider request the run made, negotiation plus the two
+    #: post-award explanations. Distinct from the stage count because one
+    #: logical call can cost more than one provider request -- a lesson this
+    #: project learned in production on the orchestrated app.
+    total_model_calls_used: Mapped[int] = mapped_column(Integer, default=0)
+
+    quotation_request: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True
+    )
+    opening_bids: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    counter_offers: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    final_bids: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    award: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    #: Released only after the award stage completes. Stored sealed in the
+    #: sense that nothing writes it before then.
+    reveal: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    sensitivity: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    stage_timings: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    #: Per-seller degradation: which track failed, timed out, or returned
+    #: output that did not conform. Empty on a clean run.
+    degradation_flags: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True
+    )
+
+
+class PeerMessage(Base):
+    """One A2A-shaped message exchanged during a run.
+
+    Maps to the stack spec's `peer_messages` collection (PeerMessage entity).
+    Persisting every exchange is what makes the app's headline opacity claim
+    *provable* rather than asserted: the seller-to-seller count is a single SQL
+    predicate over `sender` and `recipient`, expected to be zero for every run
+    ever recorded. A client-side tally would only prove what the client was
+    shown.
+
+    The composite index on `(sender, recipient)` exists for exactly that query.
+    """
+
+    __tablename__ = "peer_messages"
+    __table_args__ = (
+        Index("ix_peer_messages_sender_recipient", "sender", "recipient"),
+        Index("ix_peer_messages_run_sequence", "run_id", "sequence", unique=True),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("negotiation_runs.id", ondelete="CASCADE")
+    )
+    #: Assigned by the message bus, unique within a run. Unique per run rather
+    #: than globally, because it is the run's own ordering.
+    sequence: Mapped[int] = mapped_column(Integer)
+    sender: Mapped[str] = mapped_column(String(64))
+    recipient: Mapped[str] = mapped_column(String(64))
+    stage: Mapped[str] = mapped_column(String(64))
+    #: The A2A-shaped Message or Artifact this envelope carried.
+    work_item: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

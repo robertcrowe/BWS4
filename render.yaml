@@ -1,6 +1,10 @@
 # Built with Spec4 AI - https://spec4.ai
 #
-# Render blueprint for the two deployment targets in .spec4/v0/stack.json:
+# Render blueprint for the two deployment targets. The shape was set in
+# .spec4/v0/stack.json and has not needed to change since: every revision
+# through v6 added example apps without adding a build step, a system binary,
+# a model download, or (apart from the two optional keys below) a variable.
+#
 #   web_client -> Render Static Site (CDN-served, no spin-down)
 #   api        -> Render free Web Service (Python 3.12, spins down after ~15 min idle)
 #
@@ -51,19 +55,36 @@ services:
           envVarKey: RENDER_EXTERNAL_URL
       - key: OPENROUTER_API_KEY
         sync: false
-      # Optional second LLM provider for the tool-use agent's model chain.
-      # Unset and the chain drops its groq/ entries and runs on OpenRouter
-      # alone — with far less headroom, since OpenRouter's free tier is one
-      # account-wide 50/day pool shared with the RAG app.
+      # Optional second LLM provider, used by **both** model chains (tool
+      # calling and text generation) and by both model lanes (LiteLLM and
+      # PydanticAI) — every example app that calls a model reaches it through
+      # the shared registry. Unset and each chain drops its groq/ entries and
+      # runs on OpenRouter alone, with far less headroom: OpenRouter's free
+      # tier is one account-wide pool shared by every app, while Groq meters
+      # per model.
       - key: GROQ_API_KEY
         sync: false
       - key: EXA_API_KEY
         sync: false
       # Optional: the shared moderation service that screens free-form visitor
-      # questions. Unset and the orchestrated-subagents app still serves its
-      # pre-vetted curated presets. Free of charge, and separate from the
-      # OpenRouter allowance.
+      # input across every example app that accepts any. Unset and the gate
+      # **fails closed** — free-text submissions are refused with
+      # `moderation_unavailable` while each app's curated examples still work,
+      # because those are byte-matched server-side and skip the gate by design.
+      # Free of charge, and separate from the OpenRouter allowance.
+      #
+      # The multi-agent collaboration app needs no key at all: its only inputs
+      # are a scenario enum and a numeric weighting vector, so no free text
+      # reaches it.
       - key: OPENAI_API_KEY
+        sync: false
+      # Optional but strongly recommended in a deployment: the salt for the
+      # question hashes written to `moderation_log` and the orchestrated run
+      # summary. Unset, a process-stable salt is generated and a warning is
+      # logged — the hashes still protect the question text, but they stop
+      # comparing across restarts, so "the same question again" becomes
+      # unanswerable after every redeploy.
+      - key: MODERATION_HASH_SALT
         sync: false
       # Optional: leave unset and error tracking no-ops cleanly.
       - key: SENTRY_DSN

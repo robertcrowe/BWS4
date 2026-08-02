@@ -155,7 +155,14 @@ def test_search_endpoint_returns_the_agents_answer_and_its_step_trace() -> None:
         queued_results=[_FakeExecuteResult(scalar=None), _FakeExecuteResult(scalar=None)]
     )
     fake_results = [
-        ExaResult(title="Result A", summary="Summary A", source="https://a.example"),
+        ExaResult(
+            title="Result A",
+            summary="Summary A",
+            source="https://a.example",
+            published_date="2026-07-14T00:00:00.000Z",
+        ),
+        # No date: Exa often cannot determine one for package indexes and docs
+        # pages, and the UI has to cope rather than render "undefined".
         ExaResult(title="Result B", summary="Summary B", source="https://b.example"),
     ]
     search_mock = AsyncMock(return_value=fake_results)
@@ -177,9 +184,24 @@ def test_search_endpoint_returns_the_agents_answer_and_its_step_trace() -> None:
     assert body["model"] == SERVED_MODEL_SLUG
     assert body["iterations"] == 2
 
+    # The publish date is carried end to end. Dropping it was what made a
+    # stale *page* indistinguishable from a stale *answer* on screen -- the
+    # visitor had no way to see that a top-ranked result was three years old.
     assert body["results"] == [
-        {"title": "Result A", "summary": "Summary A", "source": "https://a.example", "rank": 1},
-        {"title": "Result B", "summary": "Summary B", "source": "https://b.example", "rank": 2},
+        {
+            "title": "Result A",
+            "summary": "Summary A",
+            "source": "https://a.example",
+            "rank": 1,
+            "published_date": "2026-07-14T00:00:00.000Z",
+        },
+        {
+            "title": "Result B",
+            "summary": "Summary B",
+            "source": "https://b.example",
+            "rank": 2,
+            "published_date": None,
+        },
     ]
 
     kinds = [step["kind"] for step in body["steps"]]

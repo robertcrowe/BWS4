@@ -55,7 +55,19 @@ target-version = "py312"
 # as a change made on purpose.
 extend-exclude = [
     "backend/app/main.py",
-    "backend/app/api",
+    # api/ is listed file by file for the same reason services/ is, below: v6
+    # adds `api/collab.py`, and a new file must be gated from the moment it
+    # exists rather than inheriting an exclusion written for its neighbours.
+    # Every pre-v6 router stays excluded; nothing here has been un-excluded.
+    "backend/app/api/__init__.py",
+    "backend/app/api/chained_calls.py",
+    "backend/app/api/embeddings.py",
+    "backend/app/api/health.py",
+    "backend/app/api/orchestrated.py",
+    "backend/app/api/planning.py",
+    "backend/app/api/rag.py",
+    "backend/app/api/single_call.py",
+    "backend/app/api/tools.py",
     "backend/app/chained_calls",
     "backend/app/core",
     "backend/app/db",
@@ -119,7 +131,16 @@ files = ["backend/app"]
 # checked, so it has never had to satisfy a checker's stricter reading. It is
 # out of scope for this revision.
 module = [
-    "backend.app.api.*",
+    # Per-module rather than `backend.app.api.*`, so v6's `api/collab.py` is
+    # type checked from birth instead of inheriting a pre-v6 exemption.
+    "backend.app.api.chained_calls",
+    "backend.app.api.embeddings",
+    "backend.app.api.health",
+    "backend.app.api.orchestrated",
+    "backend.app.api.planning",
+    "backend.app.api.rag",
+    "backend.app.api.single_call",
+    "backend.app.api.tools",
     "backend.app.chained_calls.*",
     "backend.app.core.*",
     "backend.app.db.*",
@@ -143,6 +164,8 @@ module = [
     "backend.app.services.moderation",
     "backend.app.services.allowance_holds",
     "backend.app.services.untrusted",
+    "backend.app.services.message_bus",
+    "backend.app.services.prompt_context",
 ]
 ignore_errors = false
 

@@ -51,7 +51,7 @@ from dataclasses import dataclass
 import structlog
 from pydantic import BaseModel
 from pydantic_ai import Agent
-from pydantic_ai.exceptions import UsageLimitExceeded
+from pydantic_ai.exceptions import ModelAPIError, UsageLimitExceeded
 from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models import Model, ModelRequestParameters
 from pydantic_ai.models.fallback import FallbackModel
@@ -66,7 +66,10 @@ from backend.app.services import model_registry
 
 logger = structlog.get_logger()
 
-#: Slugs excluded from **this lane only**, each verified by probe.
+#: Slugs excluded from this lane's **tool-less** steps, each verified by probe.
+#:
+#: Applies to a step that asks only for typed output. The tools case has its own
+#: set below and does *not* inherit this one -- see the note there.
 #:
 #: Kept separate from `discover_models.TOOL_KNOWN_BAD` on the standing rule that
 #: a probe result belongs to a capability, not to a model -- and this set is the
@@ -84,41 +87,74 @@ logger = structlog.get_logger()
 #: of the chained-calls app's output shapes and returned conforming objects.
 AGENT_LANE_KNOWN_BAD = frozenset({"groq/llama-3.1-8b-instant"})
 
-#: Slugs excluded when this lane runs a step **with tools**, on top of
-#: AGENT_LANE_KNOWN_BAD. Every entry probed with a real research step (a search
-#: tool plus a typed output type, which is what the planning app's executors
-#: need) against a stubbed search, so no Exa quota was involved.
+#: Slugs excluded when this lane runs a step **with tools**. A *sibling* of
+#: AGENT_LANE_KNOWN_BAD, not an extension of it: see the note below on why the
+#: two sets are no longer nested.
+#:
+#: Every entry probed with a real research step (a search tool plus a typed
+#: output type, which is what the planning app's executors need) against a
+#: stubbed search, so no Exa quota was involved. Two cases per slug, because the
+#: failure modes differ between them: results that are *useful*, and results
+#: that come back *empty*.
 #:
 #: This is a *fourth* capability, and it needed its own probe for the reason the
-#: other three did: none of the existing results transfer. Every model here
-#: passes the typed-output probe that AGENT_LANE_KNOWN_BAD is built from, and
-#: some ship in TOOL_MODEL_CHAIN having passed the LiteLLM tool-loop probe.
-#: Offering a function tool and a typed-output tool *at the same time* is what
-#: they cannot do, and only 3 of the 7 configured slugs can:
+#: other three did: none of the existing results transfer. Offering a function
+#: tool and a typed-output tool *at the same time* is what these cannot do.
 #:
-#: - `groq/llama-3.3-70b-versatile` -- emits malformed tool-call syntax when both
-#:   kinds of tool are present (`<function=final_result":{...}</function>`), and
-#:   Groq rejects it with `tool_use_failed`. It had the answer; it could not
-#:   express the call.
+#: **The line is drawn by failure mode, not by pass rate**, and that is the
+#: substantive change from the first version of this list. `FallbackModel` is
+#: configured to fall through on `ModelAPIError`, and the budget gate wraps it
+#: from the *outside* -- so a model that answers a bad request with an HTTP
+#: error costs the step one fast round trip and no quota unit at all. A model
+#: that instead loops on the tool until `request_limit` trips raises
+#: `StepRequestLimitExceeded`, which is terminal: nothing falls through, and the
+#: step is lost. A model that returns an *empty but valid* object is worse
+#: still, since the framework has no reason to reject it. Only the last two are
+#: disqualifying:
+#:
 #: - `groq/openai/gpt-oss-20b` -- never stops calling the search tool, so the
-#:   step's request limit ends it before it produces output. Separately excluded
-#:   from the LiteLLM tool chain for an unrelated fault, which is consistency
-#:   rather than a transferred result.
-#: - `openrouter/inclusionai/ling-3.0-flash:free` -- the same runaway.
-#: - `openrouter/nvidia/nemotron-3-super-120b-a12b:free` -- calls the tool, reads
-#:   the results, then returns an empty summary.
+#:   step's request limit ends it before it produces output (0 of 6 probes
+#:   completed). Separately excluded from the LiteLLM tool chain for an
+#:   unrelated fault, which is consistency rather than a transferred result.
+#: - `openrouter/inclusionai/ling-3.0-flash:free` -- the same runaway, and it
+#:   spends the whole limit doing it: 4 of 6 probes died on the request limit,
+#:   and the two that answered still took all 5 requests and both searches.
+#: - `openrouter/nvidia/nemotron-3-super-120b-a12b:free` -- calls the tool,
+#:   reads the results, then returns an empty summary. 6 of 6, both cases.
 #:
 #: The survivors span both providers, so failover still crosses a provider
 #: boundary. Expect this list to rot like every other; re-probe rather than
 #: assuming a code fault when executors start failing.
 TOOL_LANE_KNOWN_BAD = frozenset(
     {
-        "groq/llama-3.3-70b-versatile",
         "groq/openai/gpt-oss-20b",
         "openrouter/inclusionai/ling-3.0-flash:free",
         "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
     }
 )
+
+#: Re-probed after live runs showed research steps taking 33-67s against a
+#: chain with exactly one fast entry. Two slugs moved, in opposite directions,
+#: and between them they are why the two exclusion sets above are siblings
+#: rather than base-and-extension:
+#:
+#: - `groq/llama-3.1-8b-instant` is excluded *without* tools and permitted
+#:   *with* them. The recorded tool-less fault is that it invents a tool that
+#:   was never offered; re-probing confirms it (2 of 3 tool-less probes still
+#:   400). Offer it a real tool and there is nothing to invent -- 10 of 12
+#:   probes passed, and it is the fastest entry in the chain. A set built on
+#:   "tools is strictly harder" could not express that, and excluding a model
+#:   from the harder case because it fails the easier one is backwards.
+#: - `groq/llama-3.3-70b-versatile` fails 8 of 12, always with the recorded
+#:   malformed tool call (`tool_use_failed`), and is permitted anyway. It fails
+#:   in ~1s and falls through for free, so the expected cost of listing it is
+#:   under a second; the expected saving, when it serves rather than the run
+#:   dropping to OpenRouter's free pool, is 20-40s. It is in the chain as a
+#:   cheap bet, not as a reliable entry -- do not read its membership as a
+#:   4-of-12 model being called healthy.
+#:
+#: Their shared failure mode is what makes both safe: a hard 400 that
+#: `FallbackModel` absorbs, never a silent empty answer.
 
 
 class AgentLaneError(Exception):
@@ -342,10 +378,13 @@ def lane_chain(chain: list[str] | None = None, *, tools: bool = False) -> list[s
         chain: The capability's ordered chain. Defaults to
             GENERATION_MODEL_CHAIN, which is what every current caller wants;
             passed explicitly when a future capability earns its own list.
-        tools: Whether the step will offer the model function tools. When true,
-            `TOOL_LANE_KNOWN_BAD` is excluded as well -- a model that returns
-            clean typed output is not thereby able to do it *while* calling a
-            tool, and four of the shipped slugs cannot.
+        tools: Whether the step will offer the model function tools. Selects
+            which exclusion set applies -- `TOOL_LANE_KNOWN_BAD` when true,
+            `AGENT_LANE_KNOWN_BAD` when false. The two are **alternatives, not
+            layers**: a model that returns clean typed output is not thereby
+            able to do it *while* calling a tool, and -- measured, not assumed
+            -- the reverse fails too, so neither set may be applied to the
+            other's case.
 
     Returns:
         Full registry slugs -- `provider/model-id`, prefix intact -- in the
@@ -358,7 +397,7 @@ def lane_chain(chain: list[str] | None = None, *, tools: bool = False) -> list[s
     """
     source = model_registry.GENERATION_MODEL_CHAIN if chain is None else chain
     available = registered_providers()
-    excluded = AGENT_LANE_KNOWN_BAD | (TOOL_LANE_KNOWN_BAD if tools else frozenset())
+    excluded = TOOL_LANE_KNOWN_BAD if tools else AGENT_LANE_KNOWN_BAD
 
     slugs = [
         model
@@ -374,7 +413,69 @@ def lane_chain(chain: list[str] | None = None, *, tools: bool = False) -> list[s
     return slugs
 
 
-def build_fallback_model(chain: list[str] | None = None, *, tools: bool = False) -> FallbackModel:
+def _observe_fallback(label: str) -> Callable[[Exception], bool]:
+    """Build the handler `FallbackModel` consults before walking to the next model.
+
+    This exists because **a successful run hides the failures underneath it**.
+    When the head slug is rate-limited and the next model answers, the step
+    succeeds and `agent_step_completed` records only the model that served --
+    so a chain quietly serving every request from its slow tail looks exactly
+    like a healthy one, and diagnosing it needs a probe rather than a log. Live,
+    that state persisted long enough to be reported as "research steps are slow"
+    with nothing in the console to say why.
+
+    Two things happen per skipped model, and neither changes the outcome of the
+    request:
+
+    * The step is logged, so the walk is visible.
+    * A rate limit benches that slug for the window its provider stated, so the
+      *next* step does not pay for the same refusal again.
+
+    Returns the default eligibility rule unchanged: PydanticAI's own default is
+    `(ModelAPIError,)`, and this handler replaces it, so it must reproduce it or
+    it would silently change which errors fall through.
+
+    Args:
+        label: The calling step's label, so a log line says which step walked.
+
+    Returns:
+        A predicate deciding whether `exc` should fall through to the next model.
+    """
+
+    def observe(exc: Exception) -> bool:
+        eligible = isinstance(exc, ModelAPIError)
+        status = getattr(exc, "status_code", None)
+        reported = getattr(exc, "model_name", None)
+        slug = model_registry.normalize(reported) if reported else "unknown"
+
+        # `str(exc)` carries the provider's body, which for a Groq 400 embeds
+        # `failed_generation` -- the model's own attempted output, which on a
+        # research step is derived from the visitor's city and interests. It is
+        # read for the retry window and classified for the log; it is never
+        # logged. Same rule the planning app's own telemetry follows.
+        detail = str(exc)
+        rate_limited = status == 429 or (status is None and model_registry.looks_rate_limited(detail))
+
+        benched_for = model_registry.note_rate_limit(slug, detail) if rate_limited else None
+
+        logger.warning(
+            "model_fallback",
+            label=label,
+            model=slug,
+            status=status,
+            error_type=type(exc).__name__,
+            reason="rate_limited" if rate_limited else "error",
+            benched_seconds=None if benched_for is None else round(benched_for, 1),
+            falls_through=eligible,
+        )
+        return eligible
+
+    return observe
+
+
+def build_fallback_model(
+    chain: list[str] | None = None, *, tools: bool = False, label: str = "lane"
+) -> FallbackModel:
     """Build the lane's model: the head slug, with the rest behind it.
 
     Each entry is constructed by its own provider's adapter, so one
@@ -385,17 +486,19 @@ def build_fallback_model(chain: list[str] | None = None, *, tools: bool = False)
 
     Args:
         chain: The capability's ordered chain, or None for the default.
-        tools: Whether the step will offer function tools, which narrows the
-            chain further. See `lane_chain`.
+        tools: Whether the step will offer function tools, which selects the
+            exclusion set. See `lane_chain`.
+        label: The calling step's label, carried into the fallback log.
 
     Returns:
-        A FallbackModel over every currently-available slug.
+        A FallbackModel over every currently-available slug, instrumented to
+        log and bench whatever it walks past.
     """
     models = [
         _ADAPTERS[model_registry.provider_of(slug)].build_model(slug.split("/", 1)[1])
         for slug in lane_chain(chain, tools=tools)
     ]
-    return FallbackModel(models[0], *models[1:])
+    return FallbackModel(models[0], *models[1:], fallback_on=_observe_fallback(label))
 
 
 async def run_typed_step[T: BaseModel](
@@ -458,7 +561,7 @@ async def run_typed_step[T: BaseModel](
     # A step that offers tools needs a narrower chain than one that does not,
     # and the caller should not have to remember that: the presence of `tools`
     # is the signal, so it cannot be forgotten at a call site.
-    model: Model = build_fallback_model(chain, tools=bool(tools))
+    model: Model = build_fallback_model(chain, tools=bool(tools), label=label)
 
     # Whatever the caller's hook raised, kept so the handler below can tell a
     # refusal from a model failure. Without this the gate's own exception would

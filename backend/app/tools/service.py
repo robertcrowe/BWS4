@@ -19,7 +19,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db.models import SearchQuery
 from backend.app.services import shared
-from backend.app.services.web_search import ExaClientError, ExaRateLimitError, ExaResult, search
+from backend.app.services.web_search import (
+    ExaClientError,
+    ExaRateLimitError,
+    ExaResult,
+    search,
+)
 from backend.app.tools.agent import AgentError, AgentStep, run_agent
 
 logger = structlog.get_logger()
@@ -56,6 +61,10 @@ class RankedResult:
     summary: str
     source: str
     rank: int
+    #: When Exa says the page was published, or None when it could not tell.
+    #: Shown to the visitor so a stale *page* is distinguishable from a stale
+    #: *answer* -- see `services/web_search.ExaResult`.
+    published_date: str | None = None
 
 
 @dataclass(frozen=True)
@@ -150,7 +159,13 @@ async def run_search(session: AsyncSession, search_query: str) -> AgentSearchRun
     return AgentSearchRun(
         answer=run.answer,
         results=[
-            RankedResult(title=r.title, summary=r.summary, source=r.source, rank=index + 1)
+            RankedResult(
+                title=r.title,
+                summary=r.summary,
+                source=r.source,
+                rank=index + 1,
+                published_date=r.published_date,
+            )
             for index, r in enumerate(run.results)
         ],
         steps=run.steps,

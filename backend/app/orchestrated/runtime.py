@@ -58,8 +58,15 @@ logger = structlog.get_logger()
 #:
 #: This is a per-step ceiling enforced by PydanticAI itself, which is what stops
 #: one greedy step from eating another's share of the run. A step that needs a
-#: third request loses its own column and nothing else.
-STEP_REQUEST_LIMIT = 2
+#: fourth request loses its own column and nothing else.
+#:
+#: Three, not two: two allowed exactly one re-prompt, so a step that needed a
+#: second one lost its column even though the run had budget for it. The reason
+#: the ceiling exists is to stop a greedy step starving its partner, and it goes
+#: on doing that at three -- the two branches still cannot reach each other's
+#: share, because the fan-out ceiling is lowered by `SYNTHESIS_RESERVE` for the
+#: duration and each branch carries its own limit.
+STEP_REQUEST_LIMIT = 3
 
 #: Logical model calls one run makes: the delegation, the two specialists, and
 #: the coordinator's closing synthesis turn. The moderation gate is **not**
@@ -69,13 +76,20 @@ LOGICAL_CALLS_PER_RUN = 4
 
 #: Provider requests a single run may make before it is aborted.
 #:
-#: Eight: four logical calls, each allowed one framework re-prompt. **This was
-#: four, and four was measurably wrong.** The specification's hard counter
-#: assumes one provider request per logical call; in practice a third of typed
-#: steps take two, so a run budgeted at four had zero tolerance and lost a
-#: specialist column on roughly half of all dispatches. Raising the ceiling is
-#: what makes the fan-out reliable; the per-step limit above is what keeps it
-#: bounded rather than merely larger.
+#: Twelve: four logical calls, each allowed two framework re-prompts. **This was
+#: four, then eight, and four was measurably wrong.** The specification's hard
+#: counter assumes one provider request per logical call; in practice a third of
+#: typed steps take two, so a run budgeted at four had zero tolerance and lost a
+#: specialist column on roughly half of all dispatches. Eight fixed that and left
+#: no padding above the measured worst case, which is the position every budget
+#: in this project has been caught in at least once. Raising the ceiling is what
+#: makes the fan-out reliable; the per-step limit above is what keeps it bounded
+#: rather than merely larger.
+#:
+#: **Unlike the planning app's ceiling, this one is reserved up front** as an
+#: `allowance_holds` row, so it is spent whether or not the run needs it and
+#: padding here costs runs per hour directly. `GENERATION_HOURLY_LIMIT` was
+#: raised alongside it so the padding buys headroom rather than fewer runs.
 #:
 #: The visitor-facing count is untouched at three -- a re-prompt is the
 #: framework fixing its own malformed request, not a call the run chose to make.

@@ -14,6 +14,7 @@ alone.
 from __future__ import annotations
 
 import os
+import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -133,8 +134,13 @@ def test_a_withdrawn_model_is_benched_and_skipped() -> None:
     assert len(model_registry.active_chain(TOOL)) == len(model_registry.TOOL_MODEL_CHAIN) - 1
 
 
-def test_a_rate_limited_model_is_not_benched() -> None:
-    """429 means busy, not gone."""
+def test_a_rate_limited_model_is_not_benched_as_withdrawn() -> None:
+    """429 means busy, not gone -- so it must not take the 30-minute cooldown.
+
+    `note_rate_limit` applies a much shorter one; this pins that the *permanent*
+    path stays out of it, since a transient 429 promoted to a withdrawal is how
+    a fallback chain eats itself.
+    """
     busy = model_registry.TOOL_MODEL_CHAIN[0]
     bare = busy.split("/", 1)[1]
 
@@ -340,3 +346,101 @@ def test_ensure_provider_credentials_omits_groq_when_unset() -> None:
         model_registry.ensure_provider_credentials()
 
     assert "GROQ_API_KEY" not in os.environ
+
+
+class TestTheRateLimitBench:
+    """A third state between healthy and withdrawn: busy until a stated time.
+
+    Reported live as "the planning agent's research steps are slow". The head
+    of every chain had exhausted Groq's per-day *token* budget, so each step
+    paid a failed round trip to it before falling through to OpenRouter's much
+    slower free pool -- every step, for hours, because a 429 is transient and
+    `note_failure` correctly refuses to bench one.
+    """
+
+    @pytest.mark.parametrize(
+        ("detail", "expected"),
+        [
+            # Groq states the window inside the message body, not as a header.
+            ("Please try again in 3m36s", 216.0),
+            ("Please try again in 7.66s", 7.66),
+            ("try again in 1h2m3s", 3723.0),
+            ("Retry-After: 30", 30.0),
+            ("retry_after = 12.5", 12.5),
+            ("Rate limit reached. Slow down.", None),
+            ("", None),
+        ],
+    )
+    def test_it_reads_the_window_the_provider_stated(
+        self, detail: str, expected: float | None
+    ) -> None:
+        assert model_registry.parse_retry_after(detail) == expected
+
+    def test_a_stated_window_takes_the_slug_out_for_exactly_that_long(self) -> None:
+        busy = model_registry.TOOL_MODEL_CHAIN[0]
+
+        applied = model_registry.note_rate_limit(busy, "Please try again in 3m36s")
+
+        assert applied == 216.0
+        assert busy not in model_registry.active_chain(TOOL)
+
+    def test_it_accepts_the_bare_name_a_provider_reports(self) -> None:
+        """Providers echo the model without the routing prefix this code calls it by.
+
+        `openai/gpt-oss-120b` is served by *Groq* here, so the prefix cannot be
+        guessed -- `normalize` maps it back. Benching under the unprefixed name
+        would silently bench nothing.
+        """
+        busy = model_registry.TOOL_MODEL_CHAIN[0]
+
+        assert model_registry.note_rate_limit(busy.split("/", 1)[1], "try again in 60s")
+        assert busy not in model_registry.active_chain(TOOL)
+
+    def test_a_window_less_slug_gets_the_default(self) -> None:
+        busy = model_registry.TOOL_MODEL_CHAIN[0]
+
+        applied = model_registry.note_rate_limit(busy, "429 Too Many Requests")
+
+        assert applied == model_registry.DEFAULT_RATE_LIMIT_BENCH_SECONDS
+
+    def test_the_window_is_clamped_at_both_ends(self) -> None:
+        """A bench this over-estimates costs real capacity, so it is bounded."""
+        first, second = model_registry.TOOL_MODEL_CHAIN[:2]
+
+        assert (
+            model_registry.note_rate_limit(first, "try again in 0.2s")
+            == model_registry.MIN_RATE_LIMIT_BENCH_SECONDS
+        )
+        assert (
+            model_registry.note_rate_limit(second, "try again in 24h")
+            == model_registry.MAX_RATE_LIMIT_BENCH_SECONDS
+        )
+
+    def test_an_unknown_slug_is_never_benched(self) -> None:
+        """Guessing which model a provider meant would remove a healthy one."""
+        before = model_registry.active_chain(TOOL)
+
+        assert model_registry.note_rate_limit("acme/not-a-real-model", "try again in 60s") is None
+        assert model_registry.active_chain(TOOL) == before
+
+    def test_it_never_shortens_an_existing_bench(self) -> None:
+        """A withdrawn model must not be restored to the chain by a later 429.
+
+        The two benches share one dict, so a 60-second rate-limit window written
+        over a 30-minute withdrawal would put a model a provider has removed
+        back in front of visitors a minute later.
+        """
+        withdrawn = model_registry.TOOL_MODEL_CHAIN[0]
+        bare = withdrawn.split("/", 1)[1]
+        model_registry.note_failure(RuntimeError(f"{bare}: No endpoints found"))
+
+        model_registry.note_rate_limit(withdrawn, "try again in 6s")
+
+        assert withdrawn not in model_registry.active_chain(TOOL)
+        assert model_registry._benched[withdrawn] > time.monotonic() + 60
+
+    def test_looks_rate_limited_recognises_what_providers_actually_say(self) -> None:
+        """For the LiteLLM lane, which surfaces a string and no status code."""
+        assert model_registry.looks_rate_limited("Error code: 429 - too many requests")
+        assert model_registry.looks_rate_limited("RateLimitError: rate limit exceeded")
+        assert not model_registry.looks_rate_limited("No endpoints found for this model")

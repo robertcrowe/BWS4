@@ -29,6 +29,7 @@ import structlog
 
 from backend.app.services import model_registry
 from backend.app.services.web_search import ExaClientError, ExaRateLimitError, ExaResult
+from backend.app.services.prompt_context import with_current_date
 from backend.app.tools.prompt_loader import load_prompt
 
 logger = structlog.get_logger()
@@ -120,7 +121,10 @@ def _assistant_message(message: object) -> dict:
         An OpenAI-shaped assistant message dict.
     """
     calls = getattr(message, "tool_calls", None) or []
-    rebuilt: dict = {"role": "assistant", "content": getattr(message, "content", "") or ""}
+    rebuilt: dict = {
+        "role": "assistant",
+        "content": getattr(message, "content", "") or "",
+    }
     if calls:
         rebuilt["tool_calls"] = [
             {
@@ -155,7 +159,9 @@ def _parse_query(call: object) -> str | None:
     return query.strip()
 
 
-async def _complete(messages: list[dict], *, pinned: str | None, force_answer: bool) -> object:
+async def _complete(
+    messages: list[dict], *, pinned: str | None, force_answer: bool
+) -> object:
     """Call the model over the free-model chain.
 
     LiteLLM walks `fallbacks` itself on failure, so there is no hand-rolled
@@ -249,7 +255,10 @@ async def run_agent(question: str, *, execute_search: SearchExecutor) -> AgentRu
             it can answer from the results it already has.
     """
     messages: list[dict] = [
-        {"role": "system", "content": load_prompt("agent_v1")},
+        # Dated: without it the model anchors "recent" on its training
+        # cutoff and writes that year into its own search query. Observed
+        # live -- see services/prompt_context.py.
+        {"role": "system", "content": with_current_date(load_prompt("agent_v1"))},
         {"role": "user", "content": question},
     ]
 
@@ -307,7 +316,9 @@ async def run_agent(question: str, *, execute_search: SearchExecutor) -> AgentRu
                         "tool_call_id": call.id,
                         "name": SEARCH_TOOL_NAME,
                         "content": json.dumps(
-                            {"error": "Malformed arguments; expected {'query': string}."}
+                            {
+                                "error": "Malformed arguments; expected {'query': string}."
+                            }
                         ),
                     }
                 )
@@ -320,7 +331,9 @@ async def run_agent(question: str, *, execute_search: SearchExecutor) -> AgentRu
                         "tool_call_id": call.id,
                         "name": SEARCH_TOOL_NAME,
                         "content": json.dumps(
-                            {"error": "Search budget exhausted. Answer with what you have."}
+                            {
+                                "error": "Search budget exhausted. Answer with what you have."
+                            }
                         ),
                     }
                 )
@@ -350,7 +363,9 @@ async def run_agent(question: str, *, execute_search: SearchExecutor) -> AgentRu
                         "tool_call_id": call.id,
                         "name": SEARCH_TOOL_NAME,
                         "content": json.dumps(
-                            {"error": "Search unavailable. Answer from earlier results."}
+                            {
+                                "error": "Search unavailable. Answer from earlier results."
+                            }
                         ),
                     }
                 )
@@ -365,7 +380,8 @@ async def run_agent(question: str, *, execute_search: SearchExecutor) -> AgentRu
                 AgentStep(
                     kind="tool_result",
                     label=f"Received {len(results)} result(s)",
-                    detail="; ".join(r.title for r in results[:3]) or "No results returned.",
+                    detail="; ".join(r.title for r in results[:3])
+                    or "No results returned.",
                 )
             )
             messages.append(
@@ -376,7 +392,16 @@ async def run_agent(question: str, *, execute_search: SearchExecutor) -> AgentRu
                     "content": json.dumps(
                         {
                             "results": [
-                                {"title": r.title, "summary": r.summary, "url": r.source}
+                                {
+                                    "title": r.title,
+                                    "summary": r.summary,
+                                    "url": r.source,
+                                    # Included so the model can weigh recency.
+                                    # Exa ranks on relevance alone, so without
+                                    # this a 2023 page and a current one are
+                                    # indistinguishable to it.
+                                    "published": r.published_date or "unknown",
+                                }
                                 for r in results
                             ]
                         }
@@ -401,7 +426,11 @@ async def run_agent(question: str, *, execute_search: SearchExecutor) -> AgentRu
             raise AgentError("The agent finished without producing an answer.")
         run.answer = content
         run.steps.append(
-            AgentStep(kind="answer", label="Answered", detail="Answer produced under the limit.")
+            AgentStep(
+                kind="answer",
+                label="Answered",
+                detail="Answer produced under the limit.",
+            )
         )
 
     logger.info(

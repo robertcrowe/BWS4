@@ -1,0 +1,1930 @@
+{
+  "note": "Constructed from the Phase 2 hand-tuned fixtures, not captured from a live provider. See the suite's module docstring for why.",
+  "cases": [
+    {
+      "id": "refurbished_laptops_school__lowest_price",
+      "scenario_id": "refurbished_laptops_school",
+      "weighting_id": "lowest_price",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 372.0,
+          "delivery_days": 14.0,
+          "quantity": 180.0,
+          "warranty_months": 12.0,
+          "notes": "northwind quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 418.0,
+          "delivery_days": 25.0,
+          "quantity": 240.0,
+          "warranty_months": 30.0,
+          "notes": "meridian quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "price",
+          "ask": "Improve your price.",
+          "justification": "Price carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "price",
+          "ask": "Improve your price.",
+          "justification": "Price carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 364.0,
+          "delivery_days": 14.0,
+          "quantity": 180.0,
+          "warranty_months": 12.0,
+          "notes": "northwind quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": [
+            "price"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 410.0,
+          "delivery_days": 25.0,
+          "quantity": 270.0,
+          "warranty_months": 33.0,
+          "notes": "meridian quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": [
+            "price",
+            "quantity",
+            "warranty"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "northwind",
+        "per_priority_scoring": [
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 86.0,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 81.6,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 50.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 16.7,
+            "comment": "northwind on warranty."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 40.0,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 52.6,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 75.0,
+            "comment": "meridian on warranty."
+          }
+        ],
+        "rationale": "northwind wins on the stated priorities: price and delivery carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "price",
+          "delivery"
+        ],
+        "runner_up_note": "meridian was stronger on other terms."
+      }
+    },
+    {
+      "id": "refurbished_laptops_school__fastest_delivery",
+      "scenario_id": "refurbished_laptops_school",
+      "weighting_id": "fastest_delivery",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 372.0,
+          "delivery_days": 14.0,
+          "quantity": 180.0,
+          "warranty_months": 12.0,
+          "notes": "northwind quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 418.0,
+          "delivery_days": 25.0,
+          "quantity": 240.0,
+          "warranty_months": 30.0,
+          "notes": "meridian quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "delivery",
+          "ask": "Improve your delivery.",
+          "justification": "Delivery carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "delivery",
+          "ask": "Improve your delivery.",
+          "justification": "Delivery carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 364.0,
+          "delivery_days": 14.0,
+          "quantity": 180.0,
+          "warranty_months": 12.0,
+          "notes": "northwind quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": [
+            "price"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 410.0,
+          "delivery_days": 25.0,
+          "quantity": 270.0,
+          "warranty_months": 33.0,
+          "notes": "meridian quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": [
+            "price",
+            "quantity",
+            "warranty"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "northwind",
+        "per_priority_scoring": [
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 86.0,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 81.6,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 50.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 16.7,
+            "comment": "northwind on warranty."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 40.0,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 52.6,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 75.0,
+            "comment": "meridian on warranty."
+          }
+        ],
+        "rationale": "northwind wins on the stated priorities: delivery and quantity carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "delivery",
+          "quantity"
+        ],
+        "runner_up_note": "meridian was stronger on other terms."
+      }
+    },
+    {
+      "id": "refurbished_laptops_school__full_quantity",
+      "scenario_id": "refurbished_laptops_school",
+      "weighting_id": "full_quantity",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 372.0,
+          "delivery_days": 14.0,
+          "quantity": 180.0,
+          "warranty_months": 12.0,
+          "notes": "northwind quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 418.0,
+          "delivery_days": 25.0,
+          "quantity": 240.0,
+          "warranty_months": 30.0,
+          "notes": "meridian quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "quantity",
+          "ask": "Improve your quantity.",
+          "justification": "Quantity carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "quantity",
+          "ask": "Improve your quantity.",
+          "justification": "Quantity carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 364.0,
+          "delivery_days": 14.0,
+          "quantity": 180.0,
+          "warranty_months": 12.0,
+          "notes": "northwind quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": [
+            "price"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 410.0,
+          "delivery_days": 25.0,
+          "quantity": 270.0,
+          "warranty_months": 33.0,
+          "notes": "meridian quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": [
+            "price",
+            "quantity",
+            "warranty"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "meridian",
+        "per_priority_scoring": [
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 40.0,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 52.6,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 75.0,
+            "comment": "meridian on warranty."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 86.0,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 81.6,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 50.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 16.7,
+            "comment": "northwind on warranty."
+          }
+        ],
+        "rationale": "meridian wins on the stated priorities: quantity and price carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "quantity",
+          "price"
+        ],
+        "runner_up_note": "northwind was stronger on other terms."
+      }
+    },
+    {
+      "id": "refurbished_laptops_school__longest_warranty",
+      "scenario_id": "refurbished_laptops_school",
+      "weighting_id": "longest_warranty",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 372.0,
+          "delivery_days": 14.0,
+          "quantity": 180.0,
+          "warranty_months": 12.0,
+          "notes": "northwind quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 418.0,
+          "delivery_days": 25.0,
+          "quantity": 240.0,
+          "warranty_months": 30.0,
+          "notes": "meridian quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "warranty",
+          "ask": "Improve your warranty.",
+          "justification": "Warranty carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "warranty",
+          "ask": "Improve your warranty.",
+          "justification": "Warranty carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 364.0,
+          "delivery_days": 14.0,
+          "quantity": 180.0,
+          "warranty_months": 12.0,
+          "notes": "northwind quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": [
+            "price"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 410.0,
+          "delivery_days": 25.0,
+          "quantity": 270.0,
+          "warranty_months": 33.0,
+          "notes": "meridian quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": [
+            "price",
+            "quantity",
+            "warranty"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "meridian",
+        "per_priority_scoring": [
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 40.0,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 52.6,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 75.0,
+            "comment": "meridian on warranty."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 86.0,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 81.6,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 50.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 16.7,
+            "comment": "northwind on warranty."
+          }
+        ],
+        "rationale": "meridian wins on the stated priorities: warranty and price carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "warranty",
+          "price"
+        ],
+        "runner_up_note": "northwind was stronger on other terms."
+      }
+    },
+    {
+      "id": "refurbished_laptops_school__balanced",
+      "scenario_id": "refurbished_laptops_school",
+      "weighting_id": "balanced",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 372.0,
+          "delivery_days": 14.0,
+          "quantity": 180.0,
+          "warranty_months": 12.0,
+          "notes": "northwind quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 418.0,
+          "delivery_days": 25.0,
+          "quantity": 240.0,
+          "warranty_months": 30.0,
+          "notes": "meridian quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "price",
+          "ask": "Improve your price.",
+          "justification": "Price carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "price",
+          "ask": "Improve your price.",
+          "justification": "Price carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 364.0,
+          "delivery_days": 14.0,
+          "quantity": 180.0,
+          "warranty_months": 12.0,
+          "notes": "northwind quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": [
+            "price"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 410.0,
+          "delivery_days": 25.0,
+          "quantity": 270.0,
+          "warranty_months": 33.0,
+          "notes": "meridian quoting within its own position on refurbished_laptops_school.",
+          "concessions_made": [
+            "price",
+            "quantity",
+            "warranty"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "meridian",
+        "per_priority_scoring": [
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 40.0,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 52.6,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 75.0,
+            "comment": "meridian on warranty."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 86.0,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 81.6,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 50.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 16.7,
+            "comment": "northwind on warranty."
+          }
+        ],
+        "rationale": "meridian wins on the stated priorities: price and delivery carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "price",
+          "delivery"
+        ],
+        "runner_up_note": "northwind was stronger on other terms."
+      }
+    },
+    {
+      "id": "lab_reagents_bulk__lowest_price",
+      "scenario_id": "lab_reagents_bulk",
+      "weighting_id": "lowest_price",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 21.0,
+          "delivery_days": 7.0,
+          "quantity": 300.0,
+          "warranty_months": 9.0,
+          "notes": "northwind quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 29.0,
+          "delivery_days": 26.0,
+          "quantity": 500.0,
+          "warranty_months": 22.0,
+          "notes": "meridian quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "price",
+          "ask": "Improve your price.",
+          "justification": "Price carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "price",
+          "ask": "Improve your price.",
+          "justification": "Price carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 20.2,
+          "delivery_days": 7.0,
+          "quantity": 300.0,
+          "warranty_months": 9.0,
+          "notes": "northwind quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": [
+            "price"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 28.0,
+          "delivery_days": 25.0,
+          "quantity": 550.0,
+          "warranty_months": 23.0,
+          "notes": "meridian quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": [
+            "price",
+            "delivery",
+            "quantity",
+            "warranty"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "northwind",
+        "per_priority_scoring": [
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 86.2,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 94.3,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 20.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 12.5,
+            "comment": "northwind on warranty."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 37.5,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 42.9,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 70.8,
+            "comment": "meridian on warranty."
+          }
+        ],
+        "rationale": "northwind wins on the stated priorities: price and delivery carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "price",
+          "delivery"
+        ],
+        "runner_up_note": "meridian was stronger on other terms."
+      }
+    },
+    {
+      "id": "lab_reagents_bulk__fastest_delivery",
+      "scenario_id": "lab_reagents_bulk",
+      "weighting_id": "fastest_delivery",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 21.0,
+          "delivery_days": 7.0,
+          "quantity": 300.0,
+          "warranty_months": 9.0,
+          "notes": "northwind quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 29.0,
+          "delivery_days": 26.0,
+          "quantity": 500.0,
+          "warranty_months": 22.0,
+          "notes": "meridian quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "delivery",
+          "ask": "Improve your delivery.",
+          "justification": "Delivery carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "delivery",
+          "ask": "Improve your delivery.",
+          "justification": "Delivery carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 20.2,
+          "delivery_days": 7.0,
+          "quantity": 300.0,
+          "warranty_months": 9.0,
+          "notes": "northwind quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": [
+            "price"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 28.0,
+          "delivery_days": 25.0,
+          "quantity": 550.0,
+          "warranty_months": 23.0,
+          "notes": "meridian quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": [
+            "price",
+            "delivery",
+            "quantity",
+            "warranty"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "northwind",
+        "per_priority_scoring": [
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 86.2,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 94.3,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 20.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 12.5,
+            "comment": "northwind on warranty."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 37.5,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 42.9,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 70.8,
+            "comment": "meridian on warranty."
+          }
+        ],
+        "rationale": "northwind wins on the stated priorities: delivery and quantity carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "delivery",
+          "quantity"
+        ],
+        "runner_up_note": "meridian was stronger on other terms."
+      }
+    },
+    {
+      "id": "lab_reagents_bulk__full_quantity",
+      "scenario_id": "lab_reagents_bulk",
+      "weighting_id": "full_quantity",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 21.0,
+          "delivery_days": 7.0,
+          "quantity": 300.0,
+          "warranty_months": 9.0,
+          "notes": "northwind quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 29.0,
+          "delivery_days": 26.0,
+          "quantity": 500.0,
+          "warranty_months": 22.0,
+          "notes": "meridian quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "quantity",
+          "ask": "Improve your quantity.",
+          "justification": "Quantity carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "quantity",
+          "ask": "Improve your quantity.",
+          "justification": "Quantity carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 20.2,
+          "delivery_days": 7.0,
+          "quantity": 300.0,
+          "warranty_months": 9.0,
+          "notes": "northwind quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": [
+            "price"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 28.0,
+          "delivery_days": 25.0,
+          "quantity": 550.0,
+          "warranty_months": 23.0,
+          "notes": "meridian quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": [
+            "price",
+            "delivery",
+            "quantity",
+            "warranty"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "meridian",
+        "per_priority_scoring": [
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 37.5,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 42.9,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 70.8,
+            "comment": "meridian on warranty."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 86.2,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 94.3,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 20.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 12.5,
+            "comment": "northwind on warranty."
+          }
+        ],
+        "rationale": "meridian wins on the stated priorities: quantity and price carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "quantity",
+          "price"
+        ],
+        "runner_up_note": "northwind was stronger on other terms."
+      }
+    },
+    {
+      "id": "lab_reagents_bulk__longest_warranty",
+      "scenario_id": "lab_reagents_bulk",
+      "weighting_id": "longest_warranty",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 21.0,
+          "delivery_days": 7.0,
+          "quantity": 300.0,
+          "warranty_months": 9.0,
+          "notes": "northwind quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 29.0,
+          "delivery_days": 26.0,
+          "quantity": 500.0,
+          "warranty_months": 22.0,
+          "notes": "meridian quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "warranty",
+          "ask": "Improve your warranty.",
+          "justification": "Warranty carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "warranty",
+          "ask": "Improve your warranty.",
+          "justification": "Warranty carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 20.2,
+          "delivery_days": 7.0,
+          "quantity": 300.0,
+          "warranty_months": 9.0,
+          "notes": "northwind quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": [
+            "price"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 28.0,
+          "delivery_days": 25.0,
+          "quantity": 550.0,
+          "warranty_months": 23.0,
+          "notes": "meridian quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": [
+            "price",
+            "delivery",
+            "quantity",
+            "warranty"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "meridian",
+        "per_priority_scoring": [
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 37.5,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 42.9,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 70.8,
+            "comment": "meridian on warranty."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 86.2,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 94.3,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 20.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 12.5,
+            "comment": "northwind on warranty."
+          }
+        ],
+        "rationale": "meridian wins on the stated priorities: warranty and price carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "warranty",
+          "price"
+        ],
+        "runner_up_note": "northwind was stronger on other terms."
+      }
+    },
+    {
+      "id": "lab_reagents_bulk__balanced",
+      "scenario_id": "lab_reagents_bulk",
+      "weighting_id": "balanced",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 21.0,
+          "delivery_days": 7.0,
+          "quantity": 300.0,
+          "warranty_months": 9.0,
+          "notes": "northwind quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 29.0,
+          "delivery_days": 26.0,
+          "quantity": 500.0,
+          "warranty_months": 22.0,
+          "notes": "meridian quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "price",
+          "ask": "Improve your price.",
+          "justification": "Price carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "price",
+          "ask": "Improve your price.",
+          "justification": "Price carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 20.2,
+          "delivery_days": 7.0,
+          "quantity": 300.0,
+          "warranty_months": 9.0,
+          "notes": "northwind quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": [
+            "price"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 28.0,
+          "delivery_days": 25.0,
+          "quantity": 550.0,
+          "warranty_months": 23.0,
+          "notes": "meridian quoting within its own position on lab_reagents_bulk.",
+          "concessions_made": [
+            "price",
+            "delivery",
+            "quantity",
+            "warranty"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "meridian",
+        "per_priority_scoring": [
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 37.5,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 42.9,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 70.8,
+            "comment": "meridian on warranty."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 86.2,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 94.3,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 20.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 12.5,
+            "comment": "northwind on warranty."
+          }
+        ],
+        "rationale": "meridian wins on the stated priorities: price and delivery carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "price",
+          "delivery"
+        ],
+        "runner_up_note": "northwind was stronger on other terms."
+      }
+    },
+    {
+      "id": "fleet_tyres_replacement__lowest_price",
+      "scenario_id": "fleet_tyres_replacement",
+      "weighting_id": "lowest_price",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 92.0,
+          "delivery_days": 5.0,
+          "quantity": 320.0,
+          "warranty_months": 30.0,
+          "notes": "northwind quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 118.0,
+          "delivery_days": 21.0,
+          "quantity": 320.0,
+          "warranty_months": 66.0,
+          "notes": "meridian quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "price",
+          "ask": "Improve your price.",
+          "justification": "Price carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "price",
+          "ask": "Improve your price.",
+          "justification": "Price carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 88.0,
+          "delivery_days": 5.0,
+          "quantity": 360.0,
+          "warranty_months": 30.0,
+          "notes": "northwind quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": [
+            "price",
+            "quantity"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 113.5,
+          "delivery_days": 21.0,
+          "quantity": 410.0,
+          "warranty_months": 66.0,
+          "notes": "meridian quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": [
+            "price",
+            "quantity"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "northwind",
+        "per_priority_scoring": [
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 80.8,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 92.0,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 12.5,
+            "comment": "northwind on warranty."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 31.7,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 28.0,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 87.5,
+            "comment": "meridian on warranty."
+          }
+        ],
+        "rationale": "northwind wins on the stated priorities: price and delivery carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "price",
+          "delivery"
+        ],
+        "runner_up_note": "meridian was stronger on other terms."
+      }
+    },
+    {
+      "id": "fleet_tyres_replacement__fastest_delivery",
+      "scenario_id": "fleet_tyres_replacement",
+      "weighting_id": "fastest_delivery",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 92.0,
+          "delivery_days": 5.0,
+          "quantity": 320.0,
+          "warranty_months": 30.0,
+          "notes": "northwind quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 118.0,
+          "delivery_days": 21.0,
+          "quantity": 320.0,
+          "warranty_months": 66.0,
+          "notes": "meridian quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "delivery",
+          "ask": "Improve your delivery.",
+          "justification": "Delivery carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "delivery",
+          "ask": "Improve your delivery.",
+          "justification": "Delivery carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 88.0,
+          "delivery_days": 5.0,
+          "quantity": 360.0,
+          "warranty_months": 30.0,
+          "notes": "northwind quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": [
+            "price",
+            "quantity"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 113.5,
+          "delivery_days": 21.0,
+          "quantity": 410.0,
+          "warranty_months": 66.0,
+          "notes": "meridian quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": [
+            "price",
+            "quantity"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "northwind",
+        "per_priority_scoring": [
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 80.8,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 92.0,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 12.5,
+            "comment": "northwind on warranty."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 31.7,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 28.0,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 87.5,
+            "comment": "meridian on warranty."
+          }
+        ],
+        "rationale": "northwind wins on the stated priorities: delivery and quantity carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "delivery",
+          "quantity"
+        ],
+        "runner_up_note": "meridian was stronger on other terms."
+      }
+    },
+    {
+      "id": "fleet_tyres_replacement__full_quantity",
+      "scenario_id": "fleet_tyres_replacement",
+      "weighting_id": "full_quantity",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 92.0,
+          "delivery_days": 5.0,
+          "quantity": 320.0,
+          "warranty_months": 30.0,
+          "notes": "northwind quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 118.0,
+          "delivery_days": 21.0,
+          "quantity": 320.0,
+          "warranty_months": 66.0,
+          "notes": "meridian quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "quantity",
+          "ask": "Improve your quantity.",
+          "justification": "Quantity carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "quantity",
+          "ask": "Improve your quantity.",
+          "justification": "Quantity carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 88.0,
+          "delivery_days": 5.0,
+          "quantity": 360.0,
+          "warranty_months": 30.0,
+          "notes": "northwind quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": [
+            "price",
+            "quantity"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 113.5,
+          "delivery_days": 21.0,
+          "quantity": 410.0,
+          "warranty_months": 66.0,
+          "notes": "meridian quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": [
+            "price",
+            "quantity"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "northwind",
+        "per_priority_scoring": [
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 80.8,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 92.0,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 12.5,
+            "comment": "northwind on warranty."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 31.7,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 28.0,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 87.5,
+            "comment": "meridian on warranty."
+          }
+        ],
+        "rationale": "northwind wins on the stated priorities: quantity and price carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "quantity",
+          "price"
+        ],
+        "runner_up_note": "meridian was stronger on other terms."
+      }
+    },
+    {
+      "id": "fleet_tyres_replacement__longest_warranty",
+      "scenario_id": "fleet_tyres_replacement",
+      "weighting_id": "longest_warranty",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 92.0,
+          "delivery_days": 5.0,
+          "quantity": 320.0,
+          "warranty_months": 30.0,
+          "notes": "northwind quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 118.0,
+          "delivery_days": 21.0,
+          "quantity": 320.0,
+          "warranty_months": 66.0,
+          "notes": "meridian quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "warranty",
+          "ask": "Improve your warranty.",
+          "justification": "Warranty carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "warranty",
+          "ask": "Improve your warranty.",
+          "justification": "Warranty carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 88.0,
+          "delivery_days": 5.0,
+          "quantity": 360.0,
+          "warranty_months": 30.0,
+          "notes": "northwind quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": [
+            "price",
+            "quantity"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 113.5,
+          "delivery_days": 21.0,
+          "quantity": 410.0,
+          "warranty_months": 66.0,
+          "notes": "meridian quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": [
+            "price",
+            "quantity"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "meridian",
+        "per_priority_scoring": [
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 31.7,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 28.0,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 87.5,
+            "comment": "meridian on warranty."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 80.8,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 92.0,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 12.5,
+            "comment": "northwind on warranty."
+          }
+        ],
+        "rationale": "meridian wins on the stated priorities: warranty and price carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "warranty",
+          "price"
+        ],
+        "runner_up_note": "northwind was stronger on other terms."
+      }
+    },
+    {
+      "id": "fleet_tyres_replacement__balanced",
+      "scenario_id": "fleet_tyres_replacement",
+      "weighting_id": "balanced",
+      "opening_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "opening_bids",
+          "unit_price": 92.0,
+          "delivery_days": 5.0,
+          "quantity": 320.0,
+          "warranty_months": 30.0,
+          "notes": "northwind quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": []
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "opening_bids",
+          "unit_price": 118.0,
+          "delivery_days": 21.0,
+          "quantity": 320.0,
+          "warranty_months": 66.0,
+          "notes": "meridian quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": []
+        }
+      },
+      "counter_offers": [
+        {
+          "seller_id": "meridian",
+          "targeted_term": "price",
+          "ask": "Improve your price.",
+          "justification": "Price carries the most weight in this request."
+        },
+        {
+          "seller_id": "northwind",
+          "targeted_term": "price",
+          "ask": "Improve your price.",
+          "justification": "Price carries the most weight in this request."
+        }
+      ],
+      "final_bids": {
+        "northwind": {
+          "seller_id": "northwind",
+          "stage": "final_bids",
+          "unit_price": 88.0,
+          "delivery_days": 5.0,
+          "quantity": 360.0,
+          "warranty_months": 30.0,
+          "notes": "northwind quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": [
+            "price",
+            "quantity"
+          ]
+        },
+        "meridian": {
+          "seller_id": "meridian",
+          "stage": "final_bids",
+          "unit_price": 113.5,
+          "delivery_days": 21.0,
+          "quantity": 410.0,
+          "warranty_months": 66.0,
+          "notes": "meridian quoting within its own position on fleet_tyres_replacement.",
+          "concessions_made": [
+            "price",
+            "quantity"
+          ]
+        }
+      },
+      "award": {
+        "winner_id": "northwind",
+        "per_priority_scoring": [
+          {
+            "seller_id": "northwind",
+            "priority": "price",
+            "score": 80.8,
+            "comment": "northwind on price."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "delivery",
+            "score": 92.0,
+            "comment": "northwind on delivery."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "northwind on quantity."
+          },
+          {
+            "seller_id": "northwind",
+            "priority": "warranty",
+            "score": 12.5,
+            "comment": "northwind on warranty."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "price",
+            "score": 31.7,
+            "comment": "meridian on price."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "delivery",
+            "score": 28.0,
+            "comment": "meridian on delivery."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "quantity",
+            "score": 100.0,
+            "comment": "meridian on quantity."
+          },
+          {
+            "seller_id": "meridian",
+            "priority": "warranty",
+            "score": 87.5,
+            "comment": "meridian on warranty."
+          }
+        ],
+        "rationale": "northwind wins on the stated priorities: price and delivery carry the most weight here, and it leads on the weighted total.",
+        "priority_references": [
+          "price",
+          "delivery"
+        ],
+        "runner_up_note": "meridian was stronger on other terms."
+      }
+    }
+  ]
+}

@@ -79,7 +79,11 @@ async def search_tool(
         answer=run.answer,
         results=[
             SearchResultOut(
-                title=r.title, summary=r.summary, source=r.source, rank=r.rank
+                title=r.title,
+                summary=r.summary,
+                source=r.source,
+                rank=r.rank,
+                published_date=r.published_date,
             )
             for r in run.results
         ],

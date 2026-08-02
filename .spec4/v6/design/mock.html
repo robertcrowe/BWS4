@@ -1,0 +1,2951 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Built with Spec4 (BWS4)</title>
+<style>
+  :root{
+    --bg: #0a0a0f;
+    --bg-alt: #101018;
+    --surface: #14141e;
+    --surface-2: #191927;
+    --border: #26263a;
+    --text: #eef0fa;
+    --text-dim: #9b9cb5;
+    --text-faint: #6a6b85;
+    --accent1: #7c5cff;
+    --accent2: #4ea1ff;
+    --accent-grad: linear-gradient(120deg, #7c5cff, #4ea1ff);
+    --success: #34d399;
+    --warn: #f6b93b;
+    --danger: #ff6b6b;
+    --radius: 14px;
+    --shadow: 0 10px 40px rgba(124,92,255,0.12);
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  html[data-theme="light"]{
+    --bg: #f7f7fb;
+    --bg-alt: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f1f1fa;
+    --border: #e2e2ee;
+    --text: #191926;
+    --text-dim: #55566b;
+    --text-faint: #8a8ba0;
+    --shadow: 0 10px 30px rgba(124,92,255,0.10);
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    line-height:1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background .25s ease, color .25s ease;
+  }
+  a{ color: inherit; text-decoration:none; }
+  ::selection{ background: rgba(124,92,255,.35); }
+
+  /* ===== Top nav ===== */
+  .topnav{
+    position: sticky; top:0; z-index: 50;
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 14px 28px;
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    font-weight:800; font-size:18px; letter-spacing:.3px;
+    background: var(--accent-grad);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .brand-sub{ font-size:11px; color: var(--text-faint); font-family: var(--mono); }
+  .nav-right{ display:flex; align-items:center; gap:10px; }
+  .theme-btn{
+    width:36px; height:36px; border-radius: 10px; border:1px solid var(--border);
+    background: var(--surface); color: var(--text); cursor:pointer; font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .theme-btn:hover{ border-color: var(--accent2); }
+
+  /* ===== Hamburger menu ===== */
+  .menu-wrap{ position:relative; }
+  .menu-btn{
+    width:36px; height:36px; border-radius: 10px; border:1px solid var(--border);
+    background: var(--surface); color: var(--text); cursor:pointer; font-size:17px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .menu-btn:hover{ border-color: var(--accent2); }
+  .menu-dropdown{
+    position:absolute; top: calc(100% + 10px); right:0;
+    display:none; flex-direction:column; gap:2px;
+    min-width:240px; background: var(--surface); border:1px solid var(--border);
+    border-radius: 12px; padding:8px; box-shadow: var(--shadow); z-index:60;
+  }
+  .menu-dropdown.open{ display:flex; }
+  .menu-dropdown button{
+    background:none; border:none; color: var(--text-dim);
+    font-size:14px; padding:10px 12px; border-radius: 8px; cursor:pointer;
+    text-align:left; font-family: var(--font); transition: all .15s ease;
+  }
+  .menu-dropdown button:hover{ color: var(--text); background: var(--surface-2); }
+  .menu-dropdown button.active{ color: var(--text); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); }
+
+  /* ===== Screens ===== */
+  .screen{ display:none; max-width: 1180px; margin: 0 auto; padding: 40px 28px 90px; animation: fadeIn .35s ease; }
+  .screen.active{ display:block; }
+  @keyframes fadeIn{ from{opacity:0; transform: translateY(6px);} to{opacity:1; transform:none;} }
+
+  .tag{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family: var(--mono); font-size:11px; letter-spacing:.5px; text-transform:uppercase;
+    padding: 4px 10px; border-radius: 999px; border:1px solid var(--border); color: var(--text-dim);
+    background: var(--surface-2);
+  }
+  .tag.dot::before{ content:''; width:6px; height:6px; border-radius:50%; background: var(--accent2); }
+
+  /* ===== Landing ===== */
+  .hero{ padding: 60px 0 40px; text-align:center; }
+  .hero h1{
+    font-size: 44px; margin: 18px 0 14px; letter-spacing:-1px;
+    background: var(--accent-grad); -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .hero p{ max-width: 640px; margin: 0 auto; color: var(--text-dim); font-size:16px; }
+  .hero-badges{ display:flex; gap:10px; justify-content:center; margin-top:22px; flex-wrap:wrap; }
+
+  .section-heading{ display:flex; align-items:baseline; justify-content:space-between; margin: 46px 0 18px; }
+  .section-heading h2{ font-size:20px; margin:0; }
+  .section-heading span{ color: var(--text-faint); font-size:13px; font-family: var(--mono); }
+
+  .app-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap:18px; }
+  .app-card{
+    background: var(--surface); border:1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; cursor:pointer; transition: all .2s ease; position:relative; overflow:hidden;
+  }
+  .app-card::before{
+    content:''; position:absolute; inset:0; background: var(--accent-grad); opacity:0;
+    transition: opacity .2s ease;
+  }
+  .app-card:hover{ transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--accent1); }
+  .app-card.disabled{ opacity:.55; cursor:not-allowed; }
+  .app-card.disabled:hover{ transform:none; box-shadow:none; border-color: var(--border); }
+  .app-card h3{ margin: 10px 0 8px; font-size:17px; }
+  .app-card p{ color: var(--text-dim); font-size:13.5px; margin: 0 0 16px; }
+  .app-card .go{ font-size:13px; font-weight:600; color: var(--accent2); }
+  .app-card .go::after{ content:' →'; }
+
+  .footnote{
+    margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border);
+    color: var(--text-faint); font-size:12.5px; text-align:center; font-family: var(--mono);
+  }
+
+  /* ===== Screen headers (RAG/Tool/Console/Embeddings) ===== */
+  .screen-head{ margin-bottom: 30px; }
+  .screen-head h1{ font-size:28px; margin: 8px 0 8px; }
+  .screen-head p{ color: var(--text-dim); font-size:14.5px; max-width: 720px; }
+  .screen-head .tags{ display:flex; gap:8px; margin-bottom: 6px; flex-wrap:wrap; }
+
+  .layout-2col{ display:grid; grid-template-columns: 320px 1fr; gap:22px; align-items:start; }
+  @media (max-width: 900px){ .layout-2col{ grid-template-columns: 1fr; } }
+
+  .card{
+    background: var(--surface); border:1px solid var(--border); border-radius: var(--radius);
+    padding: 20px;
+  }
+  .card h4{ margin:0 0 12px; font-size:14px; text-transform:uppercase; letter-spacing:.5px; color: var(--text-dim); }
+
+  /* ===== Dataset browser ===== */
+  .doc-item{ border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; }
+  .doc-head{
+    display:flex; justify-content:space-between; align-items:center; padding:12px 14px;
+    cursor:pointer; background: var(--surface-2);
+  }
+  .doc-head strong{ font-size:13.5px; }
+  .doc-head span{ font-size:11px; color: var(--text-faint); font-family: var(--mono); }
+  .doc-body{ max-height:0; overflow:hidden; transition: max-height .25s ease; }
+  .doc-body p{ padding: 12px 14px; margin:0; font-size:13px; color: var(--text-dim); }
+  .doc-item.open .doc-body{ max-height: 240px; }
+  .doc-item.open .chevron{ transform: rotate(90deg); }
+  .chevron{ transition: transform .2s ease; color: var(--text-faint); }
+
+  /* ===== RAG form / chips ===== */
+  .chip-row{ display:flex; flex-wrap:wrap; gap:8px; margin: 10px 0 16px; }
+  .chip{
+    font-size:12.5px; padding:7px 12px; border-radius: 999px; border:1px solid var(--border);
+    background: var(--surface-2); color: var(--text-dim); cursor:pointer; transition:.15s;
+  }
+  .chip:hover{ border-color: var(--accent1); color: var(--text); }
+
+  .qform{ display:flex; gap:10px; }
+  .qform input[type=text]{
+    flex:1; padding:13px 16px; border-radius: 10px; border:1px solid var(--border);
+    background: var(--bg-alt); color: var(--text); font-size:14.5px;
+  }
+  .qform input[type=text]:focus{ outline:none; border-color: var(--accent1); }
+  .text-input{
+    width:100%; padding:13px 16px; border-radius: 10px; border:1px solid var(--border);
+    background: var(--bg-alt); color: var(--text); font-size:14.5px; font-family: var(--font);
+  }
+  .text-input:focus{ outline:none; border-color: var(--accent1); }
+  .btn{
+    padding: 12px 20px; border-radius:10px; border:none; cursor:pointer; font-weight:600; font-size:14px;
+    background: var(--accent-grad); color:#fff; transition: transform .15s ease, opacity .15s;
+    white-space:nowrap;
+  }
+  .btn:hover{ transform: translateY(-1px); }
+  .btn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
+  .btn.secondary{ background: var(--surface-2); color: var(--text); border:1px solid var(--border); }
+  .btn.small{ padding: 8px 14px; font-size:12.5px; }
+
+  .result-panel{ margin-top: 22px; }
+  .stage-line{ display:flex; gap:10px; align-items:center; margin-bottom: 14px; font-size:13px; color: var(--text-faint); font-family: var(--mono); }
+  .spinner{
+    width:14px; height:14px; border-radius:50%; border:2px solid var(--border); border-top-color: var(--accent2);
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .answer-card{
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; box-shadow: var(--shadow);
+  }
+  .answer-card.warn{ border-color: var(--warn); box-shadow: 0 10px 40px rgba(246,185,59,.12); }
+  .answer-card.err{ border-color: var(--danger); box-shadow: 0 10px 40px rgba(255,107,107,.12); }
+  .answer-meta{ display:flex; align-items:center; gap:10px; margin-bottom: 14px; flex-wrap:wrap; }
+  .confidence{
+    font-family: var(--mono); font-size:11.5px; padding:4px 10px; border-radius:999px;
+  }
+  .confidence.high{ background: rgba(52,211,153,.14); color: var(--success); border:1px solid rgba(52,211,153,.3); }
+  .confidence.low{ background: rgba(246,185,59,.14); color: var(--warn); border:1px solid rgba(246,185,59,.3); }
+  .answer-text{ font-size:15.5px; margin: 6px 0 20px; }
+  .answer-text .cite{
+    font-family: var(--mono); font-size:11.5px; color: var(--accent2); cursor:default; vertical-align: super;
+  }
+  .warning-banner{
+    display:flex; gap:10px; align-items:flex-start; background: rgba(246,185,59,.1); border:1px solid rgba(246,185,59,.35);
+    padding: 12px 14px; border-radius:10px; margin-bottom:18px; font-size:13px; color: var(--warn);
+  }
+  .passages-block h5{ font-size:12.5px; text-transform:uppercase; letter-spacing:.5px; color: var(--text-dim); margin: 0 0 10px; }
+  .passage{
+    border:1px solid var(--border); border-radius:10px; padding: 12px 14px; margin-bottom: 10px; background: var(--surface-2);
+  }
+  .passage-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:10px; }
+  .passage-top strong{ font-size:13px; }
+  .score-badge{ font-family: var(--mono); font-size:11px; padding:2px 8px; border-radius:6px; background: var(--bg); border:1px solid var(--border); color: var(--text-faint); }
+  .passage p{ margin:0; font-size:12.5px; color: var(--text-dim); }
+
+  /* ===== Tool use screen ===== */
+  .steps{ display:flex; gap:14px; margin: 18px 0 22px; flex-wrap:wrap; }
+  .step{
+    flex:1; min-width:170px; border:1px solid var(--border); border-radius:10px; padding: 14px;
+    background: var(--surface); font-size:13px; color: var(--text-faint); position:relative;
+  }
+  .step .num{ font-family: var(--mono); font-size:11px; color: var(--text-faint); }
+  .step .label{ display:block; margin-top:6px; color: var(--text-dim); font-weight:600; }
+  .step.active{ border-color: var(--accent1); color: var(--text); box-shadow: 0 0 0 1px var(--accent1) inset; }
+  .step.active .label{ color: var(--text); }
+  .step.done{ border-color: var(--success); }
+  .step.done .label{ color: var(--success); }
+
+  .routing-line{
+    font-family: var(--mono); font-size:12px; color: var(--accent2); margin-bottom: 14px;
+    display:flex; gap:8px; align-items:center;
+  }
+  .result-list{ display:flex; flex-direction:column; gap:10px; margin-top: 8px; }
+  .result-item{
+    border:1px solid var(--border); border-radius:10px; padding:14px; background: var(--surface-2);
+    display:flex; gap:14px; align-items:flex-start;
+  }
+  .rank-badge{
+    font-family: var(--mono); font-size:12px; color:#fff; background: var(--accent-grad);
+    width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .result-item h5{ margin:0 0 4px; font-size:14px; }
+  .result-item p{ margin:0 0 6px; font-size:13px; color: var(--text-dim); }
+  .source-label{ font-family: var(--mono); font-size:11px; color: var(--text-faint); }
+
+  /* ===== Embeddings screen ===== */
+  .embed-plot-wrap{ position:relative; width:100%; }
+  .embed-plot-wrap svg{
+    width:100%; height:auto; display:block; background: var(--bg-alt);
+    border:1px solid var(--border); border-radius: 10px;
+  }
+  .embed-point-label{ font-size:9px; fill: var(--text-faint); font-family: var(--mono); pointer-events:none; }
+  .embed-legend{ display:flex; gap:16px; flex-wrap:wrap; margin-top:14px; font-size:12.5px; color: var(--text-dim); }
+  .embed-legend .legend-item{ display:flex; align-items:center; gap:6px; }
+  .legend-dot{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .legend-dot.custom{ border-radius:2px; transform: rotate(45deg); }
+
+  /* ===== Single-call screen ===== */
+  .mode-toggle{ display:flex; gap:8px; margin: 10px 0 16px; flex-wrap:wrap; }
+  .mode-btn{
+    padding:9px 16px; border-radius:999px; border:1px solid var(--border); background: var(--surface-2);
+    color: var(--text-dim); cursor:pointer; font-size:13px; font-family: var(--font); transition: all .15s ease;
+  }
+  .mode-btn:hover{ color: var(--text); border-color: var(--accent1); }
+  .mode-btn.active{ color:#fff; background: var(--accent-grad); border-color: transparent; }
+  .structured-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top: 14px; }
+  @media (max-width: 700px){ .structured-grid{ grid-template-columns: 1fr; } }
+  .structured-block h6{ margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color: var(--text-faint); font-family: var(--mono); }
+  .structured-block pre{
+    margin:0; background: var(--bg-alt); border:1px solid var(--border); border-radius:10px; padding:14px;
+    font-family: var(--mono); font-size:12px; color: var(--text-dim); white-space:pre-wrap; word-break:break-word;
+    max-height:280px; overflow:auto;
+  }
+  .field-hint{ font-size:12.5px; color: var(--danger); margin-top:8px; }
+
+  /* ===== Orchestrated subagents screen ===== */
+  .roster-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:12px; }
+  .roster-item{
+    border:1px solid var(--border); border-radius:10px; padding:12px 14px; background: var(--surface-2);
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .roster-item .rname{ display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:600; }
+  .roster-item .rscope{ margin:6px 0 0; font-size:12.5px; color: var(--text-dim); }
+  .roster-item.chosen{ border-color: var(--accent1); box-shadow: 0 0 0 1px var(--accent1) inset; }
+  .roster-item.chosen .chosen-flag{
+    display:inline-block; margin-left:auto; font-family: var(--mono); font-size:10px; text-transform:uppercase;
+    letter-spacing:.4px; color: var(--accent2);
+  }
+  .roster-item .chosen-flag{ display:none; }
+  .spec-dot{ width:9px; height:9px; border-radius:50%; display:inline-block; flex-shrink:0; }
+
+  .subagent-cols{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top: 6px; }
+  @media (max-width: 820px){ .subagent-cols{ grid-template-columns: 1fr; } }
+  .subagent-col{
+    border:1px solid var(--border); border-radius:10px; background: var(--surface-2); padding:14px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .subagent-col.running{ border-color: var(--accent1); }
+  .subagent-col.done{ border-color: var(--success); }
+  .subagent-col.failed{ border-color: var(--danger); }
+  .subagent-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .subagent-head strong{ font-size:13.5px; display:flex; align-items:center; gap:8px; }
+  .sa-status{
+    font-family: var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.4px;
+    padding:3px 8px; border-radius:999px; border:1px solid var(--border); color: var(--text-faint); background: var(--bg);
+    display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+  }
+  .sa-status.running{ color: var(--accent2); border-color: rgba(78,161,255,.4); }
+  .sa-status.done{ color: var(--success); border-color: rgba(52,211,153,.35); }
+  .sa-status.failed{ color: var(--danger); border-color: rgba(255,107,107,.4); }
+  .brief-box{
+    border:1px dashed var(--border); border-radius:8px; padding:10px 12px; background: var(--bg-alt);
+    font-size:12.5px; color: var(--text-dim);
+  }
+  .brief-box .brief-label{
+    display:block; font-family: var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.5px;
+    color: var(--text-faint); margin-bottom:5px;
+  }
+  .sa-answer{ font-size:13.5px; color: var(--text); margin:0; min-height:20px; }
+  .sa-answer .caret{
+    display:inline-block; width:7px; height:14px; background: var(--accent2); vertical-align:-2px;
+    margin-left:2px; animation: blinkCaret .8s steps(1) infinite;
+  }
+  @keyframes blinkCaret{ 50%{ opacity:0; } }
+  .runs-tag{ margin-left:auto; }
+  .merge-note{
+    border:1px solid var(--border); border-radius:10px; background: var(--surface-2); padding:12px 14px; margin-top:14px;
+  }
+  .merge-note h6{
+    margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color: var(--text-faint); font-family: var(--mono);
+  }
+  .merge-note ul{ margin:0; padding-left:18px; }
+  .merge-note li{ font-size:12.5px; color: var(--text-dim); margin-bottom:4px; }
+  .merge-note li:last-child{ margin-bottom:0; }
+
+  /* ===== Multi-agent collaboration screen ===== */
+  .agent-card-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:12px; }
+  .agent-card{
+    border:1px solid var(--border); border-radius:10px; background: var(--surface-2); overflow:hidden;
+  }
+  .agent-card-head{
+    display:flex; align-items:center; gap:8px; padding:12px 14px; cursor:pointer;
+  }
+  .agent-card-head strong{ font-size:13.5px; }
+  .agent-card-head .chevron{ margin-left:auto; font-size:11px; }
+  .agent-card-body{ max-height:0; overflow:hidden; transition: max-height .25s ease; }
+  .agent-card.open .agent-card-body{ max-height: 320px; }
+  .agent-card.open .chevron{ transform: rotate(90deg); }
+  .agent-card-body dl{ margin:0; padding: 0 14px 14px; }
+  .agent-card-body dt{
+    font-family: var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.5px;
+    color: var(--text-faint); margin-top:8px;
+  }
+  .agent-card-body dd{ margin:2px 0 0; font-size:12.5px; color: var(--text-dim); }
+  .agent-role-pill{
+    font-family: var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.4px;
+    padding:2px 7px; border-radius:999px; border:1px solid var(--border); color: var(--text-faint); background: var(--bg);
+  }
+
+  .negotiation-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:6px; }
+  @media (max-width: 820px){ .negotiation-grid{ grid-template-columns: 1fr; } }
+  .seller-track{
+    border:1px solid var(--border); border-radius:10px; background: var(--surface-2); padding:14px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .seller-track.running{ border-color: var(--accent1); }
+  .seller-track.done{ border-color: var(--success); }
+  .seller-track.failed{ border-color: var(--danger); }
+  .buyer-track{
+    border:1px solid var(--border); border-left:3px solid var(--accent2); border-radius:10px;
+    background: var(--bg-alt); padding:14px; margin-top:14px;
+  }
+  .buyer-track h6, .seller-track h6{
+    margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+    color: var(--text-faint); font-family: var(--mono);
+  }
+  .bid-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  .bid-table td{ padding:4px 0; color: var(--text-dim); border-bottom:1px dashed var(--border); }
+  .bid-table td:last-child{ text-align:right; color: var(--text); font-family: var(--mono); font-size:12px; }
+  .bid-table tr:last-child td{ border-bottom:none; }
+  .bid-note{ font-size:12.5px; color: var(--text-dim); margin:8px 0 0; }
+  .bid-note .caret{
+    display:inline-block; width:7px; height:14px; background: var(--accent2); vertical-align:-2px;
+    margin-left:2px; animation: blinkCaret .8s steps(1) infinite;
+  }
+  .term-improved{ color: var(--success); }
+  .stage-rail{ display:flex; gap:8px; flex-wrap:wrap; margin: 4px 0 16px; }
+  .rail-step{
+    font-family: var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.4px;
+    padding:5px 10px; border-radius:999px; border:1px solid var(--border); background: var(--surface-2);
+    color: var(--text-faint); display:inline-flex; align-items:center; gap:6px;
+  }
+  .rail-step.active{ color: var(--accent2); border-color: rgba(78,161,255,.45); }
+  .rail-step.done{ color: var(--success); border-color: rgba(52,211,153,.35); }
+  .opacity-badge{
+    display:inline-flex; align-items:center; gap:6px; font-family: var(--mono); font-size:11px;
+    padding:4px 10px; border-radius:999px; background: rgba(52,211,153,.12); color: var(--success);
+    border:1px solid rgba(52,211,153,.3);
+  }
+  table.msg-log{ width:100%; border-collapse:collapse; font-size:12.5px; margin-top:10px; }
+  table.msg-log th{
+    text-align:left; color: var(--text-faint); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--border);
+    font-size:11px; text-transform:uppercase; letter-spacing:.4px;
+  }
+  table.msg-log td{ padding:9px 10px; border-bottom:1px solid var(--border); color: var(--text-dim); vertical-align:top; }
+  table.msg-log tr:last-child td{ border-bottom:none; }
+  .party-pill{ font-family: var(--mono); font-size:11px; padding:2px 8px; border-radius:6px; background: var(--surface-2); border:1px solid var(--border); white-space:nowrap; }
+  .seal-box{
+    border:1px dashed var(--border); border-radius:10px; padding:14px; background: var(--bg-alt);
+    color: var(--text-faint); font-size:12.5px; text-align:center; font-family: var(--mono);
+  }
+  .reveal-party{ border:1px solid var(--border); border-radius:10px; background: var(--surface-2); padding:12px 14px; margin-bottom:10px; }
+  .reveal-party .rp-head{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-bottom:6px; }
+  .reveal-party .rp-headline{ font-size:12.5px; color: var(--text-dim); margin:0 0 8px; }
+  .reveal-axis{ display:flex; gap:10px; font-size:12.5px; color: var(--text-dim); padding:5px 0; border-top:1px dashed var(--border); }
+  .reveal-axis .ax-name{
+    font-family: var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.4px;
+    color: var(--text-faint); min-width:96px; flex-shrink:0; padding-top:2px;
+  }
+  .winner-flag{
+    font-family: var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.4px;
+    color: var(--success); border:1px solid rgba(52,211,153,.35); border-radius:999px; padding:2px 8px;
+  }
+
+  /* ===== Console screen ===== */
+  .console-grid{ display:grid; grid-template-columns: 1.1fr 1fr; gap:22px; align-items:start; }
+  @media (max-width: 980px){ .console-grid{ grid-template-columns: 1fr; } }
+  select, textarea{
+    width:100%; padding:11px 13px; border-radius:10px; border:1px solid var(--border);
+    background: var(--bg-alt); color: var(--text); font-family: var(--font); font-size:13.5px; resize:vertical;
+  }
+  select:focus, textarea:focus{ outline:none; border-color: var(--accent1); }
+  label.field-label{ display:block; font-size:12px; color: var(--text-faint); margin: 14px 0 6px; text-transform:uppercase; letter-spacing:.4px; }
+  .console-actions{ display:flex; gap:10px; margin-top:16px; align-items:center; flex-wrap:wrap; }
+  .response-box{
+    margin-top:18px; background: var(--bg-alt); border:1px solid var(--border); border-radius:10px;
+    padding:16px; font-family: var(--mono); font-size:12.5px; color: var(--text-dim); white-space:pre-wrap; min-height:70px;
+  }
+  .response-box.err{ border-color: var(--danger); color: var(--danger); }
+
+  .usage-item{ margin-bottom:16px; }
+  .usage-top{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px; }
+  .usage-top .cap-name{ color: var(--text-dim); }
+  .usage-top .cap-nums{ font-family: var(--mono); color: var(--text-faint); }
+  .bar-track{ height:8px; border-radius:999px; background: var(--surface-2); border:1px solid var(--border); overflow:hidden; }
+  .bar-fill{ height:100%; background: var(--accent-grad); border-radius:999px; transition: width .4s ease; }
+  .bar-fill.warn{ background: linear-gradient(120deg, #f6b93b, #ff6b6b); }
+
+  table.log-table{ width:100%; border-collapse: collapse; margin-top: 10px; font-size:12.5px; }
+  table.log-table th{ text-align:left; color: var(--text-faint); font-weight:600; padding: 8px 10px; border-bottom:1px solid var(--border); font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
+  table.log-table td{ padding: 9px 10px; border-bottom:1px solid var(--border); color: var(--text-dim); }
+  table.log-table tr:last-child td{ border-bottom:none; }
+  .app-pill{ font-family: var(--mono); font-size:11px; padding:2px 8px; border-radius:6px; background: var(--surface-2); border:1px solid var(--border); }
+  .empty-state{ color: var(--text-faint); font-size:13px; text-align:center; padding: 24px 0; }
+
+  footer.app-footer{
+    border-top:1px solid var(--border); text-align:center; padding: 18px; color: var(--text-faint);
+    font-size:12px; font-family: var(--mono);
+  }
+</style>
+</head>
+<body>
+
+<header class="topnav">
+  <div class="brand">
+    <span class="brand-mark">BWS4</span>
+    <span class="brand-sub">/ Built with Spec4</span>
+  </div>
+  <div class="nav-right">
+    <button class="theme-btn" id="themeBtn" title="Toggle theme">🌙</button>
+    <div class="menu-wrap">
+      <button class="menu-btn" id="menuBtn" title="Menu" aria-label="Open navigation menu">☰</button>
+      <nav class="menu-dropdown" id="menuDropdown">
+        <button data-target="screen-landing" class="active">Home</button>
+        <button data-target="screen-rag">RAG Example</button>
+        <button data-target="screen-tooluse">Tool-Use Example</button>
+        <button data-target="screen-singlecall">Single-Call Example</button>
+        <button data-target="screen-chained">Chained-Calls Example</button>
+        <button data-target="screen-planning">Planning-Agent Example</button>
+        <button data-target="screen-orchestrated">Orchestrated-Subagents Example</button>
+        <button data-target="screen-collab">Multi-Agent Collaboration Example</button>
+        <button data-target="screen-embeddings">Embeddings Example</button>
+        <button data-target="screen-console">Framework Console</button>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ================= LANDING SCREEN ================= -->
+  <section class="screen active" id="screen-landing">
+    <div class="hero">
+      <span class="tag dot">Teaching framework · dogfooded on itself</span>
+      <h1>Built with Spec4 (BWS4)</h1>
+      <p>BWS4 is a framework and a growing collection of example apps that demonstrate what Spec4 can build. Every example below — including this landing page — was built <em>using</em> Spec4, so you're looking at a live demonstration, not a slide deck.</p>
+      <div class="hero-badges">
+        <span class="tag">Retrieval-Augmented Generation</span>
+        <span class="tag">Tool Use / Function Calling</span>
+        <span class="tag">Single-Call Pattern</span>
+        <span class="tag">Chained Calls</span>
+        <span class="tag">Planning Agent</span>
+        <span class="tag">Orchestrated Subagents</span>
+        <span class="tag">Multi-Agent Collaboration</span>
+        <span class="tag">Embeddings / Vector Representation</span>
+        <span class="tag">Shared Framework Services</span>
+      </div>
+    </div>
+
+    <div class="section-heading">
+      <h2>Example App Directory</h2>
+      <span>derived from the current set of available example apps</span>
+    </div>
+    <div class="app-grid" id="appDirectory">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="footnote">Every app in this directory shares the same shared services, navigation, and visual language — consistent by design.</div>
+  </section>
+
+  <!-- ================= RAG SCREEN ================= -->
+  <section class="screen" id="screen-rag">
+    <div class="screen-head">
+      <div class="tags">
+        <span class="tag dot">Pattern: Retrieval-Augmented Generation</span>
+        <span class="tag">Reference dataset: Space Exploration Facts</span>
+      </div>
+      <h1>RAG Example App</h1>
+      <p>Ask a question and watch BWS4 retrieve supporting passages from a small public dataset, then generate an answer grounded in what it found. Both the retrieved passages and the generated answer are shown, so the retrieval → generation chain stays visible.</p>
+    </div>
+
+    <div class="layout-2col">
+      <div class="card" id="datasetCard">
+        <h4>Reference Dataset (5 documents)</h4>
+        <div id="docList"></div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h4>Ask a question</h4>
+          <div class="chip-row" id="ragChips"></div>
+          <form class="qform" id="ragForm">
+            <input type="text" id="ragInput" placeholder="e.g. When did Voyager 1 launch and what is it doing now?" />
+            <button class="btn" type="submit" id="ragSubmit">Ask</button>
+          </form>
+        </div>
+
+        <div class="result-panel" id="ragResultPanel"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TOOL USE SCREEN ================= -->
+  <section class="screen" id="screen-tooluse">
+    <div class="screen-head">
+      <div class="tags">
+        <span class="tag dot">Pattern: Tool Use / Function Calling</span>
+        <span class="tag">Capability: Live search tool</span>
+      </div>
+      <h1>Tool-Use Example App</h1>
+      <p>Submit a query that needs current information. The agent decides it needs outside data, calls a search tool, then synthesizes an answer from the returned results — illustrating how an agent incorporates external information mid-response.</p>
+    </div>
+
+    <div class="card">
+      <h4>Ask something that needs a live lookup</h4>
+      <div class="chip-row" id="toolChips"></div>
+      <form class="qform" id="toolForm">
+        <input type="text" id="toolInput" placeholder="e.g. What's the latest Spec4 release?" />
+        <button class="btn" type="submit" id="toolSubmit">Run agent</button>
+      </form>
+    </div>
+
+    <div class="result-panel" id="toolResultPanel"></div>
+  </section>
+
+  <!-- ================= SINGLE-CALL SCREEN ================= -->
+  <section class="screen" id="screen-singlecall">
+    <div class="screen-head">
+      <div class="tags">
+        <span class="tag dot">Pattern: Single-Call (no retrieval, no tools, no chaining)</span>
+        <span class="tag">Modes: Simple & Structured</span>
+      </div>
+      <h1>Single-Call Example App</h1>
+      <p>The simplest agentic building block: one prompt goes in, one model response comes out — no retrieval, no external tools, no multi-step chaining. Toggle between a plain-text response and a schema-conforming structured response to see the same pattern rendered both ways.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <h4>What is the single-call pattern?</h4>
+      <p style="color:var(--text-dim); font-size:13.5px; margin:0;">A single call sends one prompt to the shared generation service and returns one response, with nothing in between — no dataset lookup, no external tool, no follow-up call. It's the right choice for straightforward tasks like summarizing, classifying, or extracting information from a piece of text, where grounding in outside data or live information isn't required.</p>
+    </div>
+
+    <div class="card">
+      <h4>Choose or write a prompt</h4>
+      <div class="chip-row" id="scPresetChips"></div>
+      <label class="field-label" style="margin-top:0;">Prompt</label>
+      <textarea id="scPromptInput" rows="3" placeholder="Write your own prompt, or pick a preset above (each labeled with its task)..."></textarea>
+
+      <label class="field-label">Response mode</label>
+      <div class="mode-toggle" id="scModeToggle">
+        <button type="button" class="mode-btn active" data-mode="simple">Simple (plain text)</button>
+        <button type="button" class="mode-btn" data-mode="structured">Structured (schema-conforming)</button>
+      </div>
+
+      <div class="console-actions">
+        <button class="btn" id="scSubmit">Run single call</button>
+      </div>
+      <div class="field-hint" id="scValidationMsg" style="display:none;">Please enter a prompt or choose a preset above before submitting.</div>
+    </div>
+
+    <div class="result-panel" id="scResultPanel"></div>
+  </section>
+
+  <!-- ================= CHAINED-CALLS SCREEN ================= -->
+  <section class="screen" id="screen-chained">
+    <div class="screen-head">
+      <div class="tags">
+        <span class="tag dot">Pattern: Chained Calls (exactly 2 sequential calls)</span>
+        <span class="tag">Roles: Struggling Writer → Harsh Critic</span>
+      </div>
+      <h1>Chained-Calls Example App</h1>
+      <p>Submit a short story idea. It's routed through two sequential model calls: a "struggling writer" persona drafts the story, then a "harsh critic" persona critiques that exact draft. Both the intermediate and final outputs stay visible, so the hand-off between steps is never hidden.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <h4>What is the chained-calls pattern?</h4>
+      <p style="color:var(--text-dim); font-size:13.5px; margin:0 0 10px;">A chained-calls workflow feeds the output of one model call into the input of the next, letting each step focus on a narrower job than a single call could handle alone. Here, Call 1 (the writer) produces a draft, and Call 2 (the critic) receives that draft and produces a critique of it — the second call's input is literally the first call's output.</p>
+      <p style="color:var(--text-dim); font-size:13.5px; margin:0;">To conserve shared usage, this demo intentionally runs <strong>exactly two</strong> chained calls per submission. The pattern itself supports chains of any length — this is a minimal, legible illustration of it, not a limit of the pattern.</p>
+    </div>
+
+    <div class="card">
+      <h4>Write a story prompt</h4>
+      <div class="chip-row" id="chainedChips"></div>
+      <form class="qform" id="chainedForm">
+        <input type="text" id="chainedInput" placeholder="e.g. a lonely lighthouse keeper who finds a message in a bottle" />
+        <button class="btn" type="submit" id="chainedSubmit">Run chain (2 calls)</button>
+      </form>
+      <div class="steps" id="chainedSteps">
+        <div class="step" data-step="1"><span class="num">Call 1</span><span class="label">Struggling Writer — drafts a short story</span></div>
+        <div class="step" data-step="2"><span class="num">Call 2</span><span class="label">Harsh Critic — critiques that exact draft</span></div>
+      </div>
+    </div>
+
+    <div class="result-panel" id="chainedResultPanel"></div>
+  </section>
+
+  <!-- ================= PLANNING-AGENT SCREEN ================= -->
+  <section class="screen" id="screen-planning">
+    <div class="screen-head">
+      <div class="tags">
+        <span class="tag dot">Pattern: Planning Agent</span>
+        <span class="tag">Scenario: One-day trip planner</span>
+        <span class="tag">Limits: 1 planner + 3 executor calls per run · 3 runs per session</span>
+      </div>
+      <h1>Planning-Agent Example App</h1>
+      <p>Give the agent a city and your interests. A planner call decomposes that fuzzy goal into a small, visible plan of discrete steps — web research plus one final synthesis. The plan is shown first; nothing executes until you explicitly give the go-ahead. Then executor calls run the steps in sequence, each result appearing as it completes, ending in a one-day itinerary.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <h4>What is the planning-agent pattern?</h4>
+      <p style="color:var(--text-dim); font-size:13.5px; margin:0 0 10px;">A planning agent first calls a model to <strong>decompose a goal into a plan</strong> of discrete steps, then executes those steps one by one — here, research steps that use the shared web search tool, ending in exactly one synthesis step that composes the final itinerary. Because the plan is produced and displayed before execution, you can inspect exactly what the agent intends to do.</p>
+      <p style="color:var(--text-dim); font-size:13.5px; margin:0;">To conserve shared usage, each run in this demo is limited to <strong>1 planner call plus up to 3 executor calls</strong>, and you get <strong>3 runs per session</strong>. Planning agents in general can use any number of steps — these limits are a quota-conservation choice, not a limit of the pattern.</p>
+    </div>
+
+    <div class="card">
+      <h4>Describe your trip day</h4>
+      <div class="chip-row" id="planChips"></div>
+      <form id="planForm">
+        <label class="field-label" style="margin-top:0;">City</label>
+        <input type="text" class="text-input" id="planCity" placeholder="e.g. Lisbon" />
+        <label class="field-label">Interests</label>
+        <input type="text" class="text-input" id="planInterests" placeholder="e.g. street food, modern art, walkable neighborhoods" />
+        <div class="console-actions">
+          <button class="btn" type="submit" id="planSubmit">Generate plan (1 planner call)</button>
+          <span class="tag" id="planRunsTag"></span>
+        </div>
+        <div class="field-hint" id="planValidationMsg" style="display:none;">Please provide both a city and your interests before generating a plan.</div>
+      </form>
+    </div>
+
+    <div class="result-panel" id="planResultPanel"></div>
+  </section>
+
+  <!-- ================= ORCHESTRATED-SUBAGENTS SCREEN ================= -->
+  <section class="screen" id="screen-orchestrated">
+    <div class="screen-head">
+      <div class="tags">
+        <span class="tag dot">Pattern: Orchestrated Subagents (fan-out / fan-in)</span>
+        <span class="tag">Roster: 4 knowledge-only specialists · exactly 2 chosen</span>
+        <span class="tag">Limits: 3 model calls per run · 3 runs per session</span>
+      </div>
+      <h1>Orchestrated-Subagents Example App</h1>
+      <p>Ask a question. A coordinating agent picks exactly two of four fixed specialists, writes a distinct brief for each, and shows you that decision before anything is dispatched. On your go-ahead the two specialists run side by side — independently, at the same time — and their answers are then merged into one integrated response, with both source answers kept on screen.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <h4>What is the orchestrated-subagents pattern?</h4>
+      <p style="color:var(--text-dim); font-size:13.5px; margin:0 0 10px;">Subagents are independent workers. A coordinator decides who should work on what, writes each of them a brief, and — because neither subagent depends on the other's output — <strong>they can run at the same time</strong>. That's the fan-out. When both finish, a merge step reconciles their answers into one, which is the fan-in.</p>
+      <p style="color:var(--text-dim); font-size:13.5px; margin:0 0 10px;">To conserve shared usage, each run here uses a fixed budget of <strong>3 model calls</strong> (1 coordinator + 2 specialists, with the merge folded into the final call) and you get <strong>3 runs per session</strong>. The pattern itself supports any number of agents — these limits are a quota-conservation choice, not a property of the pattern.</p>
+      <p style="color:var(--text-dim); font-size:13.5px; margin:0;">These specialists are <strong>workers under one coordinator's control</strong>, not peers negotiating with each other. For the contrasting case — independent parties with private information exchanging messages across a trust boundary — see the <strong>Multi-Agent Collaboration Example App</strong>.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <h4>Specialist roster (fixed — exactly two are chosen per run)</h4>
+      <div class="roster-grid" id="specialistRoster"></div>
+    </div>
+
+    <div class="card">
+      <h4>Ask a question</h4>
+      <div class="chip-row" id="orchChips"></div>
+      <form class="qform" id="orchForm">
+        <input type="text" id="orchInput" placeholder="e.g. Should a small team self-host its own database?" />
+        <button class="btn" type="submit" id="orchSubmit">Choose specialists</button>
+      </form>
+      <div class="console-actions">
+        <span class="tag" id="orchRunsTag"></span>
+        <span class="source-label">One coordinator call decides the pairing. Nothing is dispatched until you confirm.</span>
+      </div>
+      <div class="field-hint" id="orchValidationMsg" style="display:none;">Please enter a question or choose one of the curated presets above.</div>
+    </div>
+
+    <div class="result-panel" id="orchResultPanel"></div>
+  </section>
+
+  <!-- ================= MULTI-AGENT COLLABORATION SCREEN ================= -->
+  <section class="screen" id="screen-collab">
+    <div class="screen-head">
+      <div class="tags">
+        <span class="tag dot">Pattern: Multi-Agent Collaboration (peer-to-peer)</span>
+        <span class="tag">Scenario: Competitive procurement · 1 buyer vs 2 rival sellers</span>
+        <span class="tag">Limits: 6 model calls per run · 2 runs per session</span>
+      </div>
+      <h1>Multi-Agent Collaboration Example App</h1>
+      <p>Pick a procurement scenario and say what matters most to you. A buyer agent acting on your behalf runs one negotiation round against two rival seller agents that each hold private constraints the other cannot see. Opening bids and best-and-final bids run concurrently, the buyer counters each seller on a different term, and the award is explained against your stated priorities — then every hidden position is unsealed.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <h4>What is the multi-agent collaboration pattern?</h4>
+      <p style="color:var(--text-dim); font-size:13.5px; margin:0 0 10px;">In collaboration, agents are <strong>peers</strong>, not workers. No agent owns the others' reasoning; each has its own goals, its own private information, and communicates only through explicit sender→recipient messages. Contrast this with the <strong>Orchestrated-Subagents</strong> example, where one coordinator writes the briefs, controls the workers, and sees everything they produce.</p>
+      <p style="color:var(--text-dim); font-size:13.5px; margin:0 0 10px;">The opacity here is <strong>enforced in code, not by instruction</strong>: each agent is only ever handed the messages addressed to it, so a seller literally has no channel through which to learn the rival's price — even if it asks. The message log below lets you verify that there is no seller-to-seller traffic at all.</p>
+      <p style="color:var(--text-dim); font-size:13.5px; margin:0 0 10px;">Exchanges use the <strong>data model and interaction pattern of the A2A collaboration protocol</strong> — inspectable agent identity cards, peer task and message objects with an explicit sender and recipient, and work items attached to each message — but <strong>without its network transport</strong>. A real deployment would add agent discovery over the wire, authenticated endpoints per party, signed messages, and independent hosting for each organisation.</p>
+      <p style="color:var(--text-dim); font-size:13.5px; margin:0;"><strong>Candidly:</strong> all three agents here ship under one owner, so the trust boundary is <em>staged for teaching</em> rather than genuinely cross-organisational. And for a purchase this simple, a peer negotiation between autonomous agents would be over-engineering in a real system — the pattern earns its keep when the parties really are separate and really do hold information the others must not see. Each run consumes a fixed budget of <strong>6 model calls</strong> (2 opening bids + 2 counter-offers + 2 final bids; the RFQ is composed without a model call, the award and reveal narration fold into the final call) and you get <strong>2 runs per session</strong>. The pattern itself supports any number of agents and rounds.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <h4>Agent identity cards (inspectable before the run)</h4>
+      <div class="agent-card-grid" id="agentCards"></div>
+      <p style="color:var(--text-faint); font-size:12.5px; margin:12px 0 0;">Each card is what an A2A-style peer publishes about itself. Private constraints are <em>not</em> on the card — they stay sealed until the round ends.</p>
+    </div>
+
+    <div class="card">
+      <h4>Choose a scenario and your priorities</h4>
+      <label class="field-label" style="margin-top:0;">Procurement scenario</label>
+      <select id="collabScenario"></select>
+      <div id="collabScenarioDetail" class="brief-box" style="margin-top:10px;"></div>
+
+      <label class="field-label">Priority weighting</label>
+      <div class="mode-toggle" id="collabPriorityToggle"></div>
+      <div id="collabPriorityDetail" class="source-label"></div>
+
+      <div class="console-actions">
+        <button class="btn" id="collabStart">Start negotiation (6 model calls)</button>
+        <span class="tag" id="collabRunsTag"></span>
+      </div>
+      <div class="field-hint" id="collabValidationMsg" style="display:none;">Please choose both a scenario and a priority weighting before starting the round.</div>
+    </div>
+
+    <div class="result-panel" id="collabResultPanel"></div>
+  </section>
+
+  <!-- ================= EMBEDDINGS SCREEN ================= -->
+  <section class="screen" id="screen-embeddings">
+    <div class="screen-head">
+      <div class="tags">
+        <span class="tag dot">Pattern: Text Embeddings</span>
+        <span class="tag">Reference examples: 24 curated texts across 4 categories</span>
+      </div>
+      <h1>Embeddings Example App</h1>
+      <p>Every piece of text below has been converted into a numeric vector by the shared embedding model, then projected into 2D so semantically similar texts land near each other. Add your own word or phrase to see where it falls among them.</p>
+    </div>
+
+    <div class="layout-2col">
+      <div>
+        <div class="card">
+          <h4>What is an embedding?</h4>
+          <p style="color:var(--text-dim); font-size:13.5px; margin:0;">An embedding is a numeric vector produced by a model such that texts with similar meaning end up with similar vectors. BWS4 uses one shared embedding model across every example app — the same model that scores passages in the RAG app is used here to place text in space, so "joy" lands near "excitement" and far from "database."</p>
+        </div>
+
+        <div class="card" style="margin-top:18px;">
+          <h4>Add your own text</h4>
+          <div class="chip-row" id="embedChips"></div>
+          <form class="qform" id="embedForm">
+            <input type="text" id="embedInput" placeholder="e.g. puppy, heartbreak, neural network..." />
+            <button class="btn" type="submit" id="embedSubmit">Add to plot</button>
+          </form>
+        </div>
+
+        <div class="result-panel" id="embedResultPanel"></div>
+      </div>
+
+      <div class="card">
+        <h4>Semantic plot (2D projection)</h4>
+        <div class="embed-plot-wrap" id="embedPlotWrap"></div>
+        <div class="embed-legend">
+          <span class="legend-item"><span class="legend-dot" style="background:var(--accent2);"></span>Animals</span>
+          <span class="legend-item"><span class="legend-dot" style="background:var(--danger);"></span>Emotions</span>
+          <span class="legend-item"><span class="legend-dot" style="background:var(--accent1);"></span>Technology</span>
+          <span class="legend-item"><span class="legend-dot" style="background:var(--warn);"></span>Food</span>
+          <span class="legend-item"><span class="legend-dot custom" style="background:var(--accent1);"></span>Your text</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CONSOLE SCREEN ================= -->
+  <section class="screen" id="screen-console">
+    <div class="screen-head">
+      <div class="tags">
+        <span class="tag dot">Audience: Spec4 team / maintainers</span>
+        <span class="tag">Shared Framework Services</span>
+      </div>
+      <h1>Framework Services Console</h1>
+      <p>Every example app calls the same three shared capabilities — text generation, text representation, and data storage/retrieval — through one consistent interface. Test that interface directly, watch usage limits move, and see requests logged across apps.</p>
+    </div>
+
+    <div class="console-grid">
+      <div class="card">
+        <h4>Request tester</h4>
+        <label class="field-label">Request type</label>
+        <select id="reqType">
+          <option value="generation">Text generation</option>
+          <option value="representation">Text representation</option>
+          <option value="storage">Data storage / retrieval</option>
+        </select>
+        <label class="field-label">Request payload</label>
+        <textarea id="reqPayload" rows="3" placeholder="Prompt, text to represent, or record to store...">Summarize how BWS4 uses Spec4 to teach agentic patterns.</textarea>
+        <div class="console-actions">
+          <button class="btn" id="sendReq">Send request</button>
+          <button class="btn secondary small" id="simulateLimit">Simulate limit reached</button>
+        </div>
+        <div class="response-box" id="responseBox">Response will appear here once a request is sent.</div>
+      </div>
+
+      <div class="card">
+        <h4>Usage limits (free-tier, resets daily)</h4>
+        <div id="usageList"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:22px;">
+      <h4>Recent cross-app request log</h4>
+      <div id="logWrap"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">BWS4 — every screen, pattern demo, and shared service above was built with Spec4.</footer>
+
+<script>
+(function(){
+
+  /* ---------------- THEME ---------------- */
+  const themeBtn = document.getElementById('themeBtn');
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    themeBtn.textContent = t === 'dark' ? '🌙' : '☀️';
+    localStorage.setItem('bws4-theme', t);
+  }
+  applyTheme(localStorage.getItem('bws4-theme') || 'dark');
+  themeBtn.addEventListener('click', ()=>{
+    const cur = document.documentElement.getAttribute('data-theme');
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
+  });
+
+  /* ---------------- NAV (hamburger menu) ---------------- */
+  const menuBtn = document.getElementById('menuBtn');
+  const menuDropdown = document.getElementById('menuDropdown');
+  menuBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    menuDropdown.classList.toggle('open');
+  });
+  document.addEventListener('click', (e)=>{
+    if(!menuDropdown.contains(e.target) && e.target !== menuBtn){
+      menuDropdown.classList.remove('open');
+    }
+  });
+
+  const navBtns = document.querySelectorAll('.menu-dropdown button');
+  navBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      navBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+      document.getElementById(btn.dataset.target).classList.add('active');
+      menuDropdown.classList.remove('open');
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+  });
+  function goTo(id){
+    navBtns.forEach(b=>b.classList.toggle('active', b.dataset.target === id));
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    menuDropdown.classList.remove('open');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  /* ---------------- APP DIRECTORY ---------------- */
+  const apps = [
+    { name:'Embeddings Example App', desc:'See how words and phrases cluster in a 2D semantic space based on meaning, and drop in your own text to see where it lands.', tag:'Embeddings / Vector Representation', target:'screen-embeddings', status:'live' },
+    { name:'Single-Call Example App', desc:'See the simplest agentic pattern — one prompt, one response — in both plain-text and schema-conforming structured modes.', tag:'Single-Call Pattern', target:'screen-singlecall', status:'live' },
+    { name:'RAG Example App', desc:'Ask questions grounded in a small public dataset using retrieval-augmented generation.', tag:'Retrieval-Augmented Generation', target:'screen-rag', status:'live' },
+    { name:'Tool-Use Example App', desc:'Watch an agent call a live search tool mid-response to pull in up-to-date information.', tag:'Tool Use / Function Calling', target:'screen-tooluse', status:'live' },
+    { name:'Chained-Calls Example App', desc:'Watch a story idea pass through exactly two sequential model calls — a "struggling writer" then a "harsh critic" — with both steps visible.', tag:'Chained Calls', target:'screen-chained', status:'live' },
+    { name:'Planning-Agent Example App', desc:'Watch a planner call decompose a trip-day goal into a visible plan of research and synthesis steps, then execute them — only after your explicit go-ahead — into a one-day itinerary.', tag:'Planning Agent', target:'screen-planning', status:'live' },
+    { name:'Orchestrated-Subagents Example App', desc:'Watch a coordinator pick two of four fixed specialists, brief each one differently, run them side by side, and merge their independent answers into one.', tag:'Orchestrated Subagents', target:'screen-orchestrated', status:'live' },
+    { name:'Multi-Agent Collaboration Example App', desc:'Watch a buyer agent negotiate one procurement round against two rival seller agents holding private constraints, with A2A-shaped messages across a code-enforced opacity boundary and an end-of-run reveal.', tag:'Multi-Agent Collaboration', target:'screen-collab', status:'live' }
+  ];
+  const dirEl = document.getElementById('appDirectory');
+  apps.forEach(a=>{
+    const card = document.createElement('div');
+    card.className = 'app-card' + (a.status !== 'live' ? ' disabled' : '');
+    card.innerHTML = `
+      <span class="tag dot">${a.tag}</span>
+      <h3>${a.name}</h3>
+      <p>${a.desc}</p>
+      <div class="go">${a.status === 'live' ? 'Open example' : 'Coming soon'}</div>
+    `;
+    if(a.status === 'live'){
+      card.addEventListener('click', ()=> goTo(a.target));
+    }
+    dirEl.appendChild(card);
+  });
+
+  /* ---------------- SHARED "SERVICE" STATE (mirrors Shared_Framework_Services) ---------------- */
+  const usage = {
+    generation: { label:'Text generation', used: 42, cap: 100 },
+    representation: { label:'Text representation', used: 15, cap: 50 },
+    storage: { label:'Data storage / retrieval', used: 128, cap: 300 },
+    search: { label:'Search tool (Tool-Use app)', used: 9, cap: 30 }
+  };
+  const logs = []; // ServiceLogEntry[]
+
+  function nowStr(){
+    const d = new Date();
+    return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  }
+  function pushLog(app, capability, summary){
+    logs.unshift({ time: nowStr(), app, capability, summary });
+    if(logs.length > 8) logs.pop();
+    renderLog();
+  }
+  function bump(capKey, amount){
+    const u = usage[capKey];
+    u.used = Math.min(u.cap, u.used + amount);
+    renderUsage();
+  }
+  function isExhausted(capKey){
+    return usage[capKey].used >= usage[capKey].cap;
+  }
+  function remaining(capKey){
+    return usage[capKey].cap - usage[capKey].used;
+  }
+
+  function renderUsage(){
+    const wrap = document.getElementById('usageList');
+    wrap.innerHTML = '';
+    Object.keys(usage).forEach(key=>{
+      const u = usage[key];
+      const pct = Math.round((u.used / u.cap) * 100);
+      const warnState = pct >= 85;
+      const item = document.createElement('div');
+      item.className = 'usage-item';
+      item.innerHTML = `
+        <div class="usage-top">
+          <span class="cap-name">${u.label}</span>
+          <span class="cap-nums">${u.used} / ${u.cap}</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill ${warnState ? 'warn' : ''}" style="width:${pct}%"></div></div>
+      `;
+      wrap.appendChild(item);
+    });
+  }
+  function renderLog(){
+    const wrap = document.getElementById('logWrap');
+    if(logs.length === 0){
+      wrap.innerHTML = `<div class="empty-state">No requests yet — try the RAG or Tool-Use example apps, or send a test request above.</div>`;
+      return;
+    }
+    let rows = logs.map(l => `
+      <tr>
+        <td>${l.time}</td>
+        <td><span class="app-pill">${l.app}</span></td>
+        <td>${l.capability}</td>
+        <td>${l.summary}</td>
+      </tr>`).join('');
+    wrap.innerHTML = `
+      <table class="log-table">
+        <thead><tr><th>Time</th><th>App</th><th>Capability</th><th>Summary</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+  renderUsage(); renderLog();
+
+  /* ================= RAG EXAMPLE APP ================= */
+  const dataset = [
+    { title:'Voyager 1: Interstellar Explorer', source:'NASA JPL mission summary',
+      text:'Voyager 1 launched on September 5, 1977. It became the first human-made object to enter interstellar space in August 2012 and continues to send data back to Earth over the Deep Space Network, now more than 24 billion kilometers from home.' },
+    { title:'Apollo 11 Moon Landing', source:'NASA History Office',
+      text:'Apollo 11 launched on July 16, 1969. Neil Armstrong and Buzz Aldrin became the first humans to walk on the Moon on July 20, 1969, while Michael Collins orbited above in the command module.' },
+    { title:'The International Space Station', source:'ISS Program overview',
+      text:'The International Space Station has been continuously occupied since November 2000, serving as a microgravity laboratory operated jointly by NASA, Roscosmos, ESA, JAXA, and CSA.' },
+    { title:'James Webb Space Telescope', source:'JWST mission fact sheet',
+      text:'Launched in December 2021, the James Webb Space Telescope observes the universe primarily in infrared light, letting it study the first galaxies formed after the Big Bang and the atmospheres of distant exoplanets.' },
+    { title:'Mars Rover Missions', source:'Mars Exploration Program brief',
+      text:"NASA's Perseverance rover landed in Jezero Crater in February 2021 to search for signs of ancient microbial life and collect rock samples for eventual return to Earth, building on the earlier work of Curiosity and Spirit/Opportunity." }
+  ];
+
+  const docList = document.getElementById('docList');
+  dataset.forEach((doc, i)=>{
+    const item = document.createElement('div');
+    item.className = 'doc-item';
+    item.innerHTML = `
+      <div class="doc-head">
+        <div><strong>${doc.title}</strong><br><span>${doc.source}</span></div>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="doc-body"><p>${doc.text}</p></div>
+    `;
+    item.querySelector('.doc-head').addEventListener('click', ()=> item.classList.toggle('open'));
+    docList.appendChild(item);
+  });
+
+  const ragQuestions = [
+    'When did Voyager 1 launch and what is it doing now?',
+    'What did the Apollo 11 mission accomplish?',
+    'What does the James Webb Space Telescope observe?',
+    "What's the best pizza topping?"
+  ];
+  const ragChipsEl = document.getElementById('ragChips');
+  ragQuestions.forEach(q=>{
+    const c = document.createElement('span');
+    c.className = 'chip';
+    c.textContent = q;
+    c.addEventListener('click', ()=>{ document.getElementById('ragInput').value = q; });
+    ragChipsEl.appendChild(c);
+  });
+
+  const STOPWORDS = new Set(['what','when','did','the','is','are','a','an','of','and','to','in','on','for','was','were','does','do','it','its','with','how','who','which']);
+  function scorePassage(question, doc){
+    const words = question.toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(w=>w && !STOPWORDS.has(w));
+    const hay = (doc.title + ' ' + doc.text).toLowerCase();
+    let score = 0;
+    words.forEach(w=>{ if(hay.includes(w)) score++; });
+    return score;
+  }
+
+  const ragForm = document.getElementById('ragForm');
+  const ragPanel = document.getElementById('ragResultPanel');
+
+  ragForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const question = document.getElementById('ragInput').value.trim();
+    if(!question) return;
+    const submitBtn = document.getElementById('ragSubmit');
+    submitBtn.disabled = true;
+
+    if(isExhausted('generation')){
+      ragPanel.innerHTML = `
+        <div class="answer-card err">
+          <div class="answer-meta"><span class="tag" style="border-color:var(--danger); color:var(--danger);">Service unavailable</span></div>
+          <p style="margin:0;">Text generation capability has hit its free-tier usage limit for today. This demonstration is temporarily unavailable — try again later, or reset the limit from the Framework Console.</p>
+        </div>`;
+      submitBtn.disabled = false;
+      return;
+    }
+
+    ragPanel.innerHTML = `<div class="stage-line"><span class="spinner"></span> Retrieving passages from the reference dataset…</div>`;
+
+    setTimeout(()=>{
+      ragPanel.innerHTML = `<div class="stage-line"><span class="spinner"></span> Grounding a generated answer in the retrieved passages…</div>`;
+
+      setTimeout(()=>{
+        const scored = dataset.map(d => ({ ...d, score: scorePassage(question, d) }))
+                               .sort((a,b)=> b.score - a.score);
+        const top = scored.slice(0,3);
+        const maxScore = top[0].score;
+        const lowRelevance = maxScore === 0;
+
+        let answerText, confidenceClass, confidenceLabel;
+        if(lowRelevance){
+          confidenceClass = 'low'; confidenceLabel = 'Low confidence · weak grounding';
+          answerText = `I couldn't find strong support for this in the BWS4 reference dataset (space exploration facts). The closest passages are shown below for transparency, but they don't clearly relate to your question, so treat this answer as ungrounded speculation rather than a retrieval-backed response.`;
+        } else {
+          confidenceClass = 'high'; confidenceLabel = 'Grounded in ' + top.filter(t=>t.score>0).length + ' retrieved passage(s)';
+          const primary = top[0];
+          const secondary = top[1] && top[1].score > 0 ? top[1] : null;
+          answerText = `Based on the retrieved passages, ${primary.text}<span class="cite">[1]</span>` +
+            (secondary ? ` Additionally, ${secondary.text.charAt(0).toLowerCase()+secondary.text.slice(1)}<span class="cite">[2]</span>` : '');
+        }
+
+        const passagesHtml = top.map((p,idx) => `
+          <div class="passage">
+            <div class="passage-top">
+              <strong>[${idx+1}] ${p.title}</strong>
+              <span class="score-badge">match score: ${p.score}</span>
+            </div>
+            <p>${p.text} <span class="source-label">— ${p.source}</span></p>
+          </div>
+        `).join('');
+
+        ragPanel.innerHTML = `
+          <div class="answer-card ${lowRelevance ? 'warn' : ''}">
+            <div class="answer-meta">
+              <span class="tag dot">Question: “${question}”</span>
+              <span class="confidence ${confidenceClass}">${confidenceLabel}</span>
+            </div>
+            ${lowRelevance ? `<div class="warning-banner">⚠ Dataset gap detected: retrieved passages have little topical overlap with this question. Retrieval-augmented answers are only as good as the dataset behind them.</div>` : ''}
+            <div class="answer-text">${answerText}</div>
+            <div class="passages-block">
+              <h5>Retrieved passages</h5>
+              ${passagesHtml}
+            </div>
+          </div>
+        `;
+        submitBtn.disabled = false;
+        bump('generation', 1);
+        bump('representation', 1);
+        pushLog('RAG Example App', 'Text generation', `Answered: “${question.slice(0,40)}${question.length>40?'…':''}”`);
+        pushLog('RAG Example App', 'Text representation', 'Embedded question for passage similarity scoring');
+      }, 700);
+    }, 650);
+  });
+
+  /* ================= TOOL USE EXAMPLE APP ================= */
+  const toolQueries = [
+    'What is the latest Spec4 release?',
+    'Current Mars rover mission status',
+    'Recent breakthroughs in agentic AI frameworks'
+  ];
+  const toolChipsEl = document.getElementById('toolChips');
+  toolQueries.forEach(q=>{
+    const c = document.createElement('span');
+    c.className = 'chip';
+    c.textContent = q;
+    c.addEventListener('click', ()=>{ document.getElementById('toolInput').value = q; });
+    toolChipsEl.appendChild(c);
+  });
+
+  const searchFixtures = {
+    'what is the latest spec4 release?': [
+      { title:'Spec4 v0.9 — Agent Composition Update', summary:'Adds first-class support for composing multiple example-app agents from shared spec files, plus a new tool-registration API.', source:'spec4.dev/changelog' },
+      { title:'Spec4 Release Notes Archive', summary:'Full history of Spec4 releases, including the initial public preview focused on retrieval and tool-use patterns.', source:'github.com/spec4/spec4' },
+      { title:'Community Notes: Upgrading to Spec4 v0.9', summary:'Migration tips from developers who upgraded example apps built on earlier Spec4 versions.', source:'community.spec4.dev' }
+    ],
+    'current mars rover mission status': [
+      { title:'Perseverance Rover Mission Updates', summary:'Perseverance continues sample collection in Jezero Crater and is caching samples for a future Mars Sample Return mission.', source:'mars.nasa.gov' },
+      { title:'Curiosity Rover: Still Roving', summary:'Curiosity remains active in Gale Crater, recently investigating sulfur-bearing rock formations.', source:'mars.nasa.gov' },
+      { title:'Ingenuity Helicopter Program Wrap-Up', summary:'The Ingenuity helicopter concluded flight operations after exceeding its planned mission scope by dozens of flights.', source:'jpl.nasa.gov' }
+    ]
+  };
+  function fallbackResults(query){
+    return [
+      { title:`Overview: ${query}`, summary:`A general summary of current information related to "${query}", aggregated from public web sources.`, source:'web search (general)' },
+      { title:`Recent discussion on "${query}"`, summary:'Community and news commentary touching on this topic from the last few months.', source:'web search (news)' },
+      { title:`Reference material for "${query}"`, summary:'Background material useful for grounding an agent response on this topic.', source:'web search (reference)' }
+    ];
+  }
+
+  const toolForm = document.getElementById('toolForm');
+  const toolPanel = document.getElementById('toolResultPanel');
+
+  toolForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const query = document.getElementById('toolInput').value.trim();
+    if(!query) return;
+    const submitBtn = document.getElementById('toolSubmit');
+    submitBtn.disabled = true;
+
+    if(isExhausted('search')){
+      toolPanel.innerHTML = `
+        <div class="answer-card err">
+          <div class="answer-meta"><span class="tag" style="border-color:var(--danger); color:var(--danger);">Tool unavailable</span></div>
+          <p style="margin:0;">The search tool has hit its free-tier usage limit for today. The agent cannot perform a live lookup right now — try again later.</p>
+        </div>`;
+      submitBtn.disabled = false;
+      return;
+    }
+
+    const stepsHtml = `
+      <div class="steps" id="toolSteps">
+        <div class="step" data-step="1"><span class="num">01</span><span class="label">Parsing request</span></div>
+        <div class="step" data-step="2"><span class="num">02</span><span class="label">Calling search tool</span></div>
+        <div class="step" data-step="3"><span class="num">03</span><span class="label">Synthesizing answer</span></div>
+      </div>
+      <div id="toolStageMsg" class="stage-line"><span class="spinner"></span> Working…</div>
+    `;
+    toolPanel.innerHTML = stepsHtml;
+    const stepEls = toolPanel.querySelectorAll('.step');
+
+    function setStep(n){
+      stepEls.forEach(s=>{
+        const idx = parseInt(s.dataset.step,10);
+        s.classList.toggle('active', idx === n);
+        s.classList.toggle('done', idx < n);
+      });
+    }
+    setStep(1);
+
+    setTimeout(()=>{
+      setStep(2);
+      document.getElementById('toolStageMsg').innerHTML = `<span class="spinner"></span> Calling external search tool…`;
+
+      setTimeout(()=>{
+        setStep(3);
+        document.getElementById('toolStageMsg').innerHTML = `<span class="spinner"></span> Synthesizing an answer from search results…`;
+
+        setTimeout(()=>{
+          const key = query.toLowerCase();
+          const results = searchFixtures[key] || fallbackResults(query);
+          const resultsHtml = results.map((r,idx)=>`
+            <div class="result-item">
+              <div class="rank-badge">${idx+1}</div>
+              <div>
+                <h5>${r.title}</h5>
+                <p>${r.summary}</p>
+                <span class="source-label">Source: ${r.source}</span>
+              </div>
+            </div>
+          `).join('');
+
+          const synthesized = `Based on ${results.length} search results, ${results[0].summary.charAt(0).toLowerCase()+results[0].summary.slice(1)}`;
+
+          toolPanel.innerHTML = `
+            <div class="answer-card">
+              <div class="routing-line">↳ routed to: Search Tool (Tool_Use_Integration)</div>
+              <div class="answer-meta">
+                <span class="tag dot">Query: “${query}”</span>
+                <span class="confidence high">Grounded in ${results.length} live search result(s)</span>
+              </div>
+              <div class="answer-text">${synthesized}</div>
+              <div class="passages-block">
+                <h5>Search results used</h5>
+                <div class="result-list">${resultsHtml}</div>
+              </div>
+            </div>
+          `;
+          submitBtn.disabled = false;
+          bump('search', 1);
+          pushLog('Tool-Use Example App', 'Search tool', `Looked up: “${query.slice(0,40)}${query.length>40?'…':''}”`);
+        }, 700);
+      }, 750);
+    }, 600);
+  });
+
+  /* ================= SINGLE-CALL EXAMPLE APP ================= */
+  const scPresets = [
+    { id:'summarize', label:'Summarize', intent:'summarize',
+      prompt:'Summarize the following passage in 2-3 sentences: "BWS4 pairs a small set of teaching-oriented example apps with shared services for generation, representation, and storage, all implemented using Spec4 itself."' },
+    { id:'classify', label:'Classify', intent:'classify',
+      prompt:'Classify the sentiment of this sentence as positive, neutral, or negative: "I was skeptical at first, but this framework saved me hours of setup."' },
+    { id:'extract', label:'Extract', intent:'extract',
+      prompt:'Extract the people, dates, and places mentioned in: "On July 20, 1969, Neil Armstrong and Buzz Aldrin walked on the Moon after launching from Cape Canaveral."' }
+  ];
+
+  const scChipsEl = document.getElementById('scPresetChips');
+  let scSelectedPreset = null;
+  scPresets.forEach(p=>{
+    const c = document.createElement('span');
+    c.className = 'chip';
+    c.textContent = `${p.label} — ${p.intent} task`;
+    c.title = `Preset intent: ${p.intent}`;
+    c.addEventListener('click', ()=>{
+      document.getElementById('scPromptInput').value = p.prompt;
+      scSelectedPreset = p.id;
+      document.getElementById('scValidationMsg').style.display = 'none';
+    });
+    scChipsEl.appendChild(c);
+  });
+
+  document.getElementById('scPromptInput').addEventListener('input', ()=>{ scSelectedPreset = null; });
+
+  let scMode = 'simple';
+  document.querySelectorAll('#scModeToggle .mode-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#scModeToggle .mode-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      scMode = btn.dataset.mode;
+    });
+  });
+
+  const scSchemas = {
+    summarize: { summary:'string', key_points:'string[]' },
+    classify: { sentiment:'"positive" | "neutral" | "negative"', confidence:'number (0-1)' },
+    extract: { people:'string[]', dates:'string[]', places:'string[]' },
+    default: { response:'string', topics:'string[]' }
+  };
+
+  function scGenerateStructured(promptText, schemaKey, forceMismatch){
+    if(schemaKey === 'summarize'){
+      return forceMismatch
+        ? { summary:'BWS4 bundles example apps with shared services.' }
+        : { summary:'BWS4 bundles a set of teaching-oriented example apps with shared generation, representation, and storage services, all built using Spec4 itself.', key_points:['Built with Spec4','Shared services across apps','Educational, not task-specific'] };
+    }
+    if(schemaKey === 'classify'){
+      return forceMismatch
+        ? { sentiment:'positive' }
+        : { sentiment:'positive', confidence:0.87 };
+    }
+    if(schemaKey === 'extract'){
+      return forceMismatch
+        ? { people:['Neil Armstrong','Buzz Aldrin'], dates:['July 20, 1969'] }
+        : { people:['Neil Armstrong','Buzz Aldrin'], dates:['July 20, 1969'], places:['Cape Canaveral'] };
+    }
+    return forceMismatch
+      ? { response: promptText.slice(0,60) }
+      : { response:`A direct single-call response to: "${promptText.slice(0,60)}${promptText.length>60?'…':''}"`, topics:['general'] };
+  }
+
+  function scValidateAgainstSchema(schemaKey, obj){
+    const schema = scSchemas[schemaKey] || scSchemas.default;
+    const missing = Object.keys(schema).filter(k => !(k in obj));
+    return { valid: missing.length === 0, missing };
+  }
+
+  document.getElementById('scSubmit').addEventListener('click', ()=>{
+    const promptText = document.getElementById('scPromptInput').value.trim();
+    const msgEl = document.getElementById('scValidationMsg');
+    if(!promptText){
+      msgEl.style.display = 'block';
+      return;
+    }
+    msgEl.style.display = 'none';
+    const submitBtn = document.getElementById('scSubmit');
+    submitBtn.disabled = true;
+    const panel = document.getElementById('scResultPanel');
+
+    if(isExhausted('generation')){
+      panel.innerHTML = `
+        <div class="answer-card err">
+          <div class="answer-meta"><span class="tag" style="border-color:var(--danger); color:var(--danger);">Service unavailable</span></div>
+          <p style="margin:0;">Text generation capability has hit its free-tier usage limit for today. This demonstration is temporarily unavailable — try again later, or reset the limit from the Framework Console.</p>
+        </div>`;
+      submitBtn.disabled = false;
+      return;
+    }
+
+    panel.innerHTML = `<div class="stage-line"><span class="spinner"></span> Sending a single request to the shared generation service…</div>`;
+
+    setTimeout(()=>{
+      if(scMode === 'simple'){
+        const responseText = scSelectedPreset === 'summarize'
+          ? 'BWS4 bundles a set of teaching-oriented example apps with shared generation, representation, and storage services, all built using Spec4 itself — one demonstration for each agentic pattern.'
+          : scSelectedPreset === 'classify'
+          ? 'Sentiment: positive. The sentence expresses relief and satisfaction despite initial skepticism.'
+          : scSelectedPreset === 'extract'
+          ? 'People: Neil Armstrong, Buzz Aldrin. Date: July 20, 1969. Place: Cape Canaveral (launch site).'
+          : `A single direct response to: "${promptText.slice(0,80)}${promptText.length>80?'…':''}" — generated in one call, with no retrieval or tool steps involved.`;
+
+        panel.innerHTML = `
+          <div class="answer-card">
+            <div class="answer-meta">
+              <span class="tag dot">Mode: Simple (plain text)</span>
+            </div>
+            <div class="answer-text">${responseText}</div>
+          </div>
+        `;
+      } else {
+        const schemaKey = scSelectedPreset || 'default';
+        const forceMismatch = Math.random() < 0.2;
+        const responseObj = scGenerateStructured(promptText, schemaKey, forceMismatch);
+        const validation = scValidateAgainstSchema(schemaKey, responseObj);
+        const schema = scSchemas[schemaKey];
+        const escapedPrompt = promptText.replace(/"/g,'\\"').slice(0,200) + (promptText.length>200?'…':'');
+        const schemaStr = JSON.stringify(schema, null, 2).split('\n').join('\n  ');
+
+        panel.innerHTML = `
+          <div class="answer-card ${validation.valid ? '' : 'warn'}">
+            <div class="answer-meta">
+              <span class="tag dot">Mode: Structured (schema-conforming)</span>
+              <span class="confidence ${validation.valid ? 'high' : 'low'}">${validation.valid ? 'Response conforms to schema' : 'Schema mismatch detected'}</span>
+            </div>
+            ${validation.valid ? '' : `<div class="warning-banner">⚠ The structured response is missing expected field(s): ${validation.missing.join(', ')}. This mismatch is surfaced here rather than silently presented as valid.</div>`}
+            <div class="structured-grid">
+              <div class="structured-block">
+                <h6>Request submitted</h6>
+                <pre>{
+  "prompt": "${escapedPrompt}",
+  "mode": "structured",
+  "response_schema": ${schemaStr}
+}</pre>
+              </div>
+              <div class="structured-block">
+                <h6>Response returned</h6>
+                <pre>${JSON.stringify(responseObj, null, 2)}</pre>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      submitBtn.disabled = false;
+      bump('generation', 1);
+      pushLog('Single-Call Example App', 'Text generation', `Single-call ${scMode} request${scSelectedPreset ? ' (' + scSelectedPreset + ' preset)' : ''}`);
+    }, 700);
+  });
+
+  /* ================= CHAINED-CALLS EXAMPLE APP ================= */
+  const chainedPrompts = [
+    'a lonely lighthouse keeper who finds a message in a bottle',
+    'two rival street food vendors forced to share a food truck for one night',
+    'a small robot learning to paint by watching sunsets'
+  ];
+  const chainedChipsEl = document.getElementById('chainedChips');
+  chainedPrompts.forEach(q=>{
+    const c = document.createElement('span');
+    c.className = 'chip';
+    c.textContent = q;
+    c.addEventListener('click', ()=>{ document.getElementById('chainedInput').value = q; });
+    chainedChipsEl.appendChild(c);
+  });
+
+  function writerStoryFor(prompt){
+    return `The idea was simple enough — ${prompt} — but nothing about writing it felt simple. I stared at the blinking cursor for what felt like an hour before typing: "It was a quiet evening when everything changed." I don't know if that's a good opening. I don't know if any of this is good. Still, I kept going, following the idea of ${prompt} as best I could, hoping the next sentence would come easier than this one did. It didn't, but I finished a rough draft anyway, because a finished bad draft beats an unfinished good idea.`;
+  }
+  function criticFeedbackFor(story){
+    return `This draft opens with a cliché ("It was a quiet evening when everything changed") that tells me nothing about character or stakes. The narration is more concerned with its own anxiety about writing than with the story it claims to tell — we learn more about the author's hesitation than about the world or people involved. Cut the throat-clearing, start in the middle of an actual moment, and trust the premise enough to commit to a concrete scene instead of narrating around it.`;
+  }
+
+  const chainedForm = document.getElementById('chainedForm');
+  const chainedPanel = document.getElementById('chainedResultPanel');
+
+  function setChainedStep(n){
+    document.querySelectorAll('#chainedSteps .step').forEach(s=>{
+      const idx = parseInt(s.dataset.step,10);
+      s.classList.toggle('active', idx === n);
+      s.classList.toggle('done', idx < n);
+    });
+  }
+  setChainedStep(0);
+
+  chainedForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const prompt = document.getElementById('chainedInput').value.trim();
+    if(!prompt) return;
+    const submitBtn = document.getElementById('chainedSubmit');
+    submitBtn.disabled = true;
+    setChainedStep(0);
+
+    if(isExhausted('generation')){
+      chainedPanel.innerHTML = `
+        <div class="answer-card err">
+          <div class="answer-meta"><span class="tag" style="border-color:var(--danger); color:var(--danger);">Service unavailable</span></div>
+          <p style="margin:0;">Text generation capability has hit its free-tier usage limit for today, so the chain cannot start. Try again later, or reset the limit from the Framework Console.</p>
+        </div>`;
+      submitBtn.disabled = false;
+      return;
+    }
+
+    chainedPanel.innerHTML = `<div class="stage-line"><span class="spinner"></span> Call 1 of 2 — Struggling Writer persona is drafting a short story…</div>`;
+    setChainedStep(1);
+
+    setTimeout(()=>{
+      const story = writerStoryFor(prompt);
+      bump('generation', 1);
+      pushLog('Chained-Calls Example App', 'Text generation', `Step 1 (writer): drafted story from "${prompt.slice(0,30)}${prompt.length>30?'…':''}"`);
+
+      if(isExhausted('generation')){
+        chainedPanel.innerHTML = `
+          <div class="answer-card warn">
+            <div class="answer-meta">
+              <span class="tag dot">Step 1 of 2 complete</span>
+              <span class="confidence low">Chain halted — quota exhausted</span>
+            </div>
+            <div class="passages-block">
+              <h5>Step 1 · Struggling Writer (intermediate output)</h5>
+              <div class="passage"><p>${story}</p></div>
+            </div>
+            <div class="warning-banner">⚠ Text generation hit its free-tier usage limit partway through the chain. Step 2 (Harsh Critic) did not run — this is the shared usage limit being enforced mid-chain rather than silently producing a misleading final answer.</div>
+          </div>`;
+        submitBtn.disabled = false;
+        setChainedStep(1);
+        return;
+      }
+
+      chainedPanel.innerHTML = `
+        <div class="passages-block" style="margin-bottom:18px;">
+          <h5>Step 1 · Struggling Writer (intermediate output)</h5>
+          <div class="passage"><p>${story}</p></div>
+        </div>
+        <div class="stage-line"><span class="spinner"></span> Call 2 of 2 — Harsh Critic persona is critiquing that exact draft…</div>
+      `;
+      setChainedStep(2);
+
+      setTimeout(()=>{
+        const forceFail = Math.random() < 0.18;
+        if(forceFail){
+          chainedPanel.innerHTML = `
+            <div class="passages-block" style="margin-bottom:18px;">
+              <h5>Step 1 · Struggling Writer (intermediate output)</h5>
+              <div class="passage"><p>${story}</p></div>
+            </div>
+            <div class="answer-card err">
+              <div class="answer-meta">
+                <span class="tag dot">Step 2 of 2 failed</span>
+                <span class="tag" style="border-color:var(--danger); color:var(--danger);">Final step error</span>
+              </div>
+              <p style="margin:0 0 14px;">The second call (Harsh Critic) failed to complete. The first call's output above remains visible — an intermediate result is never discarded just because a later step in the chain fails.</p>
+              <button class="btn secondary small" id="chainedRetry">Retry step 2 only</button>
+            </div>
+          `;
+          submitBtn.disabled = false;
+          pushLog('Chained-Calls Example App', 'Text generation', 'Step 2 (critic): failed');
+          document.getElementById('chainedRetry').addEventListener('click', ()=> retryChainedStep2(prompt, story, submitBtn));
+          return;
+        }
+
+        const critique = criticFeedbackFor(story);
+        bump('generation', 1);
+        pushLog('Chained-Calls Example App', 'Text generation', 'Step 2 (critic): produced final critique');
+        chainedPanel.innerHTML = `
+          <div class="passages-block" style="margin-bottom:18px;">
+            <h5>Step 1 · Struggling Writer (intermediate output)</h5>
+            <div class="passage"><p>${story}</p></div>
+          </div>
+          <div class="answer-card">
+            <div class="answer-meta">
+              <span class="tag dot">Step 2 of 2 complete</span>
+              <span class="confidence high">Chain finished — 2 of 2 calls succeeded</span>
+            </div>
+            <h5 style="margin:0 0 10px; font-size:12.5px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim);">Step 2 · Harsh Critic (final output)</h5>
+            <div class="answer-text">${critique}</div>
+          </div>
+        `;
+        submitBtn.disabled = false;
+      }, 750);
+    }, 750);
+  });
+
+  function retryChainedStep2(prompt, story, submitBtn){
+    submitBtn.disabled = true;
+    chainedPanel.innerHTML = `
+      <div class="passages-block" style="margin-bottom:18px;">
+        <h5>Step 1 · Struggling Writer (intermediate output)</h5>
+        <div class="passage"><p>${story}</p></div>
+      </div>
+      <div class="stage-line"><span class="spinner"></span> Retrying Call 2 of 2 — Harsh Critic persona is critiquing the draft…</div>
+    `;
+    setTimeout(()=>{
+      const critique = criticFeedbackFor(story);
+      bump('generation', 1);
+      pushLog('Chained-Calls Example App', 'Text generation', 'Step 2 (critic): produced final critique on retry');
+      chainedPanel.innerHTML = `
+        <div class="passages-block" style="margin-bottom:18px;">
+          <h5>Step 1 · Struggling Writer (intermediate output)</h5>
+          <div class="passage"><p>${story}</p></div>
+        </div>
+        <div class="answer-card">
+          <div class="answer-meta">
+            <span class="tag dot">Step 2 of 2 complete (retry)</span>
+            <span class="confidence high">Chain finished — 2 of 2 calls succeeded</span>
+          </div>
+          <h5 style="margin:0 0 10px; font-size:12.5px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim);">Step 2 · Harsh Critic (final output)</h5>
+          <div class="answer-text">${critique}</div>
+        </div>
+      `;
+      submitBtn.disabled = false;
+    }, 700);
+  }
+
+  /* ================= PLANNING-AGENT EXAMPLE APP ================= */
+  const planPresets = [
+    { city:'Lisbon', interests:'street food, modern art, walkable neighborhoods' },
+    { city:'Tokyo', interests:'ramen, temples, quiet gardens' },
+    { city:'Mexico City', interests:'museums, tacos, murals' }
+  ];
+  const planChipsEl = document.getElementById('planChips');
+  planPresets.forEach(p=>{
+    const c = document.createElement('span');
+    c.className = 'chip';
+    c.textContent = `${p.city} — ${p.interests}`;
+    c.addEventListener('click', ()=>{
+      document.getElementById('planCity').value = p.city;
+      document.getElementById('planInterests').value = p.interests;
+      document.getElementById('planValidationMsg').style.display = 'none';
+    });
+    planChipsEl.appendChild(c);
+  });
+
+  const planRuns = { used: 0, cap: 3 };
+  function renderPlanRuns(){
+    document.getElementById('planRunsTag').textContent = `Runs remaining this session: ${planRuns.cap - planRuns.used} / ${planRuns.cap}`;
+  }
+  renderPlanRuns();
+
+  const planForm = document.getElementById('planForm');
+  const planPanel = document.getElementById('planResultPanel');
+
+  function splitInterests(interests){
+    const list = interests.split(/,| and /).map(s=>s.trim()).filter(Boolean);
+    return {
+      i1: list[0] || interests,
+      i2: list[1] || 'local highlights'
+    };
+  }
+
+  planForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const city = document.getElementById('planCity').value.trim();
+    const interests = document.getElementById('planInterests').value.trim();
+    const msgEl = document.getElementById('planValidationMsg');
+    if(!city || !interests){
+      msgEl.style.display = 'block';
+      return;
+    }
+    msgEl.style.display = 'none';
+    const submitBtn = document.getElementById('planSubmit');
+
+    if(planRuns.used >= planRuns.cap){
+      planPanel.innerHTML = `
+        <div class="answer-card err">
+          <div class="answer-meta"><span class="tag" style="border-color:var(--danger); color:var(--danger);">Session run limit reached</span></div>
+          <p style="margin:0;">You've used all ${planRuns.cap} planning runs for this session. This limit conserves shared free-tier model and search usage — planning agents in general can run as many times (and with as many steps) as needed. Come back in a new session to run more plans.</p>
+        </div>`;
+      return;
+    }
+
+    if(isExhausted('generation')){
+      planPanel.innerHTML = `
+        <div class="answer-card err">
+          <div class="answer-meta"><span class="tag" style="border-color:var(--danger); color:var(--danger);">Service unavailable</span></div>
+          <p style="margin:0;">Text generation capability has hit its free-tier usage limit for today, so the planner call cannot run. Try again later, or reset the limit from the Framework Console.</p>
+        </div>`;
+      return;
+    }
+
+    submitBtn.disabled = true;
+    planPanel.innerHTML = `<div class="stage-line"><span class="spinner"></span> Planner call — decomposing your goal into discrete steps…</div>`;
+
+    setTimeout(()=>{
+      planRuns.used++;
+      renderPlanRuns();
+      bump('generation', 1);
+      pushLog('Planning-Agent Example App', 'Text generation', `Planner: decomposed goal for one day in ${city}`);
+
+      const { i1, i2 } = splitInterests(interests);
+      const steps = [
+        { number:1, kind:'research', label:`Research ${i1} in ${city}`, purpose:`Web search for well-reviewed ${i1} options and where they cluster in ${city}.`, query:`best ${i1} in ${city}` },
+        { number:2, kind:'research', label:`Research ${i2} in ${city}`, purpose:`Web search for ${i2} in ${city}, focused on spots reachable within a single day.`, query:`${i2} in ${city}` },
+        { number:3, kind:'synthesis', label:`Compose one-day itinerary for ${city}`, purpose:`One generation call combining the research above into a morning / afternoon / evening plan shaped by your interests.`, query:null }
+      ];
+      const overPlan = Math.random() < 0.2;
+
+      const stepsHtml = steps.map(s=>`
+        <div class="result-item" id="planStep-${s.number}">
+          <div class="rank-badge">${s.number}</div>
+          <div style="flex:1;">
+            <h5>${s.label}</h5>
+            <p>${s.purpose}</p>
+            <span class="source-label">${s.kind === 'research' ? 'Executor call · shared search tool' : 'Executor call · shared generation service'} · <span class="plan-step-status">Status: awaiting go-ahead</span></span>
+          </div>
+        </div>
+      `).join('');
+
+      planPanel.innerHTML = `
+        <div class="card">
+          <h4>Proposed plan — review before anything runs</h4>
+          ${overPlan ? `<div class="warning-banner">⚠ Plan trimmed: the planner emitted 5 steps, exceeding this demo's 3-executor-call limit. The plan was checked before display and trimmed to the 3 most goal-relevant steps — the pattern itself supports plans of any length.</div>` : ''}
+          <div class="result-list">${stepsHtml}</div>
+          <div class="console-actions">
+            <button class="btn" id="planExecute">Execute plan (3 executor calls)</button>
+            <span class="source-label">Nothing executes until you give this explicit go-ahead.</span>
+          </div>
+          <div id="planStepResults" style="margin-top:18px;"></div>
+          <div id="planFinal"></div>
+        </div>
+      `;
+      submitBtn.disabled = false;
+      document.getElementById('planExecute').addEventListener('click', ()=> executePlan(city, i1, i2, steps));
+    }, 850);
+  });
+
+  function setPlanStepStatus(n, statusText, state){
+    const item = document.getElementById('planStep-' + n);
+    if(!item) return;
+    item.querySelector('.plan-step-status').textContent = 'Status: ' + statusText;
+    if(state === 'running'){ item.style.borderColor = 'var(--accent1)'; }
+    else if(state === 'done'){ item.style.borderColor = 'var(--success)'; }
+    else if(state === 'failed'){ item.style.borderColor = 'var(--danger)'; }
+  }
+
+  function researchResultFor(stepLabel, topic, city){
+    const cap = topic.charAt(0).toUpperCase() + topic.slice(1);
+    return `Found: "${cap} guide for ${city}" — a ranked list of well-reviewed ${topic} spots, plus "${city} neighborhood tips" noting where they cluster and when they're least crowded.`;
+  }
+
+  function executePlan(city, i1, i2, steps){
+    const execBtn = document.getElementById('planExecute');
+    execBtn.disabled = true;
+    const resultsWrap = document.getElementById('planStepResults');
+    const finalWrap = document.getElementById('planFinal');
+    const failedSteps = [];
+
+    function appendStepResult(step, text, failed){
+      const div = document.createElement('div');
+      div.className = 'passage';
+      div.innerHTML = `
+        <div class="passage-top">
+          <strong>Step ${step.number} result · ${step.label}</strong>
+          <span class="score-badge">${step.kind === 'research' ? 'web search' : 'generation'}</span>
+        </div>
+        <p>${text} ${failed ? '' : '<span class="source-label">— via shared framework services</span>'}</p>
+      `;
+      resultsWrap.appendChild(div);
+    }
+
+    function runResearchStep(step, topic, next){
+      setPlanStepStatus(step.number, 'running…', 'running');
+      finalWrap.innerHTML = `<div class="stage-line" style="margin-top:14px;"><span class="spinner"></span> Executor call ${step.number} of 3 — searching the web: “${step.query}”…</div>`;
+      setTimeout(()=>{
+        if(isExhausted('search')){
+          failedSteps.push(step.number);
+          setPlanStepStatus(step.number, 'failed — search quota exhausted', 'failed');
+          appendStepResult(step, '⚠ The shared search tool has hit its free-tier limit, so this research step returned no results. The synthesis step will acknowledge this gap rather than fabricate details.', true);
+          pushLog('Planning-Agent Example App', 'Search tool', `Step ${step.number}: failed (quota exhausted)`);
+        } else {
+          bump('search', 1);
+          setPlanStepStatus(step.number, 'complete', 'done');
+          appendStepResult(step, researchResultFor(step.label, topic, city), false);
+          pushLog('Planning-Agent Example App', 'Search tool', `Step ${step.number}: searched “${step.query.slice(0,40)}${step.query.length>40?'…':''}”`);
+        }
+        next();
+      }, 800);
+    }
+
+    runResearchStep(steps[0], i1, ()=>{
+      runResearchStep(steps[1], i2, ()=>{
+        // Synthesis step
+        const synth = steps[2];
+        setPlanStepStatus(synth.number, 'running…', 'running');
+        finalWrap.innerHTML = `<div class="stage-line" style="margin-top:14px;"><span class="spinner"></span> Executor call 3 of 3 — synthesizing your one-day itinerary from the research above…</div>`;
+
+        setTimeout(()=>{
+          if(isExhausted('generation')){
+            setPlanStepStatus(synth.number, 'failed — generation quota exhausted', 'failed');
+            finalWrap.innerHTML = `
+              <div class="answer-card warn" style="margin-top:14px;">
+                <div class="answer-meta">
+                  <span class="tag dot">Run halted at step 3</span>
+                  <span class="confidence low">Synthesis could not run — quota exhausted</span>
+                </div>
+                <p style="margin:0;">Text generation hit its free-tier limit before the synthesis step. The completed research results above are preserved — an agent run never silently discards work already done. Try again later, or reset the limit from the Framework Console.</p>
+              </div>`;
+            execBtn.disabled = false;
+            return;
+          }
+
+          bump('generation', 1);
+          setPlanStepStatus(synth.number, 'complete', 'done');
+          pushLog('Planning-Agent Example App', 'Text generation', `Step 3 (synthesis): composed one-day itinerary for ${city}`);
+
+          const gapBanner = failedSteps.length
+            ? `<div class="warning-banner">⚠ Research step(s) ${failedSteps.join(', ')} returned no results, so parts of this itinerary lean on general knowledge rather than fresh research — an honest gap, not fabricated detail.</div>`
+            : '';
+
+          finalWrap.innerHTML = `
+            <div class="answer-card" style="margin-top:14px;">
+              <div class="answer-meta">
+                <span class="tag dot">Goal: one day in ${city}</span>
+                <span class="confidence high">Run complete — 1 planner + 3 executor calls</span>
+              </div>
+              ${gapBanner}
+              <h5 style="margin:0 0 10px; font-size:12.5px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim);">Final output · One-day itinerary for ${city}</h5>
+              <div class="passages-block">
+                <div class="passage">
+                  <div class="passage-top"><strong>Morning</strong><span class="score-badge">from step 1 research</span></div>
+                  <p>Start with ${i1}: head to one of the well-reviewed ${i1} spots step 1 surfaced in central ${city}, arriving early while it's least crowded, then wander the surrounding neighborhood on foot.</p>
+                </div>
+                <div class="passage">
+                  <div class="passage-top"><strong>Afternoon</strong><span class="score-badge">from step 2 research</span></div>
+                  <p>Shift to ${i2}: step 2's research points to a cluster of ${i2} options reachable within the day — pick two that sit close together and take the slower route between them.</p>
+                </div>
+                <div class="passage">
+                  <div class="passage-top"><strong>Evening</strong><span class="score-badge">synthesis</span></div>
+                  <p>Wind down where your interests overlap: close the day near where the ${i1} and ${i2} clusters meet, leaving time for one unplanned stop — the research suggests that's where ${city} rewards wandering most.</p>
+                </div>
+              </div>
+              <span class="source-label">Composed by the synthesis step from the step results above — the plan, every step result, and this final output all stayed visible throughout the run.</span>
+            </div>
+          `;
+          execBtn.disabled = true;
+        }, 900);
+      });
+    });
+  }
+
+  /* ================= ORCHESTRATED-SUBAGENTS EXAMPLE APP ================= */
+  const specialists = [
+    { id:'analyst', name:'Technical Analyst', color:'var(--accent2)',
+      scope:'Mechanics, trade-offs, and how something actually works under the hood.' },
+    { id:'practitioner', name:'Practical Practitioner', color:'var(--success)',
+      scope:'Day-to-day realities, costs, effort, and what it takes to actually do it.' },
+    { id:'skeptic', name:'Financial Skeptic', color:'var(--warn)',
+      scope:'Money, risk, and the case against — hidden costs and failure modes.' },
+    { id:'historian', name:'Historical Contextualiser', color:'var(--accent1)',
+      scope:'How we got here — precedents, past attempts, and what changed since.' }
+  ];
+
+  const rosterEl = document.getElementById('specialistRoster');
+  function renderRoster(chosenIds){
+    rosterEl.innerHTML = specialists.map(s=>`
+      <div class="roster-item ${chosenIds && chosenIds.includes(s.id) ? 'chosen' : ''}" id="roster-${s.id}">
+        <div class="rname"><span class="spec-dot" style="background:${s.color};"></span>${s.name}<span class="chosen-flag">chosen</span></div>
+        <p class="rscope">${s.scope}</p>
+      </div>
+    `).join('');
+  }
+  renderRoster(null);
+
+  const orchPresets = [
+    { id:'p1', q:'Should a small team self-host its own database?', pair:['analyst','skeptic'] },
+    { id:'p2', q:'Is learning a second programming language worth it mid-career?', pair:['practitioner','historian'] },
+    { id:'p3', q:'Why did microservices become so popular, and are they worth it?', pair:['historian','skeptic'] },
+    { id:'p4', q:'How should I start composting in a small apartment?', pair:['practitioner','analyst'] }
+  ];
+  const orchChipsEl = document.getElementById('orchChips');
+  let orchSelectedPreset = null;
+  orchPresets.forEach(p=>{
+    const c = document.createElement('span');
+    c.className = 'chip';
+    c.textContent = p.q;
+    c.addEventListener('click', ()=>{
+      document.getElementById('orchInput').value = p.q;
+      orchSelectedPreset = p.id;
+      document.getElementById('orchValidationMsg').style.display = 'none';
+    });
+    orchChipsEl.appendChild(c);
+  });
+  document.getElementById('orchInput').addEventListener('input', ()=>{ orchSelectedPreset = null; });
+
+  const orchRuns = { used: 0, cap: 3 };
+  function renderOrchRuns(){
+    document.getElementById('orchRunsTag').textContent = `Runs remaining this session: ${orchRuns.cap - orchRuns.used} / ${orchRuns.cap}`;
+  }
+  renderOrchRuns();
+
+  const orchForm = document.getElementById('orchForm');
+  const orchPanel = document.getElementById('orchResultPanel');
+  const orchSubmitBtn = document.getElementById('orchSubmit');
+  const orchInputEl = document.getElementById('orchInput');
+
+  function specById(id){ return specialists.find(s=>s.id===id); }
+
+  function moderateQuestion(q){
+    const banned = ['bomb','weapon','malware','hack into'];
+    const lower = q.toLowerCase();
+    const hit = banned.find(b=>lower.includes(b));
+    if(hit){
+      return { allowed:false, category:'unsafe_request', message:`This question was blocked before the coordinator ran, because it appears to request harmful instructions ("${hit}"). Try a different question — nothing was dispatched and no run was consumed.` };
+    }
+    return { allowed:true, category:'general_knowledge', message:'Cleared for delegation — general knowledge question.' };
+  }
+
+  function chooseSpecialists(question){
+    const preset = orchPresets.find(p=>p.id===orchSelectedPreset);
+    if(preset) return { ids: preset.pair, weakFit:false };
+    const lower = question.toLowerCase();
+    const scores = { analyst:0, practitioner:0, skeptic:0, historian:0 };
+    const kw = {
+      analyst:['how','work','technical','architecture','system','database','model','algorithm','design','performance'],
+      practitioner:['start','do','daily','practice','routine','beginner','apartment','team','manage','use'],
+      skeptic:['cost','worth','risk','money','budget','price','should','downside','fail'],
+      historian:['why','history','became','origin','used to','past','evolved','tradition']
+    };
+    Object.keys(kw).forEach(k=>{
+      kw[k].forEach(w=>{ if(lower.includes(w)) scores[k] += 1; });
+    });
+    const ranked = Object.keys(scores).sort((a,b)=> scores[b]-scores[a]);
+    const total = scores[ranked[0]] + scores[ranked[1]];
+    return { ids: [ranked[0], ranked[1]], weakFit: total <= 1 };
+  }
+
+  function briefFor(specId, question){
+    const map = {
+      analyst: `Explain the underlying mechanics relevant to "${question}". Cover how it works, the key technical trade-offs, and where the real constraints are. Do not discuss cost or history.`,
+      practitioner: `Answer "${question}" from lived, hands-on experience. Describe concretely what someone would actually do first, second, and third, and what usually goes wrong in practice. Do not theorise.`,
+      skeptic: `Push back on "${question}". Lay out the costs, the risks, the hidden ongoing burden, and the conditions under which this is a bad idea. Be specific about what people underestimate.`,
+      historian: `Give the background to "${question}". Explain how the current situation came about, what was tried before, why those attempts succeeded or failed, and what has changed since. Do not give recommendations.`
+    };
+    return map[specId];
+  }
+
+  function specialistAnswerFor(specId, question){
+    const map = {
+      analyst: `Technically, "${question}" comes down to a handful of moving parts: where state lives, who is responsible for keeping it consistent, and how failure propagates when one part is unavailable. The mechanism is straightforward in the happy path; almost all of the difficulty sits in the edge cases, which is why the honest answer depends on how much control you need over those edges rather than on any headline capability.`,
+      practitioner: `In practice, people who work through "${question}" tend to start far smaller than they planned. The first week is mostly setup and unglamorous cleanup; the second week is when the actual routine forms. What consistently goes wrong is underestimating the recurring maintenance — the initial effort is visible and finite, the ongoing effort is invisible and permanent.`,
+      skeptic: `The case against here is mostly about cost you don't see on day one. "${question}" reads as a one-time decision, but it is really a standing commitment: attention, upkeep, and a small tax on every future change. Unless there is a clear reason the alternative fails you, the expensive path is usually the one that quietly needs a person assigned to it forever.`,
+      historian: `Historically, "${question}" is a question people have circled back to every decade or so. Earlier attempts failed less because the idea was wrong and more because the surrounding tooling wasn't ready; when that tooling matured, the same idea suddenly looked obvious. The useful lesson is that the answer has flipped before and may well flip again as the constraints move.`
+    };
+    return map[specId];
+  }
+
+  function mergedAnswerFor(ids, question){
+    const a = specById(ids[0]).name, b = specById(ids[1]).name;
+    return `Taking both perspectives together on "${question}": the ${a.toLowerCase()}'s framing tells you what the thing actually is and where its difficulty concentrates, while the ${b.toLowerCase()}'s framing tells you what it will cost you to live with over time. They agree that the visible, up-front part is the easy part. Where they pull apart is the recommendation: one treats the difficulty as a solvable engineering matter, the other treats it as a standing commitment that should be justified before you take it on. The integrated answer is to proceed only if you can name who owns the ongoing part — otherwise the two views collapse into the same warning.`;
+  }
+
+  function comparisonNoteFor(ids){
+    const a = specById(ids[0]).name, b = specById(ids[1]).name;
+    return [
+      `<strong>Agree:</strong> both treat the initial effort as the small, visible part of the problem.`,
+      `<strong>Complement:</strong> ${a} supplies the mechanism; ${b} supplies the consequences of living with it.`,
+      `<strong>Contradict:</strong> ${a} frames the difficulty as solvable with effort, while ${b} frames it as a recurring cost that effort does not remove.`
+    ];
+  }
+
+  function typeInto(el, text, done){
+    let i = 0;
+    const chunk = Math.max(2, Math.round(text.length / 60));
+    const timer = setInterval(()=>{
+      i += chunk;
+      el.innerHTML = text.slice(0, i) + (i < text.length ? '<span class="caret"></span>' : '');
+      if(i >= text.length){
+        clearInterval(timer);
+        el.innerHTML = text;
+        if(done) done();
+      }
+    }, 45);
+  }
+
+  orchForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const question = orchInputEl.value.trim();
+    const msgEl = document.getElementById('orchValidationMsg');
+    if(!question){
+      msgEl.style.display = 'block';
+      return;
+    }
+    msgEl.style.display = 'none';
+
+    if(orchRuns.used >= orchRuns.cap){
+      orchPanel.innerHTML = `
+        <div class="answer-card err">
+          <div class="answer-meta"><span class="tag" style="border-color:var(--danger); color:var(--danger);">Session run limit reached</span></div>
+          <p style="margin:0;">You've used all ${orchRuns.cap} orchestration runs for <strong>this app in this session</strong>. That's this demo's own limit, not the showcase-wide daily allowance — the shared generation capability may still have plenty left. Previous results stay on screen; come back in a new session to run more.</p>
+        </div>`;
+      return;
+    }
+
+    if(remaining('generation') < 3){
+      orchPanel.innerHTML = `
+        <div class="answer-card err">
+          <div class="answer-meta"><span class="tag" style="border-color:var(--danger); color:var(--danger);">Showcase-wide allowance too low</span></div>
+          <p style="margin:0;">This run reserves a full budget of 3 generation calls before it starts, and only ${remaining('generation')} remain in the <strong>showcase-wide daily allowance</strong> shared by every example app. Nothing was dispatched — a confirmed run either completes or is refused up front. Try again later, or reset the limit from the Framework Console.</p>
+        </div>`;
+      return;
+    }
+
+    orchSubmitBtn.disabled = true;
+    renderRoster(null);
+    orchPanel.innerHTML = `<div class="stage-line"><span class="spinner"></span> Moderating the question before it reaches the coordinator…</div>`;
+
+    setTimeout(()=>{
+      const verdict = moderateQuestion(question);
+      if(!verdict.allowed){
+        orchPanel.innerHTML = `
+          <div class="answer-card err">
+            <div class="answer-meta">
+              <span class="tag dot">Question blocked at moderation</span>
+              <span class="tag" style="border-color:var(--danger); color:var(--danger);">Category: ${verdict.category}</span>
+            </div>
+            <p style="margin:0;">${verdict.message}</p>
+          </div>`;
+        orchSubmitBtn.disabled = false;
+        pushLog('Orchestrated-Subagents App', 'Text generation', 'Moderation: question blocked before delegation');
+        return;
+      }
+
+      orchPanel.innerHTML = `
+        <div class="stage-line">✓ Moderation passed — category: ${verdict.category}. Budget reserved: 3 generation calls.</div>
+        <div class="stage-line"><span class="spinner"></span> Coordinator call 1 of 3 — choosing exactly two specialists and writing a brief for each…</div>
+      `;
+
+      setTimeout(()=>{
+        bump('generation', 1);
+        pushLog('Orchestrated-Subagents App', 'Text generation', 'Coordinator: produced delegation decision (2 of 4 specialists)');
+
+        const invalidFirstTry = Math.random() < 0.18;
+        const choice = chooseSpecialists(question);
+        const ids = choice.ids;
+        renderRoster(ids);
+
+        const briefsHtml = ids.map(id=>{
+          const s = specById(id);
+          return `
+            <div class="passage">
+              <div class="passage-top">
+                <strong><span class="spec-dot" style="background:${s.color}; margin-right:6px;"></span>${s.name}</strong>
+                <span class="score-badge">brief</span>
+              </div>
+              <p>${briefFor(id, question)}</p>
+            </div>`;
+        }).join('');
+
+        orchPanel.innerHTML = `
+          <div class="answer-card">
+            <div class="routing-line">↳ fan-out planned: 2 of 4 roster specialists · 3-call budget reserved</div>
+            <div class="answer-meta">
+              <span class="tag dot">Question: “${question}”</span>
+              <span class="confidence ${choice.weakFit ? 'low' : 'high'}">${choice.weakFit ? 'Weak fit — pairing is approximate' : 'Delegation decision ready — awaiting your go-ahead'}</span>
+            </div>
+            ${invalidFirstTry ? `<div class="warning-banner">⚠ The coordinator's first decision named three specialists, which violates the exactly-two constraint. It was rejected and re-requested before being shown to you — an invalid delegation is never dispatched.</div>` : ''}
+            ${choice.weakFit ? `<div class="warning-banner">⚠ Coordinator note: this question doesn't map cleanly onto any two roster specialists, so the pairing below is a best-effort fit. Curated presets show sharper pairings.</div>` : ''}
+            <div class="answer-text" style="margin-bottom:14px;"><strong>Rationale:</strong> ${specById(ids[0]).name} was chosen to cover ${specById(ids[0]).scope.toLowerCase().replace(/\.$/,'')}, and ${specById(ids[1]).name} to cover ${specById(ids[1]).scope.toLowerCase().replace(/\.$/,'')}. Neither answer depends on the other's, so both can run at the same time.</div>
+            <div class="passages-block">
+              <h5>Distinct brief written for each specialist</h5>
+              ${briefsHtml}
+            </div>
+            <div class="console-actions">
+              <button class="btn" id="orchDispatch">Dispatch both specialists (2 parallel calls)</button>
+              <span class="source-label">Nothing runs until you confirm this delegation.</span>
+            </div>
+          </div>
+          <div id="orchExecution"></div>
+        `;
+        orchSubmitBtn.disabled = false;
+        document.getElementById('orchDispatch').addEventListener('click', ()=> dispatchSpecialists(ids, question));
+      }, 850);
+    }, 550);
+  });
+
+  function dispatchSpecialists(ids, question){
+    const dispatchBtn = document.getElementById('orchDispatch');
+    dispatchBtn.disabled = true;
+    orchRuns.used++;
+    renderOrchRuns();
+    if(orchRuns.used >= orchRuns.cap){
+      orchInputEl.disabled = true;
+      orchSubmitBtn.disabled = true;
+    }
+
+    const execWrap = document.getElementById('orchExecution');
+    const [idA, idB] = ids;
+    const sA = specById(idA), sB = specById(idB);
+
+    execWrap.innerHTML = `
+      <div class="card" style="margin-top:18px;">
+        <h4>Fan-out — both specialists running at the same time</h4>
+        <div class="subagent-cols">
+          <div class="subagent-col running" id="saCol-${idA}">
+            <div class="subagent-head">
+              <strong><span class="spec-dot" style="background:${sA.color};"></span>${sA.name}</strong>
+              <span class="sa-status running" id="saStatus-${idA}"><span class="spinner" style="width:10px;height:10px;"></span> running</span>
+            </div>
+            <div class="brief-box"><span class="brief-label">Brief received</span>${briefFor(idA, question)}</div>
+            <p class="sa-answer" id="saAnswer-${idA}"></p>
+          </div>
+          <div class="subagent-col running" id="saCol-${idB}">
+            <div class="subagent-head">
+              <strong><span class="spec-dot" style="background:${sB.color};"></span>${sB.name}</strong>
+              <span class="sa-status running" id="saStatus-${idB}"><span class="spinner" style="width:10px;height:10px;"></span> running</span>
+            </div>
+            <div class="brief-box"><span class="brief-label">Brief received</span>${briefFor(idB, question)}</div>
+            <p class="sa-answer" id="saAnswer-${idB}"></p>
+          </div>
+        </div>
+        <div id="orchMerge"></div>
+      </div>
+    `;
+
+    const failB = Math.random() < 0.15;
+    let doneCount = 0;
+    const finished = {};
+
+    function markDone(id, ok){
+      const col = document.getElementById('saCol-' + id);
+      const st = document.getElementById('saStatus-' + id);
+      col.classList.remove('running');
+      col.classList.add(ok ? 'done' : 'failed');
+      st.classList.remove('running');
+      st.classList.add(ok ? 'done' : 'failed');
+      st.textContent = ok ? 'complete' : 'failed';
+      finished[id] = ok;
+      doneCount++;
+      if(doneCount === 2) runMerge();
+    }
+
+    function runMerge(){
+      const ok = ids.filter(id=>finished[id]);
+      const missing = ids.filter(id=>!finished[id]);
+      const mergeWrap = document.getElementById('orchMerge');
+      mergeWrap.innerHTML = `<div class="stage-line" style="margin-top:16px;"><span class="spinner"></span> Fan-in — merge call 3 of 3 is reconciling ${ok.length} specialist answer(s)…</div>`;
+
+      setTimeout(()=>{
+        bump('generation', 1);
+        pushLog('Orchestrated-Subagents App', 'Text generation', `Merge: integrated ${ok.length} specialist answer(s) into one`);
+
+        if(ok.length === 2){
+          const notes = comparisonNoteFor(ids).map(n=>`<li>${n}</li>`).join('');
+          mergeWrap.innerHTML = `
+            <div class="answer-card" style="margin-top:16px;">
+              <div class="routing-line">↳ fan-in complete: 2 specialist answers → 1 merged answer</div>
+              <div class="answer-meta">
+                <span class="tag dot">Merged answer</span>
+                <span class="confidence high">Run complete — exactly 3 model calls used</span>
+              </div>
+              <div class="answer-text">${mergedAnswerFor(ids, question)}</div>
+              <div class="merge-note">
+                <h6>How the two specialists compared</h6>
+                <ul>${notes}</ul>
+              </div>
+              <div class="console-actions">
+                <span class="source-label">Call budget used: 1 coordinator + 2 specialists (parallel) + merge folded into the final call = 3 total. Both source answers remain on screen above.</span>
+              </div>
+            </div>`;
+        } else {
+          const goodId = ok[0];
+          const missId = missing[0];
+          mergeWrap.innerHTML = `
+            <div class="answer-card warn" style="margin-top:16px;">
+              <div class="routing-line">↳ fan-in with a missing contribution: 1 of 2 specialist answers available</div>
+              <div class="answer-meta">
+                <span class="tag dot">Merged answer</span>
+                <span class="confidence low">Partial — one specialist did not return</span>
+              </div>
+              <div class="warning-banner">⚠ ${specById(missId).name} failed to return an answer, so this merge draws only on ${specById(goodId).name}. The failed column stays on screen rather than disappearing, and the missing perspective is named rather than quietly filled in.</div>
+              <div class="answer-text">${specialistAnswerFor(goodId, question)} <em>The ${specById(missId).name.toLowerCase()}'s perspective is absent from this merge, so treat the answer as one-sided on that dimension.</em></div>
+              <div class="console-actions">
+                <span class="source-label">Call budget used: 1 coordinator + 2 specialist attempts + merge folded into the final call = 3 total.</span>
+              </div>
+            </div>`;
+        }
+      }, 800);
+    }
+
+    // Specialist A — runs concurrently with B
+    setTimeout(()=>{
+      bump('generation', 1);
+      pushLog('Orchestrated-Subagents App', 'Text generation', `Specialist ${sA.name}: answered its brief`);
+      typeInto(document.getElementById('saAnswer-' + idA), specialistAnswerFor(idA, question), ()=> markDone(idA, true));
+    }, 700);
+
+    // Specialist B — starts at the same time, finishes later (or fails)
+    setTimeout(()=>{
+      if(failB){
+        bump('generation', 1);
+        document.getElementById('saAnswer-' + idB).innerHTML = `<span style="color:var(--danger); font-size:13px;">This specialist call did not complete. Its column is kept here so you can see which contribution is missing from the merge.</span>`;
+        pushLog('Orchestrated-Subagents App', 'Text generation', `Specialist ${sB.name}: failed`);
+        markDone(idB, false);
+      } else {
+        bump('generation', 1);
+        pushLog('Orchestrated-Subagents App', 'Text generation', `Specialist ${sB.name}: answered its brief`);
+        typeInto(document.getElementById('saAnswer-' + idB), specialistAnswerFor(idB, question), ()=> markDone(idB, true));
+      }
+    }, 1050);
+  }
+
+  /* ================= MULTI-AGENT COLLABORATION EXAMPLE APP ================= */
+  const buyerAgent = {
+    id:'buyer', name:'Buyer Agent “Procura”', color:'var(--accent2)', role:'buyer',
+    provider:'BWS4 / Spec4 reference agent',
+    skills:'Requirement drafting · term-by-term comparison · targeted counter-offer · award justification',
+    capabilities:'Composes the RFQ without a model call; sends and receives peer messages; holds a private budget ceiling.',
+    tools:'None — knowledge and messages only'
+  };
+  const sellerAgents = [
+    { id:'northwind', name:'Seller Agent “Northwind Supply”', color:'var(--warn)', role:'seller',
+      provider:'BWS4 / Spec4 reference agent',
+      skills:'Quoting · stock allocation · delivery scheduling · concession strategy',
+      capabilities:'Receives only messages addressed to it; bids against private constraints it never discloses.',
+      tools:'None — knowledge and messages only' },
+    { id:'meridian', name:'Seller Agent “Meridian Trading”', color:'var(--success)', role:'seller',
+      provider:'BWS4 / Spec4 reference agent',
+      skills:'Quoting · warranty structuring · support capacity planning · concession strategy',
+      capabilities:'Receives only messages addressed to it; bids against private constraints it never discloses.',
+      tools:'None — knowledge and messages only' }
+  ];
+
+  const agentCardsEl = document.getElementById('agentCards');
+  function renderAgentCards(){
+    const all = [buyerAgent, ...sellerAgents];
+    agentCardsEl.innerHTML = all.map(a=>`
+      <div class="agent-card" id="agentCard-${a.id}">
+        <div class="agent-card-head">
+          <span class="spec-dot" style="background:${a.color};"></span>
+          <strong>${a.name}</strong>
+          <span class="agent-role-pill">${a.role}</span>
+          <span class="chevron">▶</span>
+        </div>
+        <div class="agent-card-body">
+          <dl>
+            <dt>Provider</dt><dd>${a.provider}</dd>
+            <dt>Skills</dt><dd>${a.skills}</dd>
+            <dt>Capabilities</dt><dd>${a.capabilities}</dd>
+            <dt>Tool access</dt><dd>${a.tools}</dd>
+          </dl>
+        </div>
+      </div>
+    `).join('');
+    agentCardsEl.querySelectorAll('.agent-card').forEach(card=>{
+      card.querySelector('.agent-card-head').addEventListener('click', ()=> card.classList.toggle('open'));
+    });
+  }
+  renderAgentCards();
+
+  const collabScenarios = [
+    {
+      id:'laptops',
+      label:'240 refurbished laptops for a school district',
+      goods:'240 refurbished 14" business laptops, 16GB RAM, delivered to one district depot.',
+      baseline:'Full quantity of 240 units, delivered within 30 days, minimum 12-month warranty, on-site support optional.',
+      terms:['unit price','quantity available','delivery days','warranty months'],
+      sellers:{
+        northwind:{
+          opening:{ price:'£312', qty:'240 of 240', delivery:'34 days', warranty:'12 months' },
+          final:{ price:'£298', qty:'240 of 240', delivery:'34 days', warranty:'18 months' },
+          openingNote:'We can cover the full 240 units at £312 each. Delivery is 34 days — our refurbishment line is booked out until then. Standard 12-month warranty included.',
+          finalNote:'We can move on price to £298 and extend warranty to 18 months. Delivery stays at 34 days; that one is not movable for us.',
+          conceded:['unit price','warranty months'], held:['delivery days'],
+          constraints:[
+            { axis:'unit price', hidden:'Cost floor £286/unit', why:'Conceded £14 because the floor still left headroom; it stopped at £298 rather than chasing the order to the floor.' },
+            { axis:'quantity', hidden:'428 units in stock', why:'Never a constraint — full quantity was offered from the first bid without hesitation.' },
+            { axis:'delivery days', hidden:'Refurbishment line committed for 5 weeks', why:'Held firm because the date is a physical capacity limit, not a negotiating position.' },
+            { axis:'warranty months', hidden:'Self-insured to 24 months', why:'Cheap to concede — extending to 18 months cost almost nothing, so it was traded to compensate for the slow delivery.' }
+          ]
+        },
+        meridian:{
+          opening:{ price:'£341', qty:'180 of 240', delivery:'12 days', warranty:'24 months' },
+          final:{ price:'£329', qty:'205 of 240', delivery:'12 days', warranty:'24 months' },
+          openingNote:'We hold 180 units ready to ship in 12 days at £341 each, with a 24-month warranty as standard. We cannot commit to the full 240 today.',
+          finalNote:'We can stretch to 205 units and £329 each, still inside 12 days. Beyond 205 we would be quoting stock we do not physically have.',
+          conceded:['unit price','quantity available'], held:['delivery days','warranty months'],
+          constraints:[
+            { axis:'unit price', hidden:'Cost floor £318/unit', why:'Conceded £12 to £329, stopping just above the floor to protect margin on a partial order.' },
+            { axis:'quantity', hidden:'205 units on hand, no inbound before day 40', why:'Conceded up to exactly its true stock level and refused to go further — the cap was real, not tactical.' },
+            { axis:'delivery days', hidden:'Own courier fleet, 12 days is routine', why:'Held firm because it was already at its strongest term; there was nothing to gain by moving.' },
+            { axis:'warranty months', hidden:'24 months is the standard contract, no room above', why:'Held firm — this was already the ceiling of what it offers anyone.' }
+          ]
+        }
+      },
+      buyerConstraint:{ axis:'budget ceiling', hidden:'£310/unit hard ceiling, £75,000 total', why:'Never disclosed to either seller. It shaped which counter-offer each seller received, and it is why the price-led award was affordable and the speed-led one required a documented exception.' }
+    },
+    {
+      id:'catering',
+      label:'Event catering for a 400-person conference',
+      goods:'Catering for 400 attendees across one conference day: breakfast, lunch, and two breaks.',
+      baseline:'400 covers, on-site service, dietary coverage for at least 15% of guests, delivered on a fixed date in 21 days.',
+      terms:['price per cover','covers available','lead time days','support staff included'],
+      sellers:{
+        northwind:{
+          opening:{ price:'£38', qty:'400 of 400', delivery:'21 days', warranty:'6 staff' },
+          final:{ price:'£35', qty:'400 of 400', delivery:'21 days', warranty:'8 staff' },
+          openingNote:'Full 400 covers at £38 each, meeting your 21-day date, with 6 service staff on site and full dietary coverage.',
+          finalNote:'We can bring that to £35 per cover and add two more service staff. The 21-day lead time is already our shortest.',
+          conceded:['price per cover','support staff included'], held:['lead time days'],
+          constraints:[
+            { axis:'price per cover', hidden:'Cost floor £31/cover', why:'Conceded £3 and stopped well above the floor — the full-quantity position was strong enough not to bid it away.' },
+            { axis:'covers available', hidden:'Kitchen capacity 600 covers/day', why:'Never a constraint; full quantity was offered immediately.' },
+            { axis:'lead time days', hidden:'Produce ordering cycle is 3 weeks', why:'Held firm — the date reflects a supply cycle it does not control.' },
+            { axis:'support staff', hidden:'Bench of 14 casual staff', why:'Cheap to concede; two extra staff were traded to strengthen an otherwise price-only offer.' }
+          ]
+        },
+        meridian:{
+          opening:{ price:'£46', qty:'400 of 400', delivery:'9 days', warranty:'12 staff' },
+          final:{ price:'£44', qty:'400 of 400', delivery:'7 days', warranty:'12 staff' },
+          openingNote:'400 covers at £46 each, deliverable in 9 days with 12 service staff — we run our own kitchen and staffing agency.',
+          finalNote:'We can pull the lead time to 7 days and shave £2 per cover. Below £44 we would be serving at a loss on this menu.',
+          conceded:['price per cover','lead time days'], held:['covers available','support staff included'],
+          constraints:[
+            { axis:'price per cover', hidden:'Cost floor £43/cover', why:'Conceded only £2 because it was already almost at the floor — the small move signalled genuine limit, not reluctance.' },
+            { axis:'covers available', hidden:'Capacity 450 covers/day', why:'Held at 400 because that is what was asked; there was no upside in revealing spare capacity.' },
+            { axis:'lead time days', hidden:'In-house kitchen, 5-day minimum', why:'Conceded from 9 to 7 days because it had genuine slack — speed is its strongest axis and it leaned on it.' },
+            { axis:'support staff', hidden:'Owns a staffing agency, 30+ available', why:'Held at 12 — already far above the rival, so no concession was needed.' }
+          ]
+        }
+      },
+      buyerConstraint:{ axis:'budget ceiling', hidden:'£40/cover ceiling, £16,000 total', why:'Never disclosed. It is why the buyer pushed Meridian hard on price and Northwind hard on staffing rather than the reverse.' }
+    }
+  ];
+
+  const collabPriorities = [
+    { id:'price', label:'Price first', desc:'Lowest total cost matters most; full quantity required; speed and warranty are secondary.',
+      winner:'northwind', flipTerm:'unit price', alt:'speed' },
+    { id:'speed', label:'Speed first', desc:'Earliest delivery matters most; a partial first tranche is acceptable; price is secondary.',
+      winner:'meridian', flipTerm:'delivery lead time', alt:'price' }
+  ];
+
+  const collabScenarioSelect = document.getElementById('collabScenario');
+  const collabScenarioDetail = document.getElementById('collabScenarioDetail');
+  const collabPriorityToggle = document.getElementById('collabPriorityToggle');
+  const collabPriorityDetail = document.getElementById('collabPriorityDetail');
+  const collabPanel = document.getElementById('collabResultPanel');
+  const collabStartBtn = document.getElementById('collabStart');
+
+  let collabScenarioId = collabScenarios[0].id;
+  let collabPriorityId = null;
+
+  collabScenarios.forEach(s=>{
+    const opt = document.createElement('option');
+    opt.value = s.id; opt.textContent = s.label;
+    collabScenarioSelect.appendChild(opt);
+  });
+  function renderScenarioDetail(){
+    const s = collabScenarios.find(x=>x.id===collabScenarioId);
+    collabScenarioDetail.innerHTML = `
+      <span class="brief-label">Scenario detail (public to all three agents)</span>
+      <strong style="color:var(--text);">Goods:</strong> ${s.goods}<br>
+      <strong style="color:var(--text);">Baseline requirement:</strong> ${s.baseline}<br>
+      <strong style="color:var(--text);">Negotiable terms:</strong> ${s.terms.join(' · ')}
+    `;
+  }
+  collabScenarioSelect.addEventListener('change', ()=>{
+    collabScenarioId = collabScenarioSelect.value;
+    renderScenarioDetail();
+  });
+  renderScenarioDetail();
+
+  collabPriorities.forEach(p=>{
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'mode-btn';
+    b.dataset.priority = p.id;
+    b.textContent = p.label;
+    b.addEventListener('click', ()=>{
+      collabPriorityToggle.querySelectorAll('.mode-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      collabPriorityId = p.id;
+      collabPriorityDetail.textContent = p.desc;
+      document.getElementById('collabValidationMsg').style.display = 'none';
+    });
+    collabPriorityToggle.appendChild(b);
+  });
+  collabPriorityDetail.textContent = 'Pick a weighting — the same scenario can award to a different supplier depending on what you weight.';
+
+  const collabRuns = { used: 0, cap: 2 };
+  function renderCollabRuns(){
+    document.getElementById('collabRunsTag').textContent = `Runs remaining this session: ${collabRuns.cap - collabRuns.used} / ${collabRuns.cap}`;
+  }
+  renderCollabRuns();
+
+  function sellerById(id){ return sellerAgents.find(s=>s.id===id); }
+
+  function railHtml(activeIdx, doneUpTo){
+    const stages = ['RFQ composed','Opening bids','Counter-offers','Best & final','Award','Reveal'];
+    return `<div class="stage-rail">` + stages.map((s,i)=>{
+      let cls = '';
+      if(i < doneUpTo) cls = 'done';
+      else if(i === activeIdx) cls = 'active';
+      return `<span class="rail-step ${cls}">${i < doneUpTo ? '✓' : (i===activeIdx ? '●' : '○')} ${s}</span>`;
+    }).join('') + `</div>`;
+  }
+
+  function bidTableHtml(scenario, bid, improvedTerms){
+    const labels = scenario.terms;
+    const vals = [bid.price, bid.qty, bid.delivery, bid.warranty];
+    return `<table class="bid-table">` + labels.map((l,i)=>`
+      <tr><td>${l}</td><td class="${improvedTerms && improvedTerms.includes(l) ? 'term-improved' : ''}">${vals[i]}</td></tr>
+    `).join('') + `</table>`;
+  }
+
+  function typeIntoPlain(el, text, done){
+    let i = 0;
+    const chunk = Math.max(2, Math.round(text.length / 45));
+    const timer = setInterval(()=>{
+      i += chunk;
+      el.innerHTML = text.slice(0, i) + (i < text.length ? '<span class="caret"></span>' : '');
+      if(i >= text.length){
+        clearInterval(timer);
+        el.innerHTML = text;
+        if(done) done();
+      }
+    }, 40);
+  }
+
+  collabStartBtn.addEventListener('click', ()=>{
+    const msgEl = document.getElementById('collabValidationMsg');
+    if(!collabScenarioId || !collabPriorityId){
+      msgEl.style.display = 'block';
+      return;
+    }
+    msgEl.style.display = 'none';
+
+    if(collabRuns.used >= collabRuns.cap){
+      collabPanel.innerHTML = `
+        <div class="answer-card err">
+          <div class="answer-meta"><span class="tag" style="border-color:var(--danger); color:var(--danger);">Session run limit reached</span></div>
+          <p style="margin:0;">You've used all ${collabRuns.cap} negotiation runs for <strong>this app in this session</strong>. That is this demo's own limit, not the showcase-wide daily allowance — the shared generation capability may still have plenty left. Previous results stay on screen; come back in a new session to run another round.</p>
+        </div>`;
+      return;
+    }
+
+    if(remaining('generation') < 6){
+      collabPanel.innerHTML = `
+        <div class="answer-card err">
+          <div class="answer-meta"><span class="tag" style="border-color:var(--danger); color:var(--danger);">Showcase-wide allowance too low</span></div>
+          <p style="margin:0;">A negotiation round reserves its full budget of 6 generation calls before it starts, and only ${remaining('generation')} remain in the <strong>showcase-wide daily allowance</strong> shared by every example app. Nothing was dispatched — a round either completes or is refused up front, so it can never stall halfway with a partial award. Try again later, or reset the limit from the Framework Console.</p>
+        </div>`;
+      return;
+    }
+
+    runNegotiation();
+  });
+
+  function runNegotiation(){
+    const scenario = collabScenarios.find(s=>s.id===collabScenarioId);
+    const priority = collabPriorities.find(p=>p.id===collabPriorityId);
+    const sA = sellerAgents[0], sB = sellerAgents[1];
+    const dataA = scenario.sellers[sA.id], dataB = scenario.sellers[sB.id];
+
+    collabStartBtn.disabled = true;
+    collabRuns.used++;
+    renderCollabRuns();
+
+    const messages = [];
+    function addMsg(sender, recipient, stage, summary, workItem){
+      messages.push({ seq: messages.length+1, time: nowStr(), sender, recipient, stage, summary, workItem });
+      renderMessageLog();
+    }
+
+    // Frame
+    collabPanel.innerHTML = `
+      <div class="card">
+        <h4>Negotiation round — live</h4>
+        <div id="collabRail">${railHtml(0,0)}</div>
+        <div id="collabRfq"></div>
+        <div class="negotiation-grid" id="collabTracks">
+          <div class="seller-track" id="track-${sA.id}">
+            <div class="subagent-head">
+              <strong><span class="spec-dot" style="background:${sA.color};"></span>${sA.name}</strong>
+              <span class="sa-status" id="tstatus-${sA.id}">waiting</span>
+            </div>
+            <div id="tbody-${sA.id}"><p class="bid-note" style="color:var(--text-faint);">No message received yet.</p></div>
+          </div>
+          <div class="seller-track" id="track-${sB.id}">
+            <div class="subagent-head">
+              <strong><span class="spec-dot" style="background:${sB.color};"></span>${sB.name}</strong>
+              <span class="sa-status" id="tstatus-${sB.id}">waiting</span>
+            </div>
+            <div id="tbody-${sB.id}"><p class="bid-note" style="color:var(--text-faint);">No message received yet.</p></div>
+          </div>
+        </div>
+        <div id="collabBuyer"></div>
+        <div id="collabAward"></div>
+      </div>
+      <div class="card" style="margin-top:18px;">
+        <h4>Message log (sender → recipient)</h4>
+        <div class="console-actions" style="margin-top:0;">
+          <button class="btn secondary small" id="collabLogToggle">Show message log</button>
+          <span class="opacity-badge" id="collabOpacityBadge">✓ opacity check: 0 seller → seller messages</span>
+        </div>
+        <div id="collabLogWrap" style="display:none;"></div>
+      </div>
+      <div class="card" style="margin-top:18px;">
+        <h4>Private positions (sealed until the round ends)</h4>
+        <div id="collabReveal"><div class="seal-box">🔒 Sealed — each party's private constraints are unsealed only after the award is made.</div></div>
+      </div>
+    `;
+
+    const logToggle = document.getElementById('collabLogToggle');
+    const logWrap = document.getElementById('collabLogWrap');
+    logToggle.addEventListener('click', ()=>{
+      const shown = logWrap.style.display !== 'none';
+      logWrap.style.display = shown ? 'none' : 'block';
+      logToggle.textContent = shown ? 'Show message log' : 'Hide message log';
+    });
+
+    function renderMessageLog(){
+      const sellerToSeller = messages.filter(m=>m.sender.includes('Seller') && m.recipient.includes('Seller')).length;
+      const badge = document.getElementById('collabOpacityBadge');
+      if(badge) badge.textContent = `✓ opacity check: ${sellerToSeller} seller → seller messages`;
+      if(!logWrap) return;
+      if(messages.length === 0){
+        logWrap.innerHTML = `<div class="empty-state">No peer messages exchanged yet.</div>`;
+        return;
+      }
+      logWrap.innerHTML = `
+        <table class="msg-log">
+          <thead><tr><th>#</th><th>Time</th><th>Sender</th><th>Recipient</th><th>Stage</th><th>Message / work item</th></tr></thead>
+          <tbody>${messages.map(m=>`
+            <tr>
+              <td>${m.seq}</td>
+              <td>${m.time}</td>
+              <td><span class="party-pill">${m.sender}</span></td>
+              <td><span class="party-pill">${m.recipient}</span></td>
+              <td>${m.stage}</td>
+              <td>${m.summary}${m.workItem ? `<br><span class="source-label">work item: ${m.workItem}</span>` : ''}</td>
+            </tr>`).join('')}</tbody>
+        </table>
+        <p class="source-label" style="display:block; margin-top:10px;">Every row names exactly one sender and one recipient. No row ever lists one seller as sender and the other as recipient — the sellers have no channel between them, which is why neither can learn the other's bid.</p>`;
+    }
+    renderMessageLog();
+
+    function setRail(active, done){
+      document.getElementById('collabRail').innerHTML = railHtml(active, done);
+    }
+    function setTrackStatus(id, text, cls){
+      const st = document.getElementById('tstatus-' + id);
+      const tr = document.getElementById('track-' + id);
+      st.className = 'sa-status' + (cls ? ' ' + cls : '');
+      st.innerHTML = cls === 'running' ? `<span class="spinner" style="width:10px;height:10px;"></span> ${text}` : text;
+      tr.classList.remove('running','done','failed');
+      if(cls) tr.classList.add(cls);
+    }
+
+    /* Stage 1 — RFQ, composed without a model call */
+    const rfqWrap = document.getElementById('collabRfq');
+    rfqWrap.innerHTML = `
+      <div class="buyer-track">
+        <h6>Stage 1 · Quotation request — composed by the buyer agent with no model call</h6>
+        <p class="bid-note"><strong>Goods:</strong> ${scenario.goods}</p>
+        <p class="bid-note"><strong>Baseline requirement:</strong> ${scenario.baseline}</p>
+        <p class="bid-note"><strong>Stated priorities:</strong> ${priority.label} — ${priority.desc}</p>
+        <p class="bid-note"><span class="source-label">Sent identically and separately to each seller. Neither seller is told who else received it.</span></p>
+      </div>`;
+    addMsg('Buyer Procura', sellerById(sA.id).name.replace('Seller Agent ',''), 'RFQ', 'Quotation request with baseline requirement and stated priorities.', 'QuotationRequest');
+    addMsg('Buyer Procura', sellerById(sB.id).name.replace('Seller Agent ',''), 'RFQ', 'Quotation request with baseline requirement and stated priorities.', 'QuotationRequest');
+    setRail(1, 1);
+    pushLog('Multi-Agent Collaboration App', 'Peer messaging', 'Stage 1: RFQ composed and dispatched (0 model calls)');
+
+    /* Stage 2 — concurrent opening bids */
+    setTrackStatus(sA.id, 'bidding', 'running');
+    setTrackStatus(sB.id, 'bidding', 'running');
+    document.getElementById('tbody-'+sA.id).innerHTML = `<h6>Opening bid</h6><p class="bid-note" id="note-${sA.id}"></p>`;
+    document.getElementById('tbody-'+sB.id).innerHTML = `<h6>Opening bid</h6><p class="bid-note" id="note-${sB.id}"></p>`;
+
+    let openingDone = 0;
+    function openingComplete(){
+      openingDone++;
+      if(openingDone === 2) startCounterOffers();
+    }
+
+    function runOpening(seller, data, delay){
+      setTimeout(()=>{
+        bump('generation', 1);
+        pushLog('Multi-Agent Collaboration App', 'Text generation', `Opening bid from ${seller.name.replace('Seller Agent ','')}`);
+        const body = document.getElementById('tbody-'+seller.id);
+        body.innerHTML = `<h6>Opening bid</h6>${bidTableHtml(scenario, data.opening, null)}<p class="bid-note" id="note-${seller.id}"></p>`;
+        typeIntoPlain(document.getElementById('note-'+seller.id), data.openingNote, ()=>{
+          setTrackStatus(seller.id, 'opening bid in', 'done');
+          addMsg(seller.name.replace('Seller Agent ',''), 'Buyer Procura', 'Opening bid', data.openingNote, 'Bid');
+          openingComplete();
+        });
+      }, delay);
+    }
+    runOpening(sA, dataA, 800);
+    runOpening(sB, dataB, 1150);
+
+    /* Stage 3 — buyer counter-offers */
+    function startCounterOffers(){
+      setRail(2, 2);
+      const buyerWrap = document.getElementById('collabBuyer');
+      buyerWrap.innerHTML = `
+        <div class="buyer-track">
+          <h6>Stage 3 · Buyer counter-offers — one targeted ask per seller</h6>
+          <div class="stage-line" style="margin-bottom:0;"><span class="spinner"></span> Buyer agent is comparing two non-comparable bids and drafting a different ask for each…</div>
+        </div>`;
+
+      setTimeout(()=>{
+        bump('generation', 2);
+        pushLog('Multi-Agent Collaboration App', 'Text generation', 'Stage 3: buyer drafted two targeted counter-offers');
+
+        const askA = scenario.id === 'laptops'
+          ? `Your quantity and warranty are strong but your ${dataA.opening.delivery} delivery is the weakest term on the table against our stated priority of ${priority.label.toLowerCase()}. Improve price and warranty, or shorten delivery — one of the three.`
+          : `Your full-coverage position is strong, but the lead time is the weakest term against our stated priority of ${priority.label.toLowerCase()}. Improve price and on-site staffing, or shorten lead time.`;
+        const askB = scenario.id === 'laptops'
+          ? `Your delivery and warranty lead the field, but ${dataB.opening.qty} does not meet our baseline requirement. Close the quantity gap and improve unit price, or we cannot award you the whole contract.`
+          : `Your speed and staffing lead the field, but £${dataB.opening.price.replace('£','')} per cover is well above the rival position. Improve price, and shorten the lead time if you genuinely can.`;
+
+        buyerWrap.innerHTML = `
+          <div class="buyer-track">
+            <h6>Stage 3 · Buyer counter-offers — one targeted ask per seller</h6>
+            <p class="bid-note"><span class="party-pill">→ ${sA.name.replace('Seller Agent ','')}</span> ${askA}</p>
+            <p class="bid-note"><span class="party-pill">→ ${sB.name.replace('Seller Agent ','')}</span> ${askB}</p>
+            <p class="bid-note"><span class="source-label">Each counter-offer names only the recipient's own terms. The buyer never quotes one seller's numbers to the other — the asks are phrased from the buyer's own requirement, not from the rival's bid.</span></p>
+          </div>`;
+        addMsg('Buyer Procura', sA.name.replace('Seller Agent ',''), 'Counter-offer', askA, 'CounterOffer');
+        addMsg('Buyer Procura', sB.name.replace('Seller Agent ',''), 'Counter-offer', askB, 'CounterOffer');
+        startFinalBids();
+      }, 900);
+    }
+
+    /* Stage 4 — concurrent best-and-final bids */
+    function startFinalBids(){
+      setRail(3, 3);
+      setTrackStatus(sA.id, 'best & final', 'running');
+      setTrackStatus(sB.id, 'best & final', 'running');
+      document.getElementById('tbody-'+sA.id).insertAdjacentHTML('beforeend', `<div id="final-${sA.id}" style="margin-top:12px;"><h6>Best &amp; final bid</h6><div class="stage-line" style="margin-bottom:0;"><span class="spinner"></span> revising…</div></div>`);
+      document.getElementById('tbody-'+sB.id).insertAdjacentHTML('beforeend', `<div id="final-${sB.id}" style="margin-top:12px;"><h6>Best &amp; final bid</h6><div class="stage-line" style="margin-bottom:0;"><span class="spinner"></span> revising…</div></div>`);
+
+      let finalDone = 0;
+      function finalComplete(){
+        finalDone++;
+        if(finalDone === 2) makeAward();
+      }
+      function runFinal(seller, data, delay){
+        setTimeout(()=>{
+          bump('generation', 1);
+          pushLog('Multi-Agent Collaboration App', 'Text generation', `Best-and-final bid from ${seller.name.replace('Seller Agent ','')}`);
+          const wrap = document.getElementById('final-'+seller.id);
+          wrap.innerHTML = `<h6>Best &amp; final bid</h6>${bidTableHtml(scenario, data.final, data.conceded)}<p class="bid-note" id="fnote-${seller.id}"></p>`;
+          typeIntoPlain(document.getElementById('fnote-'+seller.id), data.finalNote, ()=>{
+            setTrackStatus(seller.id, 'final bid in', 'done');
+            addMsg(seller.name.replace('Seller Agent ',''), 'Buyer Procura', 'Best & final', data.finalNote, 'Bid');
+            finalComplete();
+          });
+        }, delay);
+      }
+      runFinal(sA, dataA, 800);
+      runFinal(sB, dataB, 1200);
+    }
+
+    /* Stage 5 — award, Stage 6 — reveal */
+    function makeAward(){
+      setRail(4, 4);
+      const awardWrap = document.getElementById('collabAward');
+      awardWrap.innerHTML = `<div class="stage-line" style="margin-top:16px;"><span class="spinner"></span> Buyer agent is weighing both best-and-final bids against your stated priorities…</div>`;
+
+      setTimeout(()=>{
+        const winner = priority.winner === sA.id ? sA : sB;
+        const loser = winner.id === sA.id ? sB : sA;
+        const wData = scenario.sellers[winner.id];
+        const lData = scenario.sellers[loser.id];
+
+        const rationale = scenario.id === 'laptops'
+          ? (priority.id === 'price'
+            ? `You weighted <strong>price first, full quantity required</strong>. ${winner.name.replace('Seller Agent ','')} lands at ${wData.final.price} for the complete ${wData.final.qty}, against ${lData.final.price} for only ${lData.final.qty} from ${loser.name.replace('Seller Agent ','')}. The rival's ${lData.final.delivery} delivery is genuinely better, but speed was explicitly secondary and the quantity shortfall breaks your baseline requirement outright. Award goes to ${winner.name.replace('Seller Agent ','')}.`
+            : `You weighted <strong>speed first, partial tranche acceptable</strong>. ${winner.name.replace('Seller Agent ','')} delivers in ${wData.final.delivery} against ${lData.final.delivery} — nearly three weeks earlier — and its ${wData.final.warranty} warranty leads too. It costs ${wData.final.price} versus ${lData.final.price}, and it covers only ${wData.final.qty}, but you marked a partial first tranche acceptable and price secondary. Award goes to ${winner.name.replace('Seller Agent ','')}.`)
+          : (priority.id === 'price'
+            ? `You weighted <strong>price first, full coverage required</strong>. ${winner.name.replace('Seller Agent ','')} lands at ${wData.final.price} per cover for all ${wData.final.qty} with ${wData.final.warranty}, against ${lData.final.price} from ${loser.name.replace('Seller Agent ','')}. The rival's ${lData.final.delivery} lead time and ${lData.final.warranty} are stronger, but both were secondary under your weighting. Award goes to ${winner.name.replace('Seller Agent ','')}.`
+            : `You weighted <strong>speed first</strong>. ${winner.name.replace('Seller Agent ','')} pulled its lead time to ${lData ? wData.final.delivery : ''} against ${lData.final.delivery} and fields ${wData.final.warranty}. It costs ${wData.final.price} versus ${lData.final.price} per cover, which is real money, but price was explicitly secondary here. Award goes to ${winner.name.replace('Seller Agent ','')}.`);
+
+        const sensitivity = scenario.id === 'laptops'
+          ? (priority.id === 'price'
+            ? `Under <strong>Speed first</strong> instead, ${loser.name.replace('Seller Agent ','')} would very likely have won: its ${lData.final.delivery} delivery beats ${wData.final.delivery} by around three weeks, and a partial tranche would stop being disqualifying. The dimension that flips the result is <strong>delivery lead time versus quantity completeness</strong> — nothing about the bids themselves changes, only which axis you weight.`
+            : `Under <strong>Price first</strong> instead, ${loser.name.replace('Seller Agent ','')} would very likely have won: ${lData.final.price} for the complete ${lData.final.qty} beats ${wData.final.price} for ${wData.final.qty}. The dimension that flips the result is <strong>unit price combined with quantity completeness</strong>.`)
+          : (priority.id === 'price'
+            ? `Under <strong>Speed first</strong> instead, ${loser.name.replace('Seller Agent ','')} would very likely have won on its ${lData.final.delivery} lead time and ${lData.final.warranty}. The flipping dimension is <strong>lead time</strong>.`
+            : `Under <strong>Price first</strong> instead, ${loser.name.replace('Seller Agent ','')} would very likely have won at ${lData.final.price} per cover. The flipping dimension is <strong>price per cover</strong>.`);
+
+        bump('generation', 0);
+        pushLog('Multi-Agent Collaboration App', 'Text generation', `Stage 5: award to ${winner.name.replace('Seller Agent ','')} (rationale + reveal folded into final call)`);
+
+        awardWrap.innerHTML = `
+          <div class="answer-card" style="margin-top:16px;">
+            <div class="routing-line">↳ round complete: 1 buyer + 2 rival sellers · 6 model calls used · 1 negotiation round</div>
+            <div class="answer-meta">
+              <span class="tag dot">Award: ${winner.name.replace('Seller Agent ','')}</span>
+              <span class="tag">Your priorities: ${priority.label}</span>
+              <span class="confidence high">Run complete — declared 6-call budget not exceeded</span>
+            </div>
+            <div class="answer-text">${rationale}</div>
+            <div class="merge-note">
+              <h6>Priority sensitivity — what the other weighting would have done</h6>
+              <ul><li>${sensitivity}</li></ul>
+            </div>
+            <div class="console-actions">
+              <span class="source-label">Call budget used: 2 opening bids + 2 counter-offers + 2 best-and-final bids = 6. The RFQ was composed without a model call; the award rationale, sensitivity note and reveal narration folded into the final call.</span>
+            </div>
+          </div>`;
+        addMsg('Buyer Procura', winner.name.replace('Seller Agent ',''), 'Award', 'Contract awarded, rationale referencing the stated priorities.', 'Award');
+        addMsg('Buyer Procura', loser.name.replace('Seller Agent ',''), 'Award', 'Not awarded this round, with the deciding dimension named.', 'Award');
+
+        setRail(5, 5);
+        renderReveal(scenario, winner, loser);
+        collabStartBtn.disabled = collabRuns.used >= collabRuns.cap;
+        if(collabRuns.used >= collabRuns.cap){
+          collabScenarioSelect.disabled = true;
+          collabPriorityToggle.querySelectorAll('.mode-btn').forEach(b=>b.disabled = true);
+        }
+      }, 950);
+    }
+
+    function renderReveal(scenario, winner, loser){
+      const revealWrap = document.getElementById('collabReveal');
+      const parties = [
+        { name: buyerAgent.name, color: buyerAgent.color, headline:'The buyer held one number back from both sellers throughout.', axes:[scenario.buyerConstraint], flag:'' },
+        { name: sellerAgents[0].name, color: sellerAgents[0].color, headline: sellerAgents[0].id === winner.id ? 'Won the award — here is what it was actually protecting.' : 'Did not win — here is what it could and could not move.', axes: scenario.sellers[sellerAgents[0].id].constraints, flag: sellerAgents[0].id === winner.id ? 'awarded' : '' },
+        { name: sellerAgents[1].name, color: sellerAgents[1].color, headline: sellerAgents[1].id === winner.id ? 'Won the award — here is what it was actually protecting.' : 'Did not win — here is what it could and could not move.', axes: scenario.sellers[sellerAgents[1].id].constraints, flag: sellerAgents[1].id === winner.id ? 'awarded' : '' }
+      ];
+      revealWrap.innerHTML = `
+        <div class="warning-banner" style="background:rgba(78,161,255,.08); border-color:rgba(78,161,255,.3); color:var(--accent2);">🔓 Round complete — private positions unsealed. Until this moment none of this was visible to the visitor, and none of it was ever visible to the rival seller.</div>
+        ${parties.map(p=>`
+          <div class="reveal-party">
+            <div class="rp-head"><span class="spec-dot" style="background:${p.color};"></span>${p.name}${p.flag ? `<span class="winner-flag" style="margin-left:auto;">${p.flag}</span>` : ''}</div>
+            <p class="rp-headline">${p.headline}</p>
+            ${p.axes.map(a=>`
+              <div class="reveal-axis">
+                <span class="ax-name">${a.axis}</span>
+                <span><strong style="color:var(--text);">${a.hidden}.</strong> ${a.why}</span>
+              </div>`).join('')}
+          </div>`).join('')}
+        <p class="source-label" style="display:block; margin-top:6px;">Cross-check the message log above: none of these values appear in any message either seller received. The opacity was enforced by which messages each agent was handed, not by asking it to keep a secret.</p>`;
+    }
+  }
+
+  /* ================= EMBEDDINGS EXAMPLE APP ================= */
+  const EMBED_VIEW_W = 560, EMBED_VIEW_H = 380;
+
+  const embeddingCategories = [
+    { name:'Animals', colorVar:'--accent2', center:{x:140,y:100}, words:['cat','dog','elephant','dolphin','eagle','lion'] },
+    { name:'Emotions', colorVar:'--danger', center:{x:420,y:100}, words:['joy','sadness','anger','fear','excitement','calm'] },
+    { name:'Technology', colorVar:'--accent1', center:{x:140,y:280}, words:['computer','algorithm','network','robot','database','software'] },
+    { name:'Food', colorVar:'--warn', center:{x:420,y:280}, words:['pizza','sushi','bread','coffee','apple','chocolate'] }
+  ];
+
+  function hashStr(str){
+    let h = 0;
+    for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) >>> 0; }
+    return h;
+  }
+  function jitter(seed, range){
+    const h = hashStr(seed);
+    return (h % (range*2+1)) - range;
+  }
+  function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+  const presetPoints = [];
+  embeddingCategories.forEach(cat=>{
+    cat.words.forEach(w=>{
+      const x = clamp(cat.center.x + jitter(w+'_x', 55), 25, EMBED_VIEW_W-25);
+      const y = clamp(cat.center.y + jitter(w+'_y', 55), 25, EMBED_VIEW_H-25);
+      presetPoints.push({ text:w, category:cat.name, colorVar:cat.colorVar, x, y });
+    });
+  });
+
+  let customPoints = [];
+
+  function matchCategory(text){
+    const lower = text.toLowerCase();
+    const tokens = lower.replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(Boolean);
+    let best = null, bestScore = 0;
+    embeddingCategories.forEach(cat=>{
+      let score = 0;
+      cat.words.forEach(w=>{
+        if(lower.includes(w)) score += 2;
+        tokens.forEach(t=>{ if(t && (w.includes(t) || t.includes(w))) score += 1; });
+      });
+      if(score > bestScore){ bestScore = score; best = cat; }
+    });
+    return { category: best, score: bestScore };
+  }
+
+  function nearestNeighbors(x, y, n){
+    return presetPoints
+      .map(p => ({ ...p, dist: Math.hypot(p.x - x, p.y - y) }))
+      .sort((a,b)=> a.dist - b.dist)
+      .slice(0, n);
+  }
+
+  function addCustomText(text){
+    const match = matchCategory(text);
+    let cx, cy, catName;
+    if(match.category && match.score > 0){
+      cx = clamp(match.category.center.x + jitter(text+'_cx', 60), 25, EMBED_VIEW_W-25);
+      cy = clamp(match.category.center.y + jitter(text+'_cy', 60), 25, EMBED_VIEW_H-25);
+      catName = match.category.name;
+    } else {
+      cx = clamp(EMBED_VIEW_W/2 + jitter(text+'_cx', 90), 25, EMBED_VIEW_W-25);
+      cy = clamp(EMBED_VIEW_H/2 + jitter(text+'_cy', 90), 25, EMBED_VIEW_H-25);
+      catName = null;
+    }
+    const neighbors = nearestNeighbors(cx, cy, 3);
+    const point = { text, x:cx, y:cy, category:catName, neighbors };
+    customPoints.push(point);
+    return point;
+  }
+
+  function renderEmbedPlot(){
+    const wrap = document.getElementById('embedPlotWrap');
+    const presetMarkers = presetPoints.map(p => `
+      <circle cx="${p.x}" cy="${p.y}" r="6" style="fill:var(${p.colorVar}); opacity:0.85;">
+        <title>${p.text} — ${p.category}</title>
+      </circle>
+      <text x="${p.x+9}" y="${p.y+3}" class="embed-point-label">${p.text}</text>
+    `).join('');
+    const customMarkers = customPoints.map(p => `
+      <rect x="${p.x-6}" y="${p.y-6}" width="12" height="12" transform="rotate(45 ${p.x} ${p.y})" style="fill:url(#embedGrad); stroke:#fff; stroke-width:1;">
+        <title>${p.text} (your text)</title>
+      </rect>
+      <text x="${p.x+11}" y="${p.y+3}" class="embed-point-label" style="fill:var(--text); font-weight:600;">${p.text}</text>
+    `).join('');
+    wrap.innerHTML = `
+      <svg viewBox="0 0 ${EMBED_VIEW_W} ${EMBED_VIEW_H}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="embedGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7c5cff"/>
+            <stop offset="100%" stop-color="#4ea1ff"/>
+          </linearGradient>
+        </defs>
+        ${presetMarkers}
+        ${customMarkers}
+      </svg>
+    `;
+  }
+  renderEmbedPlot();
+
+  const embedSuggestions = ['sushi rolls', 'quantum computer', 'the lion king', 'so much joy today', 'philosophy'];
+  const embedChipsEl = document.getElementById('embedChips');
+  embedSuggestions.forEach(q=>{
+    const c = document.createElement('span');
+    c.className = 'chip';
+    c.textContent = q;
+    c.addEventListener('click', ()=>{ document.getElementById('embedInput').value = q; });
+    embedChipsEl.appendChild(c);
+  });
+
+  const embedForm = document.getElementById('embedForm');
+  const embedPanel = document.getElementById('embedResultPanel');
+
+  embedForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const text = document.getElementById('embedInput').value.trim();
+    if(!text) return;
+    const submitBtn = document.getElementById('embedSubmit');
+    submitBtn.disabled = true;
+
+    if(isExhausted('representation')){
+      embedPanel.innerHTML = `
+        <div class="answer-card err">
+          <div class="answer-meta"><span class="tag" style="border-color:var(--danger); color:var(--danger);">Service unavailable</span></div>
+          <p style="margin:0;">The shared text representation service has hit its free-tier usage limit for today. Custom text cannot be embedded right now — try again later, or reset the limit from the Framework Console.</p>
+        </div>`;
+      submitBtn.disabled = false;
+      return;
+    }
+
+    embedPanel.innerHTML = `<div class="stage-line"><span class="spinner"></span> Embedding text using the shared embedding model…</div>`;
+
+    setTimeout(()=>{
+      const point = addCustomText(text);
+      renderEmbedPlot();
+
+      const neighborsHtml = point.neighbors.map(n => `
+        <div class="passage">
+          <div class="passage-top">
+            <strong>${n.text}</strong>
+            <span class="score-badge">${n.category}</span>
+          </div>
+          <p>Distance in projected space: ${n.dist.toFixed(1)}</p>
+        </div>
+      `).join('');
+
+      embedPanel.innerHTML = `
+        <div class="answer-card ${point.category ? '' : 'warn'}">
+          <div class="answer-meta">
+            <span class="tag dot">Custom text: “${text}”</span>
+            <span class="confidence ${point.category ? 'high' : 'low'}">${point.category ? 'Placed near ' + point.category + ' cluster' : 'No strong category match — placed centrally'}</span>
+          </div>
+          ${point.category ? '' : `<div class="warning-banner">⚠ This text doesn't closely match any of the four curated categories, so it was placed near the center of the plot rather than inside a cluster.</div>`}
+          <div class="answer-text">Your text was converted into an embedding vector by the shared embedding model, then projected into the same fixed 2D space used for the preset examples above — the presets don't move, so this addition is directly comparable.</div>
+          <div class="passages-block">
+            <h5>Nearest neighbors</h5>
+            ${neighborsHtml}
+          </div>
+        </div>
+      `;
+      submitBtn.disabled = false;
+      bump('representation', 1);
+      pushLog('Embeddings Example App', 'Text representation', `Embedded custom text: “${text.slice(0,40)}${text.length>40?'…':''}”`);
+      document.getElementById('embedInput').value = '';
+    }, 600);
+  });
+
+  /* ================= FRAMEWORK SERVICES CONSOLE ================= */
+  const reqType = document.getElementById('reqType');
+  const reqPayload = document.getElementById('reqPayload');
+  const sendReqBtn = document.getElementById('sendReq');
+  const responseBox = document.getElementById('responseBox');
+  const simulateLimitBtn = document.getElementById('simulateLimit');
+
+  const placeholders = {
+    generation: 'Summarize how BWS4 uses Spec4 to teach agentic patterns.',
+    representation: 'Voyager 1 launched in 1977 and entered interstellar space in 2012.',
+    storage: 'key: "visitor_last_question" value: "What is the James Webb Space Telescope?"'
+  };
+  reqType.addEventListener('change', ()=>{
+    reqPayload.placeholder = placeholders[reqType.value];
+  });
+
+  const storedRecords = [
+    { key:'visitor_last_question', value:'What did the Apollo 11 mission accomplish?', writtenBy:'RAG Example App' }
+  ];
+
+  sendReqBtn.addEventListener('click', ()=>{
+    const type = reqType.value;
+    const payload = reqPayload.value.trim() || placeholders[type];
+    const capKey = type === 'generation' ? 'generation' : type === 'representation' ? 'representation' : 'storage';
+
+    if(isExhausted(capKey)){
+      responseBox.classList.add('err');
+      responseBox.textContent = `⚠ Request rejected: "${usage[capKey].label}" has reached its free-tier limit (${usage[capKey].used}/${usage[capKey].cap}). This is the same clear-failure behavior every example app sees when a shared capability is exhausted.`;
+      return;
+    }
+    responseBox.classList.remove('err');
+    responseBox.textContent = 'Sending request to shared framework services…';
+
+    setTimeout(()=>{
+      let out;
+      if(type === 'generation'){
+        out = `[LanguageGenerationRequest → response]\nprompt: "${payload}"\n\n→ "BWS4 pairs a small set of teaching-oriented example apps — RAG, tool use, single-call, chained calls, planning agent, orchestrated subagents, multi-agent collaboration, embeddings, and more — with shared services for generation, representation, and storage, all implemented using Spec4 itself so the framework's own build doubles as the demonstration."`;
+      } else if(type === 'representation'){
+        const fakeVec = Array.from({length:6}, ()=> (Math.random()*2-1).toFixed(3)).join(', ');
+        out = `[TextRepresentation → response]\nsourceText: "${payload}"\n\nvectorPreview: [${fakeVec}, ...]\ndimensions: 768`;
+      } else {
+        storedRecords.push({ key:`console_test_${storedRecords.length+1}`, value: payload, writtenBy:'Framework Console' });
+        const latest = storedRecords.slice(-3).map(r=>`  { key: "${r.key}", value: "${r.value.slice(0,42)}${r.value.length>42?'…':''}", writtenBy: "${r.writtenBy}" }`).join('\n');
+        out = `[StoredRecord → write + retrieve]\nwritten: { key: "console_test_${storedRecords.length}", value: "${payload.slice(0,42)}${payload.length>42?'…':''}" }\n\nrecent records available to all apps:\n${latest}`;
+      }
+      responseBox.textContent = out;
+      bump(capKey, type === 'storage' ? 1 : 2);
+      pushLog('Framework Console', usage[capKey].label, `Manual test request (${type})`);
+    }, 500);
+  });
+
+  simulateLimitBtn.addEventListener('click', ()=>{
+    const capKey = reqType.value === 'generation' ? 'generation' : reqType.value === 'representation' ? 'representation' : 'storage';
+    usage[capKey].used = usage[capKey].cap;
+    renderUsage();
+    responseBox.classList.add('err');
+    responseBox.textContent = `⚠ Simulated: "${usage[capKey].label}" usage limit has been forced to ${usage[capKey].cap}/${usage[capKey].cap}. Send a request now to see the clear-failure message every app would receive.`;
+  });
+
+})();
+</script>
+</body>
+</html>

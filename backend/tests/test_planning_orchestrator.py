@@ -183,11 +183,85 @@ def _plan_object() -> Plan:
     return Plan.model_validate(GOOD_PLAN)
 
 
+class TestTheAllowanceAccountsForTheRetry:
+    """The orchestrator must ask for a *per-attempt* figure it can afford twice.
+
+    `_run_step` applies the allowance to each attempt, so a retried step spends
+    up to `STEP_ATTEMPTS` times it. Reported live: a research step died on
+    `UnexpectedModelBehavior` after 3 requests, its retry spent 3 more, the
+    second step was skipped with `reason: "budget"`, and the run finished on 8
+    of 9 -- one request from `CallCeilingExceeded` at the synthesis call, which
+    would have ended it with no itinerary at all.
+
+    Asserted at the **call site**, driving a real `execute_plan`. Checking the
+    arithmetic through a helper that passes `attempts=` itself only proves
+    `budget.py` can divide; it says nothing about whether `service.py` asks it
+    to, and a first version of this suite passed with the argument deleted.
+    """
+
+    def test_the_orchestrator_asks_for_an_allowance_it_can_afford_twice(self) -> None:
+        seen: list[dict] = []
+        real = CallBudget.allowance
+
+        def recording(self, step_limit, **kwargs):
+            seen.append(kwargs)
+            return real(self, step_limit, **kwargs)
+
+        session = _Session()
+        with (
+            _patch_model(_execution_model()),
+            _patch_search(),
+            patch.object(CallBudget, "allowance", recording),
+        ):
+            _collect(session, _plan_object())
+
+        assert seen, "no research step asked for an allowance"
+        for kwargs in seen:
+            assert kwargs.get("attempts") == service.STEP_ATTEMPTS, (
+                "the allowance bounds one attempt but the step may make "
+                f"{service.STEP_ATTEMPTS}"
+            )
+
+    def test_a_retried_step_cannot_spend_the_synthesis_reserve(self) -> None:
+        """The near-miss, driven rather than computed: every research step
+        fails once and retries, and synthesis must still have its reserve."""
+        run = CallBudget()
+        run.charge()  # the planner
+
+        for _ in range(2):
+            allowance = run.allowance(
+                agents.RESEARCH_REQUEST_LIMIT,
+                reserve=service.SYNTHESIS_RESERVE,
+                attempts=service.STEP_ATTEMPTS,
+            )
+            for _ in range(allowance * service.STEP_ATTEMPTS):
+                run.charge()
+
+        assert run.remaining() >= service.SYNTHESIS_RESERVE
+
+
 class TestCallBudget:
-    def test_the_ceiling_matches_the_capability_arithmetic(self) -> None:
-        # 1 planner + 1 replan + 5 executor. Documented in the spec's own
-        # runaway-loop mitigation as "the 8th model call is refused".
-        assert MAX_MODEL_CALLS == 7
+    def test_the_ceiling_diverges_from_the_capability_arithmetic_on_purpose(
+        self,
+    ) -> None:
+        """The spec's runaway-loop mitigation says "the 8th model call is
+        refused" -- 1 planner + 1 replan + 5 executor. This deployment refuses
+        the 19th, and the divergence is recorded here rather than left to be
+        rediscovered.
+
+        The spec's figure counts *logical* calls and prices a research step at
+        roughly one. A research step is tool-using: one request to emit each
+        search, one to read the results, and possibly one more for PydanticAI's
+        schema retry. At 7 the two research steps `MAX_RESEARCH_STEPS` permits
+        could not both finish, so `allowance()` quietly shrank the second one
+        below what it needed -- reported live, both steps dead on
+        `StepRequestLimitExceeded` with the itinerary composed from nothing.
+
+        What the mitigation actually protects -- a framework-level counter that
+        an agent writing its own next steps cannot talk its way past -- is
+        unchanged and is what the rest of this class tests.
+        """
+        assert MAX_MODEL_CALLS == 18
 
     def test_charging_up_to_the_ceiling_is_allowed(self) -> None:
         budget = CallBudget()

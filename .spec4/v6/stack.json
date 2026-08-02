@@ -1,0 +1,1649 @@
+{
+  "stack_spec": {
+    "name": "Built with Spec4 (BWS4)",
+    "description": "A unified web app that showcases Spec4 through a gallery of illustrative example apps demonstrating agentic AI patterns: retrieval-augmented generation (RAG), tool-use, a visual embeddings explorer, a single-call (simple vs. structured-output) demo, a two-step chained-calls (role-played writer/critic) demo, a planning-agent trip-day planner demo, an orchestrated-subagents demo in which a coordinator picks two specialists from a fixed roster, briefs them, runs them in parallel and merges their answers, and a multi-agent collaboration demo in which a buyer agent and two rival seller agents holding sealed private constraints negotiate a competitive procurement award over A2A-shaped peer messages across a code-enforced opacity boundary.",
+    "languages": [
+      {
+        "name": "Python",
+        "version": "3.12",
+        "role": "backend service \u2014 REST API, LiteLLM/OpenRouter orchestration, RAG pipeline, embeddings example app (embedding + PCA projection), single-call example app (simple/structured generation), chained-calls example app (two-step role-played generation via PydanticAI), planning-agent example app (planner/executor agents with tool-calling via PydanticAI, SSE streaming), orchestrated-subagents example app (coordinator delegation, concurrent knowledge-only specialists via asyncio.gather, merge, SSE streaming), multi-agent collaboration example app (A2A-shaped Pydantic protocol models, shared in-process peer message bus with slice-local opacity policy, deterministic RFQ composition, concurrent seller bid rounds, buyer counter/award turns, concurrent reveal and sensitivity explanation calls, SSE streaming), shared framework services (generation, embedding, storage, usage limiting, content moderation, peer message bus), Neon/Postgres access",
+        "linter": "Ruff",
+        "formatter": "Ruff format",
+        "type_checker": "mypy (strict)",
+        "indentation": "4 spaces",
+        "line_length": 88,
+        "quotes": "double",
+        "trailing_commas": "in multi-line expressions",
+        "naming_conventions": {
+          "variables": "snake_case",
+          "functions": "snake_case",
+          "classes": "PascalCase",
+          "constants": "UPPER_SNAKE_CASE",
+          "files": "snake_case"
+        }
+      },
+      {
+        "name": "TypeScript",
+        "version": "5.9",
+        "role": "browser client \u2014 single-page app presenting the landing page and all example apps",
+        "linter": "ESLint + @typescript-eslint",
+        "formatter": "Prettier",
+        "type_checker": "tsc --strict",
+        "indentation": "2 spaces",
+        "line_length": 100,
+        "quotes": "double",
+        "semicolons": "yes",
+        "trailing_commas": "in multi-line structures",
+        "naming_conventions": {
+          "variables": "camelCase",
+          "functions": "camelCase",
+          "components": "PascalCase",
+          "constants": "UPPER_SNAKE_CASE",
+          "files": "kebab-case, PascalCase for component files"
+        }
+      }
+    ],
+    "deployment": {
+      "targets": [
+        {
+          "name": "web_client",
+          "kind": "spa",
+          "purpose": "the browser UI presenting the landing page and every example app (RAG, tool-use, embeddings, single-call, chained-calls, planning-agent, orchestrated-subagents, multi-agent collaboration, future patterns), with per-example-app code-splitting so the gallery can grow without bloating the initial load",
+          "language": "TypeScript",
+          "hosting": "Render Static Site (free tier \u2014 no spin-down, served via CDN)",
+          "build": "Vite build producing a hashed static bundle with route-based lazy-loaded chunks per example app",
+          "distribution": "served at the app's root domain",
+          "exposure": {
+            "transport": "HTTPS only"
+          }
+        },
+        {
+          "name": "api",
+          "kind": "rest_api",
+          "purpose": "serves the SPA's data needs \u2014 LiteLLM/OpenRouter orchestration, RAG pipeline (chunking, embedding, retrieval), embeddings example app (preconfigured/custom text embedding and 2D projection), single-call example app (simple text and structured/schema-conforming generation), chained-calls example app (two-step role-played generation via PydanticAI/OpenRouter), planning-agent example app (planner call, plan validation, tool-using executor calls streamed via server-sent events), orchestrated-subagents example app (moderation gate, coordinator delegation decision, two concurrent knowledge-only specialists, merged answer, all streamed via server-sent events), multi-agent collaboration example app (deterministic RFQ composition, two concurrent seller bid rounds, buyer counter and award turns, concurrent reveal/sensitivity explanation calls, A2A-shaped peer messages delivered over the shared in-process bus with code-enforced opacity, NegotiationRecord persistence, all streamed via server-sent events), Exa search integration, and shared framework services (generation, embedding, storage, usage limiting, content moderation, peer message bus)",
+          "language": "Python",
+          "runtime": "Python 3.12 on a Render free Web Service (spins down after ~15 min idle; cold-starts on next request; 750 free instance-hours/month)",
+          "hosting": "Render free Web Service",
+          "build": "container image or native Python buildpack from the repo",
+          "api_contract": "REST; OpenAPI schema auto-generated by FastAPI; the planning-agent run endpoint streams incremental JSON results (Plan, then StepResults, then Itinerary) as server-sent events over a POST request; the orchestrated-subagents run endpoint likewise streams the DelegationDecision, then per-specialist status/answer events as the concurrent specialist tasks complete, then the MergedAnswer; the multi-agent collaboration run endpoint streams one event per negotiation stage (QuotationRequest, per-seller opening bid events as the concurrent bids complete, CounterOffers, per-seller best-and-final bid events, Award, then the reveal and sensitivity panels as their concurrent explanation calls complete), all as server-sent events over a POST request",
+          "exposure": {
+            "transport": "HTTPS only",
+            "cors": "allow only the web_client's own origin"
+          }
+        }
+      ]
+    },
+    "providers": {
+      "OpenRouter (via LiteLLM)": {
+        "capabilities": [
+          {
+            "tier": "rag",
+            "capability_class": "a capable general-purpose free model for grounded, structured-output answers (meta-llama/llama-3.3-70b-instruct:free)",
+            "role": "primary",
+            "serves_features": [
+              "rag_example_app"
+            ],
+            "serves_capabilities": [
+              "rag_example_app"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_"
+            ]
+          },
+          {
+            "tier": "rag",
+            "capability_class": "a fast alternate free model, also strong at structured/tool-oriented output (google/gemini-2.0-flash-exp:free)",
+            "role": "fallback",
+            "serves_features": [
+              "rag_example_app"
+            ],
+            "serves_capabilities": [
+              "rag_example_app"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_",
+              "nfr_when_a_limit_is_reached_or_an_upstream_capability_is_unavailable__the_visitor_sees_a_clear__specific_explanation_that_distinguishes_the_two__and_any_results_already_produced_remain_on_screen_"
+            ]
+          },
+          {
+            "tier": "single_call",
+            "capability_class": "a capable general-purpose free model able to produce both plain text and JSON-schema-conforming structured output for a single direct prompt/response demo (meta-llama/llama-3.3-70b-instruct:free)",
+            "role": "primary",
+            "serves_features": [
+              "single_call_example_app"
+            ],
+            "serves_capabilities": [
+              "single_call_generation"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_"
+            ]
+          },
+          {
+            "tier": "single_call",
+            "capability_class": "a fast alternate free model, also strong at structured/JSON output, for the single-call demo",
+            "role": "fallback",
+            "serves_features": [
+              "single_call_example_app"
+            ],
+            "serves_capabilities": [
+              "single_call_generation"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_",
+              "nfr_when_a_limit_is_reached_or_an_upstream_capability_is_unavailable__the_visitor_sees_a_clear__specific_explanation_that_distinguishes_the_two__and_any_results_already_produced_remain_on_screen_"
+            ]
+          }
+        ],
+        "model_family": "Llama",
+        "credentials_env": "OPENROUTER_API_KEY",
+        "fallback": "Gemini 2.0 Flash free takes over automatically via LiteLLM routing if the primary Llama 3.3 70B free model's rate limit is hit or it errors, for both the RAG and single-call tiers"
+      },
+      "OpenRouter (via PydanticAI)": {
+        "capabilities": [
+          {
+            "tier": "chained_calls",
+            "capability_class": "a capable general-purpose free model able to sustain a distinct role-played persona (struggling writer, harsh critic) across a two-step sequential chain (meta-llama/llama-3.3-70b-instruct:free)",
+            "role": "primary",
+            "serves_features": [
+              "chained_calls_example_app"
+            ],
+            "serves_capabilities": [
+              "chained_role_play_generation"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_"
+            ]
+          },
+          {
+            "tier": "chained_calls",
+            "capability_class": "a fast alternate free model, also strong at persona/role-played and structured JSON output, for the chained-calls demo",
+            "role": "fallback",
+            "serves_features": [
+              "chained_calls_example_app"
+            ],
+            "serves_capabilities": [
+              "chained_role_play_generation"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_"
+            ]
+          },
+          {
+            "tier": "planning_agent",
+            "capability_class": "a capable free model with reliable native tool-calling and structured output, able to decompose a trip goal into a validated small plan and to execute research/synthesis steps against a web-search tool",
+            "role": "primary",
+            "serves_features": [
+              "planning_agent_example_app"
+            ],
+            "serves_capabilities": [
+              "trip_day_planning_agent"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_"
+            ]
+          },
+          {
+            "tier": "planning_agent",
+            "capability_class": "a fast alternate free model, also capable of tool-calling and structured JSON output, for the planner and executor calls",
+            "role": "fallback",
+            "serves_features": [
+              "planning_agent_example_app"
+            ],
+            "serves_capabilities": [
+              "trip_day_planning_agent"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_"
+            ]
+          },
+          {
+            "tier": "orchestrated_subagents",
+            "capability_class": "a capable general-purpose free model with reliable structured output, able to (a) choose exactly two specialists from a fixed roster of four and write a distinct brief for each, (b) answer a briefed sub-question as a knowledge-only specialist with no tool access, and (c) merge two independent specialist answers into one integrated response",
+            "role": "primary",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_"
+            ]
+          },
+          {
+            "tier": "orchestrated_subagents",
+            "capability_class": "a fast alternate free model, also strong at structured JSON output, for the coordinator delegation call, either specialist call, or the merge call",
+            "role": "fallback",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_",
+              "nfr_when_a_limit_is_reached_or_an_upstream_capability_is_unavailable__the_visitor_sees_a_clear__specific_explanation_that_distinguishes_the_two__and_any_results_already_produced_remain_on_screen_"
+            ]
+          },
+          {
+            "tier": "single_call",
+            "capability_class": "structured-output generation of the disagreement note comparing the two specialist answers; produced as fields on the merge call's existing structured output rather than as an additional model call, so the run's three-call budget is unchanged",
+            "role": "primary",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "specialist_disagreement_note"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_"
+            ]
+          },
+          {
+            "tier": "multi_agent_collaboration",
+            "capability_class": "a capable free model with reliable structured output, able to sustain a private-constraint-bound negotiating persona across bid \u2192 counter \u2192 best-and-final turns without disclosing its sealed position, and to award a deal with a rationale weighed explicitly against the visitor's stated priority weighting",
+            "role": "primary",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_",
+              "nfr_every_run_states_its_cost_in_model_calls_up_front_and_never_exceeds_its_declared_budget_"
+            ]
+          },
+          {
+            "tier": "multi_agent_collaboration",
+            "capability_class": "a fast alternate free model, also strong at structured JSON output and persona adherence, for any of the six negotiation turns (either seller's opening bid, the buyer's counter-offers, either seller's best-and-final bid, the buyer's award)",
+            "role": "fallback",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_",
+              "nfr_when_a_limit_is_reached_or_an_upstream_capability_is_unavailable__the_visitor_sees_a_clear__specific_explanation_that_distinguishes_the_two__and_any_results_already_produced_remain_on_screen_"
+            ]
+          },
+          {
+            "tier": "single_call",
+            "capability_class": "a capable free model with strict JSON-Schema conformance, producing the end-of-run private-position reveal explanation for each party \u2014 why a seller held firm or conceded on a given axis, read against its now-unsealed constraints; a dedicated thin-schema call rather than extra fields on the award call, so a conformance failure degrades only the reveal panel and never the award payload",
+            "role": "primary",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "private_position_reveal_explanation"
+            ],
+            "satisfies_nfr": [
+              "nfr_intermediate_steps___retrieved_passages__plans__delegation_decisions__per_agent_messages___are_visible_to_the_visitor_rather_than_hidden__since_making_agent_behaviour_observable_is_the_point_of_the_project_"
+            ]
+          },
+          {
+            "tier": "single_call",
+            "capability_class": "a fast alternate free model with strict JSON-Schema conformance, for the private-position reveal explanation call",
+            "role": "fallback",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "private_position_reveal_explanation"
+            ],
+            "satisfies_nfr": [
+              "nfr_when_a_limit_is_reached_or_an_upstream_capability_is_unavailable__the_visitor_sees_a_clear__specific_explanation_that_distinguishes_the_two__and_any_results_already_produced_remain_on_screen_"
+            ]
+          },
+          {
+            "tier": "single_call",
+            "capability_class": "a capable free model with strict JSON-Schema conformance, producing the counterfactual priority-sensitivity explanation \u2014 whether a different priority weighting would have changed the winner and why; a dedicated call because asking the award turn to both decide and reason counterfactually about its own decision in one shot is an unreliable prompt",
+            "role": "primary",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "priority_sensitivity_explanation"
+            ],
+            "satisfies_nfr": [
+              "nfr_every_example_includes_a_short_educational_overview_of_the_pattern_it_demonstrates_and_states_honestly_where_the_demonstration_is_simplified_for_teaching_or_cost_reasons_"
+            ]
+          },
+          {
+            "tier": "single_call",
+            "capability_class": "a fast alternate free model with strict JSON-Schema conformance, for the priority-sensitivity explanation call",
+            "role": "fallback",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "priority_sensitivity_explanation"
+            ],
+            "satisfies_nfr": [
+              "nfr_when_a_limit_is_reached_or_an_upstream_capability_is_unavailable__the_visitor_sees_a_clear__specific_explanation_that_distinguishes_the_two__and_any_results_already_produced_remain_on_screen_"
+            ]
+          }
+        ],
+        "model_family": "Llama",
+        "credentials_env": "OPENROUTER_API_KEY",
+        "fallback": "Gemini 2.0 Flash free takes over automatically via PydanticAI's native FallbackModel if the primary Llama 3.3 70B free model errors or hits its rate limit \u2014 for either step of the chained-calls chain, for any planner or executor call of the planning-agent run, for the coordinator delegation call, either specialist call, or the merge call of the orchestrated-subagents run, and for any of the six negotiation turns or either of the two explanation calls of the multi-agent collaboration run; both models' slugs are read from the same shared model-slug config module used by the LiteLLM lane"
+      }
+    },
+    "integrations": [
+      {
+        "name": "Exa Search API",
+        "kind": "third_party_api",
+        "purpose": "fetch ranked, real external search results (title, summary, source) so tool-use example apps can incorporate outside information, and serve as the model-invoked web-search tool for the planning-agent example app's research steps",
+        "protocol": "REST over HTTPS",
+        "auth": "API key; EXA_API_KEY",
+        "serves_features": [
+          "tool_use_integration",
+          "planning_agent_example_app"
+        ],
+        "serves_capabilities": [
+          "trip_day_planning_agent"
+        ]
+      },
+      {
+        "name": "OpenAI Moderation API (omni-moderation-latest)",
+        "kind": "third_party_api",
+        "purpose": "pre-dispatch safety classification of visitor-supplied free-form questions (abuse, self-harm, sexual, hate, violence, illicit) before any coordinator call is made; chosen because the moderation endpoint is free of charge and does not consume the OpenRouter free-model allowance, so the orchestrated-subagents run's three-model-call budget is unaffected; exposed as a shared framework service so any future example app with a free-form input can reuse it, and invoked only for free-form input \u2014 curated preset questions are pre-vetted and skip it entirely; the multi-agent collaboration example app has no free-text input at all (scenario enum plus a numeric weighting vector) and therefore never calls it",
+        "protocol": "REST over HTTPS; POST /v1/moderations, called with httpx and parsed into a Pydantic ModerationVerdict",
+        "auth": "API key; OPENAI_API_KEY (entered in the Render dashboard as a sync:false secret, as the OpenRouter and Exa keys are)",
+        "serves_features": [
+          "shared_framework_services",
+          "orchestrated_subagents_example_app"
+        ],
+        "serves_capabilities": [
+          "question_moderation"
+        ],
+        "satisfies_nfr": [
+          "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_"
+        ]
+      }
+    ],
+    "persistence": {
+      "primary_store": {
+        "choice": "Neon (serverless Postgres) + pgvector",
+        "purpose": "durable relational store for everything the app writes, doubling as the vector index for the RAG example app",
+        "durability": "source of truth; survives restarts and redeploys, including Render's free-tier spin-down; Neon's free tier persists indefinitely (unlike Render's free Postgres, which expires after 30 days)",
+        "satisfies_nfr": [
+          "nfr_new_example_apps_can_be_added_and_appear_in_the_entry_view_and_navigation_without_altering_existing_examples_"
+        ],
+        "satisfies_infra": [
+          "vector_index"
+        ],
+        "collections": [
+          {
+            "name": "dataset_embeddings",
+            "entities": [
+              "Document",
+              "Passage",
+              "SemanticRepresentation"
+            ],
+            "physical": [
+              "vector(384) column (all-MiniLM-L6-v2 dimension)",
+              "HNSW index"
+            ],
+            "serves_features": [
+              "rag_example_app"
+            ],
+            "serves_capabilities": [
+              "rag_example_app"
+            ],
+            "satisfies_nfr": [
+              "nfr_each_example_opens_and_renders_its_explanatory_content_and_controls_in_under_a_second__before_any_model_work_begins_"
+            ]
+          },
+          {
+            "name": "rag_interactions",
+            "entities": [
+              "Answer",
+              "Passage",
+              "Question"
+            ],
+            "physical": [
+              "id (primary)",
+              "index on submitted_at"
+            ],
+            "serves_features": [
+              "rag_example_app"
+            ],
+            "serves_capabilities": [
+              "rag_example_app"
+            ]
+          },
+          {
+            "name": "generation_results",
+            "entities": [
+              "GenerationRequest",
+              "ModelResponse"
+            ],
+            "physical": [
+              "id (primary)"
+            ],
+            "serves_features": [
+              "shared_framework_services",
+              "single_call_example_app"
+            ]
+          },
+          {
+            "name": "text_representations",
+            "entities": [
+              "SemanticRepresentation"
+            ],
+            "physical": [
+              "id (primary)"
+            ],
+            "serves_features": [
+              "shared_framework_services"
+            ]
+          },
+          {
+            "name": "search_queries",
+            "entities": [
+              "SearchRequest",
+              "SearchResult"
+            ],
+            "physical": [
+              "id (primary)"
+            ],
+            "serves_features": [
+              "tool_use_integration",
+              "planning_agent_example_app"
+            ],
+            "serves_capabilities": [
+              "trip_day_planning_agent"
+            ]
+          },
+          {
+            "name": "stored_records",
+            "entities": [
+              "RetainedItem"
+            ],
+            "physical": [
+              "key (primary)"
+            ],
+            "serves_features": [
+              "shared_framework_services"
+            ]
+          },
+          {
+            "name": "usage_limits",
+            "entities": [
+              "UsageAllowance"
+            ],
+            "physical": [
+              "id (primary)",
+              "index on capability",
+              "usage window column keyed to the current UTC hour, plus the per-UTC-day cap window"
+            ],
+            "purpose": "the showcase-wide model/search allowance gate, enforced server-side before every provider call by every example app, windowed per UTC hour and per UTC day; the multi-agent collaboration example app's runs-per-hour limit is this existing framework-standard gate rather than a tightened per-app counter",
+            "serves_features": [
+              "shared_framework_services",
+              "chained_calls_example_app",
+              "planning_agent_example_app",
+              "orchestrated_subagents_example_app",
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "chained_role_play_generation",
+              "trip_day_planning_agent",
+              "orchestrated_specialist_answer",
+              "procurement_negotiation_run"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_",
+              "nfr_when_a_limit_is_reached_or_an_upstream_capability_is_unavailable__the_visitor_sees_a_clear__specific_explanation_that_distinguishes_the_two__and_any_results_already_produced_remain_on_screen_"
+            ]
+          },
+          {
+            "name": "allowance_holds",
+            "entities": [
+              "UsageAllowance"
+            ],
+            "purpose": "reserve/redeem/refund records against the showcase-wide hourly usage gate, so a run's full call budget is held before its first model call and a confirmed dispatch either completes or is refused up front with a clear reason; the orchestrated-subagents run holds three calls before the coordinator delegation call, and the multi-agent collaboration run holds all eight (six negotiation plus two explanation) before the deterministic RFQ is composed, so a run is never begun that cannot complete; refunded when a run fails before spending its reserved calls",
+            "physical": [
+              "hold key (primary)",
+              "index on capability and usage window",
+              "state column (reserved / redeemed / refunded)"
+            ],
+            "serves_features": [
+              "shared_framework_services",
+              "orchestrated_subagents_example_app",
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer",
+              "procurement_negotiation_run"
+            ],
+            "satisfies_nfr": [
+              "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_",
+              "nfr_every_run_states_its_cost_in_model_calls_up_front_and_never_exceeds_its_declared_budget_"
+            ]
+          },
+          {
+            "name": "moderation_log",
+            "entities": [],
+            "purpose": "safety-gate telemetry for free-form question moderation: a salted hash of the question (never the raw text), the returned category, confidence, latency, and whether the call failed closed; satisfies the capability's privacy requirement that raw visitor question text is not retained",
+            "physical": [
+              "id (primary)",
+              "index on created_at",
+              "salted question hash column; no raw question text column"
+            ],
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "question_moderation"
+            ]
+          },
+          {
+            "name": "negotiation_runs",
+            "entities": [
+              "NegotiationRecord",
+              "QuotationRequest",
+              "Bid",
+              "CounterOffer",
+              "Award",
+              "Scenario",
+              "PriorityWeighting",
+              "Run"
+            ],
+            "purpose": "the immutable per-run negotiation record header written at run end: the selected scenario id and priority weighting, the deterministically composed QuotationRequest, both rounds of bids, the buyer's counter-offers, the award with its priority references, the reveal and sensitivity explanation payloads, per-stage timings, model_calls_used, and degradation flags for any stage that failed or returned non-conforming output; stage payloads are held as JSONB while the header columns carry the queryable telemetry the capability's eval signal needs \u2014 model_calls_used is alerted on when the negotiation-stage count differs from six",
+            "physical": [
+              "id (primary)",
+              "index on created_at",
+              "index on scenario_id",
+              "negotiation_stage_call_count and total_model_calls_used columns (queryable, not buried in JSONB)",
+              "JSONB columns for the RFQ, opening bids, counter-offers, final bids, award, reveal and sensitivity payloads",
+              "JSONB stage-timing column"
+            ],
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run",
+              "private_position_reveal_explanation",
+              "priority_sensitivity_explanation"
+            ],
+            "satisfies_nfr": [
+              "nfr_every_run_states_its_cost_in_model_calls_up_front_and_never_exceeds_its_declared_budget_"
+            ]
+          },
+          {
+            "name": "peer_messages",
+            "entities": [
+              "PeerMessage",
+              "MessageLog"
+            ],
+            "purpose": "one row per A2A-shaped peer message exchanged during a run, foreign-keyed to negotiation_runs, so the chronological sender-to-recipient message log is a stored projection rather than a client-side tally and the app's headline opacity claim is provable from the store: seller_to_seller_count is a single SQL predicate over sender and recipient, expected to be zero for every run",
+            "physical": [
+              "id (primary)",
+              "foreign key to negotiation_runs.id",
+              "sequence column, unique per run",
+              "sender and recipient columns (indexed together, so seller-to-seller traffic is queryable)",
+              "stage column",
+              "JSONB work-item column carrying the A2A-shaped Task/Message/Artifact payload"
+            ],
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run"
+            ],
+            "satisfies_nfr": [
+              "nfr_intermediate_steps___retrieved_passages__plans__delegation_decisions__per_agent_messages___are_visible_to_the_visitor_rather_than_hidden__since_making_agent_behaviour_observable_is_the_point_of_the_project_"
+            ]
+          },
+          {
+            "name": "service_log_entries",
+            "entities": [
+              "ServiceLogEntry"
+            ],
+            "physical": [
+              "id (primary)",
+              "index on timestamp"
+            ],
+            "serves_features": [
+              "shared_framework_services",
+              "single_call_example_app",
+              "chained_calls_example_app",
+              "planning_agent_example_app",
+              "orchestrated_subagents_example_app",
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "single_call_generation",
+              "chained_role_play_generation",
+              "trip_day_planning_agent",
+              "orchestrated_specialist_answer",
+              "question_moderation",
+              "procurement_negotiation_run",
+              "private_position_reveal_explanation",
+              "priority_sensitivity_explanation"
+            ]
+          }
+        ]
+      },
+      "embedding_projection_cache": {
+        "choice": "in-process NumPy array of preconfigured embeddings + fitted PCA model, held in memory (all-MiniLM-L6-v2 vectors, scikit-learn PCA)",
+        "purpose": "fills the vector_index substrate for the embeddings example app's custom_text_semantic_placement capability: holds the preconfigured examples' embeddings and the fitted PCA projection so a new custom-text point can be transformed into the same stable 2D layout without recomputing it, and without persisting user-entered custom text beyond the request per the capability's privacy requirement",
+        "durability": "ephemeral \u2014 rebuilt from bundled_assets' preconfigured_text_examples at process startup or on first request; ephemeral in-process derived state, rebuildable, not a source of truth; custom text embeddings exist only for the duration of the request and are never persisted",
+        "satisfies_infra": [
+          "vector_index"
+        ],
+        "collections": [
+          {
+            "name": "preconfigured_example_embeddings",
+            "entities": [
+              "TextSample",
+              "SemanticRepresentation",
+              "ProjectedPoint"
+            ],
+            "physical": [
+              "in-process NumPy array, 384-dim (all-MiniLM-L6-v2) per preconfigured example",
+              "fitted PCA model held in memory, reused via .transform() for custom text"
+            ],
+            "serves_features": [
+              "embeddings_example_app"
+            ],
+            "serves_capabilities": [
+              "custom_text_semantic_placement"
+            ],
+            "satisfies_nfr": [
+              "nfr_each_example_opens_and_renders_its_explanatory_content_and_controls_in_under_a_second__before_any_model_work_begins_"
+            ]
+          }
+        ]
+      },
+      "bundled_assets": {
+        "choice": "static content bundled at build time",
+        "purpose": "read-only content that only changes via a code change/redeploy, not user action",
+        "durability": "read-only; changes only by redeploy",
+        "collections": [
+          {
+            "name": "example_app_directory",
+            "entities": [
+              "ExampleApp",
+              "PatternDescription"
+            ],
+            "serves_features": [
+              "landing_page"
+            ],
+            "satisfies_nfr": [
+              "nfr_new_example_apps_can_be_added_and_appear_in_the_entry_view_and_navigation_without_altering_existing_examples_",
+              "nfr_every_example_is_reachable_within_one_selection_from_the_entry_view_and_from_a_persistent_navigation_listing_on_every_page_"
+            ]
+          },
+          {
+            "name": "reference_dataset",
+            "entities": [
+              "Document"
+            ],
+            "serves_features": [
+              "rag_example_app"
+            ]
+          },
+          {
+            "name": "preconfigured_text_examples",
+            "entities": [
+              "TextSample",
+              "Category"
+            ],
+            "purpose": "the curated set of words, short phrases, and sentences spanning multiple categories used to seed the embeddings example app's plot",
+            "serves_features": [
+              "embeddings_example_app"
+            ]
+          },
+          {
+            "name": "preset_prompts",
+            "entities": [
+              "Prompt",
+              "ResponseShape"
+            ],
+            "purpose": "the curated set of example prompts (e.g. summarize, classify, extract) with their labeled intent, offered as one-click choices in the single-call example app",
+            "serves_features": [
+              "single_call_example_app"
+            ],
+            "serves_capabilities": [
+              "single_call_generation"
+            ]
+          },
+          {
+            "name": "persona_prompt_templates",
+            "entities": [],
+            "purpose": "static system-prompt templates and few-shot exemplars defining the 'struggling writer' and 'harsh critic' personas used by the two chained calls; read-only, versioned in-repo alongside the RAG and single-call prompt conventions",
+            "serves_features": [
+              "chained_calls_example_app"
+            ],
+            "serves_capabilities": [
+              "chained_role_play_generation"
+            ]
+          },
+          {
+            "name": "planning_prompt_templates",
+            "entities": [],
+            "purpose": "static system-prompt templates for the planning-agent example app: the planner prompt (goal decomposition into a bounded, validated plan of research + synthesis steps) and the synthesis prompt (composing the final one-day itinerary from step results); read-only, versioned in-repo following the same prompt-versioning convention as the other example apps",
+            "serves_features": [
+              "planning_agent_example_app"
+            ],
+            "serves_capabilities": [
+              "trip_day_planning_agent"
+            ]
+          },
+          {
+            "name": "specialist_roster_config",
+            "entities": [
+              "Specialist"
+            ],
+            "purpose": "the fixed roster of four knowledge-only specialists (Technical, Financial, Historical, Practical) with each one's id, display name, scope description, and column colour; read as the closed set the coordinator must choose exactly two from, and used to validate the delegation decision before it is shown to the visitor",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer"
+            ]
+          },
+          {
+            "name": "curated_presets",
+            "entities": [
+              "Question"
+            ],
+            "purpose": "curated preset questions, each with a preset id and its wording, chosen so different presets produce visibly different specialist pairings; preset questions are pre-vetted and therefore bypass the moderation gate that free-form questions pass through",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer"
+            ]
+          },
+          {
+            "name": "orchestration_prompt_templates",
+            "entities": [],
+            "purpose": "static system-prompt templates for the orchestrated-subagents example app: the coordinator delegation prompt (choose exactly two roster specialists, give a pairing rationale, write a distinct brief for each), the specialist prompt (answer only your own brief, knowledge-only, no tools), and the merge prompt (reconcile and integrate the two answers and note where they disagree); read-only, versioned in-repo following the same prompt-versioning convention as the other example apps",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer",
+              "specialist_disagreement_note"
+            ]
+          },
+          {
+            "name": "procurement_scenario_catalog",
+            "entities": [
+              "Scenario",
+              "PriorityWeighting"
+            ],
+            "purpose": "the pre-tuned procurement scenarios and the selectable priority weightings for the multi-agent collaboration example app: per scenario, the goods description, the buyer's baseline requirements and BATNA, and the negotiable term axes (price, delivery lead time, quantity and partial fulfilment, warranty); each scenario is hand-tuned so the sellers' sealed constraints force genuinely non-comparable bids, and each weighting preset carries its per-axis weights so the same scenario can yield a different winner; authored as version-controlled typed Python literals rather than the AI spec's suggested YAML, so mypy strict checks these deeply nested fixtures and no serialisation dependency is added \u2014 same read-only, redeploy-only-change semantics either way",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run"
+            ]
+          },
+          {
+            "name": "sealed_private_constraints",
+            "entities": [
+              "PrivateConstraint"
+            ],
+            "purpose": "per scenario and per seller, the hidden negotiating position \u2014 cost floor, capacity ceiling, delivery capability, warranty liability limit \u2014 plus the reveal headline and explanation seed used by the end-of-run unsealing; authored as typed Python literals in the same fixture module as the scenario they belong to, because the sealing is enforced by the message bus's opacity policy at access time (an agent can only ever load its own constraints) rather than by file separation, which would imply a boundary the filesystem is not providing",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run",
+              "private_position_reveal_explanation"
+            ]
+          },
+          {
+            "name": "agent_identity_cards",
+            "entities": [
+              "AgentIdentityCard",
+              "BuyerAgent",
+              "SellerAgent"
+            ],
+            "purpose": "the three A2A-shaped identity cards (buyer plus two rival sellers) published for inspection before or during a run: name, provider organisation, declared skills, declared capabilities, and explicit tool_access of none; authored as typed Python literals conforming to the slice's hand-rolled AgentCard model",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run"
+            ],
+            "satisfies_nfr": [
+              "nfr_intermediate_steps___retrieved_passages__plans__delegation_decisions__per_agent_messages___are_visible_to_the_visitor_rather_than_hidden__since_making_agent_behaviour_observable_is_the_point_of_the_project_"
+            ]
+          },
+          {
+            "name": "collaboration_prompt_templates",
+            "entities": [],
+            "purpose": "static system-prompt templates for the multi-agent collaboration example app: the seller opening-bid and best-and-final prompts (bid within your own sealed constraints, you cannot see the rival), the buyer counter-offer prompt (target each seller on its weakest axis against the stated priorities), the buyer award prompt (choose and justify against the stated priorities), and the two thin-schema explanation prompts for the private-position reveal and the priority-sensitivity counterfactual; read-only, versioned in-repo following the same prompt-versioning convention as the other example apps",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run",
+              "private_position_reveal_explanation",
+              "priority_sensitivity_explanation"
+            ]
+          }
+        ]
+      },
+      "browser_local_storage": {
+        "choice": "browser localStorage",
+        "purpose": "keeps small per-device visitor state across visits without a backend round trip, and keeps each example app's own demonstration run counter and prior results on the device so they survive navigating away and back",
+        "durability": "persists per-device/browser only; not a source of truth, not shared across devices; resettable by the visitor \u2014 hard quota protection is always the server-side usage_limits gate plus per-run call ceilings, never this store",
+        "collections": [
+          {
+            "name": "theme_preference",
+            "entities": [],
+            "purpose": "the visitor's chosen light/dark theme"
+          },
+          {
+            "name": "run_allowance",
+            "entities": [
+              "Visitor",
+              "UsageAllowance",
+              "Run"
+            ],
+            "purpose": "advisory per-session run counter and cap for the planning-agent example app, shown to the user with remaining runs; deliberately client-side only \u2014 hard quota protection remains the server-side usage_limits gate plus the fixed per-run call ceiling enforced by plan validation",
+            "serves_features": [
+              "planning_agent_example_app"
+            ],
+            "serves_capabilities": [
+              "trip_day_planning_agent"
+            ]
+          },
+          {
+            "name": "orchestrated_run_allowance",
+            "entities": [
+              "Visitor",
+              "UsageAllowance",
+              "Run",
+              "DelegationDecision",
+              "Brief",
+              "SubagentResult",
+              "MergedAnswer"
+            ],
+            "purpose": "the orchestrated-subagents example app's three-run session counter plus the visitor's own prior run records (delegation decision, per-specialist briefs, specialist answers, merged answer), stamped with the UTC hour so the counter resets on the same hourly clock as the server-side showcase-wide gate; persisting the records here is what lets the runs-remaining count and previously produced results survive navigating away and back with no server-side visitor identity at all, and hard quota protection remains the server-side usage_limits gate plus the reserved three-call budget",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer"
+            ],
+            "satisfies_nfr": [
+              "nfr_no_sign_up__personal_information_or_payment_is_required_to_use_any_example_",
+              "nfr_when_a_limit_is_reached_or_an_upstream_capability_is_unavailable__the_visitor_sees_a_clear__specific_explanation_that_distinguishes_the_two__and_any_results_already_produced_remain_on_screen_"
+            ]
+          },
+          {
+            "name": "last_negotiation_run",
+            "entities": [
+              "NegotiationRecord",
+              "Run"
+            ],
+            "purpose": "a cache of the visitor's most recent multi-agent collaboration run so the negotiation record, reveal and message log rehydrate instantly on returning to the app without a server round trip; layered over the authoritative negotiation_runs/peer_messages persistence rather than replacing it, and this app has no per-app session counter here because its run limit is the framework-standard hourly usage_limits gate",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run"
+            ],
+            "satisfies_nfr": [
+              "nfr_no_sign_up__personal_information_or_payment_is_required_to_use_any_example_",
+              "nfr_when_a_limit_is_reached_or_an_upstream_capability_is_unavailable__the_visitor_sees_a_clear__specific_explanation_that_distinguishes_the_two__and_any_results_already_produced_remain_on_screen_"
+            ]
+          }
+        ]
+      }
+    },
+    "infrastructure": {
+      "chunking_pipeline": {
+        "choice": "hand-rolled paragraph/fixed-window text splitter, in application code",
+        "purpose": "splits reference_dataset documents into passages before embedding; kept simple and transparent given the small curated dataset, serving the project's teaching-clarity goal",
+        "serves_features": [
+          "rag_example_app"
+        ],
+        "serves_capabilities": [
+          "rag_example_app"
+        ],
+        "satisfies_nfr": [
+          "nfr_every_example_includes_a_short_educational_overview_of_the_pattern_it_demonstrates_and_states_honestly_where_the_demonstration_is_simplified_for_teaching_or_cost_reasons_"
+        ]
+      },
+      "embedding_pipeline": {
+        "choice": "sentence-transformers (all-MiniLM-L6-v2), in-process at index time and query time",
+        "purpose": "fills the catalog's embedding_pipeline substrate for both the RAG example (vectors written to and read from dataset_embeddings) and the embeddings example app (vectors for preconfigured examples and custom text, held in embedding_projection_cache) \u2014 the same shared embedding model is reused rather than introduced separately; the package itself is listed under libraries",
+        "serves_features": [
+          "rag_example_app",
+          "embeddings_example_app"
+        ],
+        "serves_capabilities": [
+          "rag_example_app",
+          "custom_text_semantic_placement"
+        ]
+      },
+      "retriever": {
+        "choice": "SQLAlchemy query using pgvector's cosine-distance operator against dataset_embeddings",
+        "purpose": "finds the top-N passages most similar to a question's embedding, to ground the generated answer",
+        "serves_features": [
+          "rag_example_app"
+        ],
+        "serves_capabilities": [
+          "rag_example_app"
+        ]
+      },
+      "pipeline_runner": {
+        "choice": "PydanticAI, using its OpenRouterProvider and native FallbackModel to run the fixed two-step 'struggling writer' \u2192 'harsh critic' sequence, with the first call's response passed directly as the second call's input",
+        "purpose": "fills the catalog's pipeline_runner substrate for the chained-calls example app; chosen over a hand-rolled function because upcoming example apps will coordinate multiple agents, and PydanticAI's typed Agent primitives extend naturally to that without a framework swap; the free-model slugs used by its OpenRouterProvider and FallbackModel are read from the same shared model-slug config module the LiteLLM lane uses, and the existing usage_limits/service_log_entries quota-check function gates calls on this path exactly as it gates the LiteLLM path",
+        "serves_features": [
+          "chained_calls_example_app"
+        ],
+        "serves_capabilities": [
+          "chained_role_play_generation"
+        ],
+        "satisfies_nfr": [
+          "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_"
+        ]
+      },
+      "agent_loop_runtime": {
+        "choice": "PydanticAI agent runs (OpenRouterProvider + FallbackModel, slugs from the shared model-slug config), deliberately constrained: one structured-output planner call produces a Pydantic-validated Plan capped at 2\u20133 executor steps (trimmed or re-planned with a note if nonconforming), then executor steps run sequentially only after the user's explicit go-ahead, with the shared usage-limit gate checked before every model call and each result streamed to the client as it completes",
+        "purpose": "fills the catalog's agent_loop_runtime substrate for the planning-agent example app; the 'loop' is visible, bounded, and user-advanced rather than autonomous, honoring the feature's human-in-the-loop mechanism, the per-run call ceiling (~1 planner + 2\u20133 executor calls), and the project's teaching-transparency goal; the PydanticAI package itself is listed under libraries",
+        "serves_features": [
+          "planning_agent_example_app"
+        ],
+        "serves_capabilities": [
+          "trip_day_planning_agent"
+        ],
+        "satisfies_nfr": [
+          "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_",
+          "nfr_intermediate_steps___retrieved_passages__plans__delegation_decisions__per_agent_messages___are_visible_to_the_visitor_rather_than_hidden__since_making_agent_behaviour_observable_is_the_point_of_the_project_"
+        ]
+      },
+      "tool_execution_harness": {
+        "choice": "PydanticAI native tool-calling (tool registration on the executor agent) wrapping the existing Exa search client (httpx) as a typed web-search tool for research steps",
+        "purpose": "fills the catalog's tool_execution_harness substrate for the planning-agent example app, following the spec's tool protocol strategy: native model tool-calling, direct SDK-wrapped, no MCP; the run-allowance/quota check is a direct internal service-layer call, never a model-exposed tool, so the model cannot decide whether quota is spent; the PydanticAI package itself is listed under libraries",
+        "serves_features": [
+          "planning_agent_example_app"
+        ],
+        "serves_capabilities": [
+          "trip_day_planning_agent"
+        ]
+      },
+      "subagent_orchestration_runtime": {
+        "choice": "PydanticAI agents dispatched directly in-process and fanned out with asyncio.gather(..., return_exceptions=True): one structured-output coordinator agent returns a Pydantic-validated DelegationDecision (exactly two specialist ids from the fixed four-name roster, a pairing rationale, and a distinct brief per specialist, re-requested once when validation fails), then after the visitor's explicit dispatch confirmation the two knowledge-only specialist agents run as concurrent async tasks, then the coordinator agent is called a third time to merge their answers",
+        "purpose": "fills the catalog's subagent_orchestration_runtime substrate for the orchestrated-subagents example app; chosen over PydanticAI agent delegation (specialists as coordinator tools) because a model-driven tool loop could not guarantee exactly three calls and would serialise the specialists, defeating the visible parallelism the demo teaches, and because the spec requires specialists to have no tool access \u2014 the tool protocol strategy specifies a DIRECT in-process call, one async task per selected specialist, gathered via the parallel_fanout mechanism; chosen over LangGraph to avoid a second agent framework and its state-graph/checkpointing machinery on Render's free tier; gathering with return_exceptions=True is what lets one specialist fail while the other column's answer stays on screen and the merge proceeds with a note about the missing contribution; the shared usage-limit gate is checked and the full three-call budget reserved before the coordinator call, and the PydanticAI package itself is listed under libraries",
+        "serves_features": [
+          "orchestrated_subagents_example_app"
+        ],
+        "serves_capabilities": [
+          "orchestrated_specialist_answer",
+          "specialist_disagreement_note"
+        ],
+        "satisfies_nfr": [
+          "nfr_intermediate_steps___retrieved_passages__plans__delegation_decisions__per_agent_messages___are_visible_to_the_visitor_rather_than_hidden__since_making_agent_behaviour_observable_is_the_point_of_the_project_",
+          "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_",
+          "nfr_when_a_limit_is_reached_or_an_upstream_capability_is_unavailable__the_visitor_sees_a_clear__specific_explanation_that_distinguishes_the_two__and_any_results_already_produced_remain_on_screen_"
+        ]
+      },
+      "agent_message_bus": {
+        "choice": "hand-rolled in-process message bus promoted to a shared framework service at backend/app/services/message_bus.py \u2014 an append-only ordered envelope store with deliver(message), context_for(agent_id) filtering strictly on recipient equality, and a chronological log projection \u2014 with a slice-local opacity policy layer in the collaboration app applying the buyer/seller roles, sealed-constraint access rules and the no-seller-to-seller invariant on top of it",
+        "purpose": "fills the catalog's agent_message_bus substrate for the multi-agent collaboration example app, delivering each PeerMessage and assembling every agent turn's context from only the messages addressed to that agent, so peer opacity is enforced structurally in code rather than by prompt instruction \u2014 an agent's prompt cannot be built from the rival's messages because the assembly function is never given them, and this holds even when a seller reasons its way toward asking about the rival; chosen hand-rolled over a pub/sub library because subscription-by-convention would weaken the guarantee from structurally impossible to merely unsubscribed, and made a shared service (rather than slice-local) so future peer-agent examples can reuse the generic substrate while the scenario-specific rules stay in the slice; injected via FastAPI Depends like the moderation service so tests can substitute it, and unit-tested at both levels \u2014 that context_for never returns a non-addressed envelope, and that MessageLog.seller_to_seller_count is zero across every preset",
+        "serves_features": [
+          "multi_agent_collaboration_example_app"
+        ],
+        "serves_capabilities": [
+          "procurement_negotiation_run"
+        ],
+        "satisfies_nfr": [
+          "nfr_intermediate_steps___retrieved_passages__plans__delegation_decisions__per_agent_messages___are_visible_to_the_visitor_rather_than_hidden__since_making_agent_behaviour_observable_is_the_point_of_the_project_"
+        ]
+      },
+      "protocol_runtime": {
+        "choice": "hand-rolled A2A-shaped Pydantic models in the collaboration slice (backend/app/collab/protocol.py): AgentCard with AgentProvider/AgentSkill/AgentCapabilities, Task with TaskStatus/TaskState, Message with Role and Part/DataPart, and Artifact \u2014 serialised camelCase per the A2A spec's convention, carried over the shared in-process message bus with no HTTP, JSON-RPC or gRPC transport binding",
+        "purpose": "fills the catalog's protocol_runtime substrate for the multi-agent collaboration example app: implements A2A's Layer 1 canonical data model and Layer 2 interaction pattern while deliberately omitting Layer 3 transport bindings, exactly as the vision constrains; chosen hand-rolled over the official a2a-sdk to add no backend dependency and no cold-start import weight on Render's free tier (where spin-down makes cold start a routine path), and because a single readable models file suits a repo people read to learn \u2014 following the same teaching-clarity precedent as the hand-rolled chunking pipeline; the honesty cost is accepted and paid for in the overview, which says the exchanges are modelled on A2A's data model and interaction pattern rather than claiming the protocol's own objects, and states what a real cross-owner deployment would add (a Layer 3 transport binding, agent discovery over /.well-known/agent-card.json, and real authentication between owners)",
+        "serves_features": [
+          "multi_agent_collaboration_example_app"
+        ],
+        "serves_capabilities": [
+          "procurement_negotiation_run"
+        ],
+        "satisfies_nfr": [
+          "nfr_every_example_includes_a_short_educational_overview_of_the_pattern_it_demonstrates_and_states_honestly_where_the_demonstration_is_simplified_for_teaching_or_cost_reasons_"
+        ]
+      }
+    },
+    "ai_conventions": {
+      "prompt_versioning": "the rag_example_app's prompt template (including its structured-output schema/instructions) is stored as a versioned file in-repo (e.g. backend/app/rag/prompts/answer_v1.md), tagged with a semantic version in the filename/header, and loaded by a thin resolver function; the single_call_example_app's preset prompts follow the same convention \u2014 plain text/intent metadata stored in-repo (e.g. backend/app/single_call/prompts/presets.py or a versioned data file), with any structured-mode JSON schemas defined alongside as versioned Pydantic models; the chained_calls_example_app's 'struggling writer' and 'harsh critic' persona system-prompt templates follow the identical convention \u2014 versioned files under backend/app/chained_calls/prompts/ (e.g. writer_v1.md, critic_v1.md), loaded by the same thin resolver pattern; the planning_agent_example_app's planner and synthesis prompt templates follow the identical convention \u2014 versioned files under backend/app/planning/prompts/ (e.g. planner_v1.md, synthesis_v1.md), with the Plan/StepResult/Itinerary structured-output schemas defined alongside as versioned Pydantic models; the orchestrated_subagents_example_app's coordinator delegation, specialist, and merge prompt templates follow the identical convention \u2014 versioned files under backend/app/orchestrated/prompts/ (e.g. delegation_v1.md, specialist_v1.md, merge_v1.md), with the DelegationDecision/Brief/SubagentResult/MergedAnswer structured-output schemas (the merged answer carrying the disagreement note as fields on the same schema) defined alongside as versioned Pydantic models; the multi_agent_collaboration_example_app's negotiation prompt templates follow the identical convention \u2014 versioned files under backend/app/collab/prompts/ (seller_bid_v1.md, seller_final_v1.md, buyer_counter_v1.md, buyer_award_v1.md, reveal_explanation_v1.md, sensitivity_v1.md), with the Bid/CounterOffer/Award and the two thin explanation schemas defined alongside as versioned Pydantic models, deliberately kept as separate narrow schemas per call rather than one wide award schema so that a non-conforming response degrades only its own panel; no external prompt-management tool"
+    },
+    "libraries": [
+      {
+        "name": "FastAPI",
+        "purpose": "REST API framework, async-native, generates OpenAPI schema from Pydantic models",
+        "category": "web framework",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "SQLAlchemy",
+        "purpose": "ORM/toolkit for Neon Postgres access, including pgvector column types and the JSONB stage payloads of the negotiation run record",
+        "category": "orm",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "asyncpg",
+        "purpose": "async PostgreSQL driver used by SQLAlchemy's async engine to connect to Neon",
+        "category": "database driver",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "Alembic",
+        "purpose": "versioned schema migrations for the Postgres/Neon schema, including the revision adding the negotiation_runs and peer_messages tables for the multi-agent collaboration run record and its verifiable message log",
+        "category": "database migrations",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "httpx",
+        "purpose": "async HTTP client for calling the Exa Search API without blocking the event loop (tool-use example app and the planning-agent example app's web-search tool), and for the shared moderation service's POST to the OpenAI Moderation endpoint, following the same thin-client pattern as the Exa client",
+        "category": "http client",
+        "language": "Python",
+        "serves_features": [
+          "tool_use_integration",
+          "planning_agent_example_app",
+          "shared_framework_services",
+          "orchestrated_subagents_example_app"
+        ],
+        "serves_capabilities": [
+          "trip_day_planning_agent",
+          "question_moderation"
+        ]
+      },
+      {
+        "name": "Pydantic",
+        "purpose": "request/response validation, structured-output schema for the RAG answer format, per-preset schema models for the single-call example app's Structured mode, the Plan/PlanStep/StepResult/Itinerary schemas bounding the planning-agent run, the DelegationDecision/Brief/SubagentResult/MergedAnswer schemas for the orchestrated run, the ModerationVerdict model, and \u2014 for the multi-agent collaboration app \u2014 the hand-rolled A2A-shaped protocol models (AgentCard, Task, Message, Part, Artifact), the Bid/CounterOffer/Award negotiation schemas, the two thin explanation schemas, and the typed scenario/sealed-constraint/identity-card fixture literals that mypy strict checks",
+        "category": "validation",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "LiteLLM",
+        "purpose": "unified interface to OpenRouter's free models for text generation, with built-in retry/fallback across the primary and fallback model, used by RAG and by the single-call example app's simple and structured-output requests",
+        "category": "ai",
+        "language": "Python",
+        "serves_features": [
+          "rag_example_app",
+          "shared_framework_services",
+          "single_call_example_app"
+        ],
+        "serves_capabilities": [
+          "rag_example_app",
+          "single_call_generation"
+        ],
+        "satisfies_nfr": [
+          "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_"
+        ]
+      },
+      {
+        "name": "PydanticAI",
+        "purpose": "agent framework running the chained-calls example app's fixed two-step writer\u2192critic sequence, the planning-agent example app's planner/executor agents (structured-output planner, native tool-calling executors wrapping the Exa search tool), the orchestrated-subagents example app's coordinator and two knowledge-only specialist agents, and the multi-agent collaboration example app's buyer and two seller peer agents (six schema-constrained negotiation turns plus the two post-award explanation calls, all knowledge-only with no tool access), all via its OpenRouterProvider and native FallbackModel; the anticipated multi-agent growth path realized with no framework swap",
+        "category": "agent framework",
+        "language": "Python",
+        "serves_features": [
+          "chained_calls_example_app",
+          "planning_agent_example_app",
+          "orchestrated_subagents_example_app",
+          "multi_agent_collaboration_example_app"
+        ],
+        "serves_capabilities": [
+          "chained_role_play_generation",
+          "trip_day_planning_agent",
+          "orchestrated_specialist_answer",
+          "specialist_disagreement_note",
+          "procurement_negotiation_run",
+          "private_position_reveal_explanation",
+          "priority_sensitivity_explanation"
+        ],
+        "satisfies_nfr": [
+          "nfr_application_wide_hourly_and_daily_usage_limits_protect_the_free_allowance_and_are_enforced_across_all_examples_together_"
+        ]
+      },
+      {
+        "name": "sse-starlette",
+        "purpose": "server-sent events response support for FastAPI, streaming the planning-agent run's incremental results, the orchestrated-subagents run's three phases, and the multi-agent collaboration run's eight stages (RFQ, concurrent opening bids, counter-offers, concurrent best-and-final bids, award, then the concurrent reveal and sensitivity panels), with built-in ping/keep-alive (important behind Render's proxy) and client-disconnect detection so an abandoned run stops spending model quota",
+        "category": "streaming",
+        "language": "Python",
+        "serves_features": [
+          "planning_agent_example_app",
+          "orchestrated_subagents_example_app",
+          "multi_agent_collaboration_example_app"
+        ],
+        "serves_capabilities": [
+          "trip_day_planning_agent",
+          "orchestrated_specialist_answer",
+          "procurement_negotiation_run"
+        ],
+        "satisfies_nfr": [
+          "nfr_multi_step_runs_reveal_results_progressively_as_each_step_completes_rather_than_only_at_the_end__so_waiting_is_informative_",
+          "nfr_intermediate_steps___retrieved_passages__plans__delegation_decisions__per_agent_messages___are_visible_to_the_visitor_rather_than_hidden__since_making_agent_behaviour_observable_is_the_point_of_the_project_"
+        ]
+      },
+      {
+        "name": "tenacity",
+        "purpose": "bounded retry with backoff around outbound calls, including the shared moderation service's call to the OpenAI moderation endpoint before it fails closed",
+        "category": "resilience",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "sentence-transformers",
+        "purpose": "in-process local embedding model (all-MiniLM-L6-v2) for text representation at index and query time, shared by the RAG pipeline and the embeddings example app so both use the same embedding representation",
+        "category": "ai",
+        "language": "Python",
+        "serves_features": [
+          "rag_example_app",
+          "shared_framework_services",
+          "embeddings_example_app"
+        ],
+        "serves_capabilities": [
+          "rag_example_app",
+          "custom_text_semantic_placement"
+        ]
+      },
+      {
+        "name": "scikit-learn",
+        "purpose": "PCA dimensionality reduction, fitted once on the preconfigured examples' embeddings and reused via .transform() for custom text, so the 2D layout stays stable across recalculations rather than jumping when a new point is added",
+        "category": "machine learning",
+        "language": "Python",
+        "serves_features": [
+          "embeddings_example_app"
+        ],
+        "serves_capabilities": [
+          "custom_text_semantic_placement"
+        ]
+      },
+      {
+        "name": "numpy",
+        "purpose": "numeric array support underpinning the embedding and PCA projection maths and the in-process projection cache",
+        "category": "numerics",
+        "language": "Python",
+        "serves_features": [
+          "embeddings_example_app",
+          "rag_example_app"
+        ],
+        "serves_capabilities": [
+          "custom_text_semantic_placement",
+          "rag_example_app"
+        ]
+      },
+      {
+        "name": "pgvector",
+        "purpose": "Python/SQLAlchemy client for the pgvector Postgres extension, enabling vector columns and similarity queries",
+        "category": "database client",
+        "language": "Python",
+        "serves_features": [
+          "rag_example_app"
+        ],
+        "serves_capabilities": [
+          "rag_example_app"
+        ]
+      },
+      {
+        "name": "pydantic-settings",
+        "purpose": "typed, validated configuration objects reading env vars/.env files (OpenRouter, Exa and OpenAI moderation keys, DB URL, CORS origin, Sentry DSN)",
+        "category": "configuration",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "structlog",
+        "purpose": "structured JSON logging for application events and service-log entries, including per-run orchestration telemetry and the multi-agent collaboration run's telemetry (negotiation-stage call count with an alert when it differs from six, total calls used, per-stage latencies, per-seller degradation flags, explanation-call validator pass and fallback rates, and the seller-to-seller message count that must stay zero)",
+        "category": "logging and observability",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "sentry-sdk",
+        "purpose": "backend error tracking and aggregation across FastAPI, LiteLLM, PydanticAI, Exa and moderation calls, with model-call performance spans (token usage, latency, error rates) on the free tier",
+        "category": "logging and observability",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "pytest",
+        "purpose": "backend test runner",
+        "category": "testing",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "Ruff",
+        "purpose": "Python linter and formatter",
+        "category": "linting and formatting",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "mypy",
+        "purpose": "strict static type checking of the comprehensively annotated backend, and the reason the collaboration app's scenario, sealed-constraint and identity-card fixtures are authored as typed Python literals rather than YAML \u2014 the fixtures themselves are type-checked by the existing gate",
+        "category": "type checking",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "React",
+        "purpose": "UI framework for the single-page app",
+        "category": "ui framework",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "Vite",
+        "purpose": "frontend build tool and dev server, with native code-splitting support",
+        "category": "build tool",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "React Router",
+        "purpose": "client-side routing with lazy-loaded routes, one per example app",
+        "category": "routing",
+        "language": "TypeScript",
+        "foundational": true,
+        "satisfies_nfr": [
+          "nfr_new_example_apps_can_be_added_and_appear_in_the_entry_view_and_navigation_without_altering_existing_examples_",
+          "nfr_every_example_is_reachable_within_one_selection_from_the_entry_view_and_from_a_persistent_navigation_listing_on_every_page_"
+        ]
+      },
+      {
+        "name": "TanStack Query",
+        "purpose": "data fetching, caching, and loading/error state management for calls to the API",
+        "category": "data fetching",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "@microsoft/fetch-event-source",
+        "purpose": "fetch-based SSE client supporting POST bodies, custom headers, and abort \u2014 required because the browser's native EventSource is GET-only and the planning-agent, orchestrated-subagents and multi-agent collaboration runs all start from a POST payload; consumes each run's streamed stage events and renders them as they arrive, so both parallel seller columns are visibly in progress together exactly as the specialist columns are",
+        "category": "streaming",
+        "language": "TypeScript",
+        "serves_features": [
+          "planning_agent_example_app",
+          "orchestrated_subagents_example_app",
+          "multi_agent_collaboration_example_app"
+        ],
+        "serves_capabilities": [
+          "trip_day_planning_agent",
+          "orchestrated_specialist_answer",
+          "procurement_negotiation_run"
+        ],
+        "satisfies_nfr": [
+          "nfr_multi_step_runs_reveal_results_progressively_as_each_step_completes_rather_than_only_at_the_end__so_waiting_is_informative_",
+          "nfr_intermediate_steps___retrieved_passages__plans__delegation_decisions__per_agent_messages___are_visible_to_the_visitor_rather_than_hidden__since_making_agent_behaviour_observable_is_the_point_of_the_project_"
+        ]
+      },
+      {
+        "name": "Tailwind CSS",
+        "purpose": "utility-first styling enforcing a consistent visual language and light/dark theming across all example apps, including the single-call app's JSON displays, the orchestrated-subagents app's parallel specialist columns, and the collaboration app's parallel seller columns, buyer track, reveal and sensitivity panels, and the dense sender-to-recipient message-log table",
+        "category": "styling",
+        "language": "TypeScript",
+        "foundational": true,
+        "satisfies_nfr": [
+          "nfr_all_examples_share_one_consistent_page_layout__so_a_visitor_who_learns_one_can_navigate_the_rest_without_relearning_",
+          "nfr_the_examples_remain_usable_on_a_laptop_sized_screen_with_a_typical_consumer_network_connection_"
+        ]
+      },
+      {
+        "name": "react-markdown",
+        "purpose": "renders model-produced markdown prose as React elements rather than via dangerouslySetInnerHTML on this unauthenticated public surface \u2014 the orchestrated-subagents app's merged answer and specialist answers, and the collaboration app's award rationale, reveal explanations and sensitivity note",
+        "category": "markdown rendering",
+        "language": "TypeScript",
+        "serves_features": [
+          "orchestrated_subagents_example_app",
+          "multi_agent_collaboration_example_app"
+        ],
+        "serves_capabilities": [
+          "orchestrated_specialist_answer",
+          "procurement_negotiation_run",
+          "private_position_reveal_explanation",
+          "priority_sensitivity_explanation"
+        ],
+        "satisfies_nfr": [
+          "nfr_every_example_includes_a_short_educational_overview_of_the_pattern_it_demonstrates_and_states_honestly_where_the_demonstration_is_simplified_for_teaching_or_cost_reasons_"
+        ]
+      },
+      {
+        "name": "remark-gfm",
+        "purpose": "adds GitHub-flavoured markdown support (tables, strikethrough) to react-markdown for specialist, merged and negotiation answers that use them",
+        "category": "markdown rendering",
+        "language": "TypeScript",
+        "status": "optional",
+        "serves_features": [
+          "orchestrated_subagents_example_app",
+          "multi_agent_collaboration_example_app"
+        ],
+        "serves_capabilities": [
+          "orchestrated_specialist_answer",
+          "procurement_negotiation_run"
+        ]
+      },
+      {
+        "name": "plotly.js",
+        "purpose": "core charting engine rendering the embeddings example app's interactive 2D scatter plot, with built-in hover, legend, and zoom/pan for the educational visualization",
+        "category": "visualization",
+        "language": "TypeScript",
+        "serves_features": [
+          "embeddings_example_app"
+        ],
+        "serves_capabilities": [
+          "custom_text_semantic_placement"
+        ]
+      },
+      {
+        "name": "react-plotly.js",
+        "purpose": "React component wrapper around plotly.js used to render the embeddings scatter plot declaratively, ships its own TypeScript declarations",
+        "category": "visualization",
+        "language": "TypeScript",
+        "serves_features": [
+          "embeddings_example_app"
+        ],
+        "serves_capabilities": [
+          "custom_text_semantic_placement"
+        ]
+      },
+      {
+        "name": "Vitest",
+        "purpose": "frontend unit/component test runner, Vite-native",
+        "category": "testing",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "React Testing Library",
+        "purpose": "component testing focused on user-visible behavior",
+        "category": "testing",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "Playwright",
+        "purpose": "end-to-end browser testing of full user flows across the deployed SPA and API",
+        "category": "testing",
+        "language": "TypeScript",
+        "status": "deferred"
+      },
+      {
+        "name": "@sentry/react",
+        "purpose": "frontend error tracking for unhandled exceptions and failed requests, unified with the backend Sentry project (free tier)",
+        "category": "logging and observability",
+        "language": "TypeScript",
+        "foundational": true
+      }
+    ],
+    "project_structure": [
+      {
+        "path": "backend/app/api/",
+        "purpose": "thin FastAPI routers, one module per feature (landing, RAG, tool-use, embeddings, single-call, chained-calls, planning-agent, orchestrated-subagents, multi-agent collaboration, shared services, health)"
+      },
+      {
+        "path": "backend/app/api/collab.py",
+        "purpose": "thin SSE router for the multi-agent collaboration run: validates the scenario enum and priority weighting, delegates to the slice service, and streams one event per negotiation stage plus the two explanation panels"
+      },
+      {
+        "path": "backend/app/services/",
+        "purpose": "shared framework services: LLM access (LiteLLM wrapper), embedding (sentence-transformers wrapper), storage abstraction, shared model-slug config, and the usage-limit quota-check/logging function with reserve/redeem/refund holds \u2014 reused by both the LiteLLM and PydanticAI call paths"
+      },
+      {
+        "path": "backend/app/services/moderation.py",
+        "purpose": "shared content-moderation service: a generic moderate(text, calling_context) -> ModerationVerdict function calling the OpenAI moderation endpoint over httpx with tenacity-bounded retry, failing closed with a plain-language visitor message, logging only a salted hash of the input, and injected via FastAPI Depends so any example app with a free-form input can reuse it"
+      },
+      {
+        "path": "backend/app/services/message_bus.py",
+        "purpose": "shared in-process peer message bus: append-only ordered envelope store with deliver(message), context_for(agent_id) filtering strictly on recipient equality, and a chronological log projection; generic substrate only \u2014 role and visibility policy belongs to the calling slice \u2014 and injected via FastAPI Depends so tests can substitute it"
+      },
+      {
+        "path": "backend/app/rag/",
+        "purpose": "RAG-specific logic: chunking pipeline, retriever, versioned prompt templates"
+      },
+      {
+        "path": "backend/app/embeddings/",
+        "purpose": "embeddings example app logic: bundled preconfigured TextSample set, in-process embedding + PCA fit/transform, and the API route accepting custom text and returning the recalculated 2D projection"
+      },
+      {
+        "path": "backend/app/single_call/",
+        "purpose": "single-call example app logic: bundled preset prompt set, per-preset Pydantic schema models for Structured mode, and the API route returning a plain-text or structured (request+response) result via the shared LiteLLM generation service"
+      },
+      {
+        "path": "backend/app/chained_calls/",
+        "purpose": "chained-calls example app logic: PydanticAI agent setup, the two-step writer\u2192critic run function, and the API route returning the intermediate and final outputs"
+      },
+      {
+        "path": "backend/app/chained_calls/prompts/",
+        "purpose": "versioned persona system-prompt templates ('struggling writer', 'harsh critic') following the project's in-repo prompt-versioning convention"
+      },
+      {
+        "path": "backend/app/planning/",
+        "purpose": "planning-agent example app logic: PydanticAI planner agent (structured-output Plan, validated and trimmed to the 2\u20133 step cap), Exa web-search tool registration for executor agents, the sequential user-advanced executor run function gated by the shared quota check, and the SSE route streaming Plan, StepResults, and the final Itinerary"
+      },
+      {
+        "path": "backend/app/planning/prompts/",
+        "purpose": "versioned planner and synthesis prompt templates with the Plan/StepResult/Itinerary structured-output Pydantic schemas alongside"
+      },
+      {
+        "path": "backend/app/orchestrated/",
+        "purpose": "orchestrated-subagents example app logic: the bundled four-specialist roster config and curated preset questions, the moderation gate call for free-form questions only, the PydanticAI coordinator agent producing a validated DelegationDecision, the asyncio.gather fan-out running the two knowledge-only specialist agents concurrently with return_exceptions=True, the merge call producing the MergedAnswer with its disagreement note, the three-call budget reservation against the shared hourly usage gate, and the SSE route streaming the delegation decision, per-specialist status/answers, and the merged answer"
+      },
+      {
+        "path": "backend/app/orchestrated/prompts/",
+        "purpose": "versioned coordinator delegation, specialist, and merge prompt templates with the DelegationDecision/Brief/SubagentResult/MergedAnswer structured-output Pydantic schemas alongside"
+      },
+      {
+        "path": "backend/app/collab/",
+        "purpose": "multi-agent collaboration example app logic: the opacity policy layer over the shared message bus (buyer/seller roles, own-constraints-only access, the no-seller-to-seller invariant), the deterministic RFQ composer that takes no model call, the buyer and two seller PydanticAI peer agents, the asyncio.gather concurrent bid rounds with return_exceptions=True, the buyer counter-offer and award turns, the two concurrent post-award explanation calls, the eight-call budget reservation taken against the shared hourly usage gate before the RFQ is composed, and the NegotiationRecord persistence plus per-stage SSE emission"
+      },
+      {
+        "path": "backend/app/collab/protocol.py",
+        "purpose": "the hand-rolled A2A-shaped Pydantic protocol models \u2014 AgentCard with AgentProvider/AgentSkill/AgentCapabilities, Task with TaskStatus/TaskState, Message with Role and Part/DataPart, and Artifact \u2014 serialised camelCase per the A2A convention, in one readable file so a visitor can see exactly what the protocol treatment does and does not include"
+      },
+      {
+        "path": "backend/app/collab/scenarios.py",
+        "purpose": "typed Python literal fixtures, mypy-checked: the pre-tuned procurement scenario catalog, each scenario's per-seller sealed private constraints with their reveal headlines, the selectable priority-weighting presets, and the three A2A-shaped agent identity cards"
+      },
+      {
+        "path": "backend/app/collab/prompts/",
+        "purpose": "versioned negotiation prompt templates (seller_bid_v1.md, seller_final_v1.md, buyer_counter_v1.md, buyer_award_v1.md, reveal_explanation_v1.md, sensitivity_v1.md) with the Bid/CounterOffer/Award and the two narrow explanation Pydantic schemas alongside"
+      },
+      {
+        "path": "backend/app/db/",
+        "purpose": "SQLAlchemy models, session factory, Alembic migrations (including the revision adding negotiation_runs and peer_messages)"
+      },
+      {
+        "path": "backend/app/core/",
+        "purpose": "configuration (pydantic-settings), logging/Sentry setup"
+      },
+      {
+        "path": "backend/tests/",
+        "purpose": "pytest suites mirroring the package layout, including message-bus tests that context_for never returns a non-addressed envelope, collaboration-slice tests that seller_to_seller_count is zero across every preset scenario, tests that the negotiation-stage call count is exactly six and the total exactly eight, tests that a failed seller stage preserves the other track, and tests that the same scenario under different priority weightings can produce a different award"
+      },
+      {
+        "path": "frontend/src/screens/",
+        "purpose": "one folder per screen: landing, RAG example, tool-use example, embeddings example, single-call example, chained-calls example, planning-agent example, orchestrated-subagents example, multi-agent collaboration example, framework console"
+      },
+      {
+        "path": "frontend/src/apps/",
+        "purpose": "one folder per example app (rag, tool-use, embeddings, single-call, chained-calls, planning, orchestrated, collab, and future additions), each lazy-loaded via its own route"
+      },
+      {
+        "path": "frontend/src/apps/embeddings/",
+        "purpose": "the embeddings example app's route module: plot component (react-plotly.js), custom-text input, and the educational explanation of the embedding pattern"
+      },
+      {
+        "path": "frontend/src/apps/single-call/",
+        "purpose": "the single-call example app's route module: prompt input and preset selector, Simple/Structured mode toggle, plain-text response view, side-by-side structured request/response JSON view, and the educational explanation of the single-call pattern"
+      },
+      {
+        "path": "frontend/src/apps/chained-calls/",
+        "purpose": "the chained-calls example app's route module: initial-request input, upfront description of each call's role, labeled intermediate-output and final-output blocks, the two-call quota-conservation notice, and the educational explanation of the chained-calls pattern"
+      },
+      {
+        "path": "frontend/src/apps/planning/",
+        "purpose": "the planning-agent example app's route module: city/interests input, plan display, the explicit 'Next' advance button, progressively appearing step results consumed from the SSE stream, the final itinerary view, the localStorage-backed run-allowance display, the per-run and per-session limit notices, and the educational explanation of the planning-agent pattern"
+      },
+      {
+        "path": "frontend/src/apps/orchestrated/",
+        "purpose": "the orchestrated-subagents example app's route module: preset selector and free-form question input with the moderation refusal message, the delegation-decision panel, the explicit 'Next' dispatch button, two parallel specialist columns with live independent status, the merged answer and disagreement note, the visible runs-remaining counter, the disabled-input state distinguishing the session limit from the showcase-wide allowance, and the educational explanation of the pattern"
+      },
+      {
+        "path": "frontend/src/apps/collab/",
+        "purpose": "the multi-agent collaboration example app's route module: preset scenario selector and priority-weighting control (no free-text input), inspectable agent identity cards, the buyer track carrying the RFQ, counter-offers and award, two parallel seller columns with live per-seller status matching the orchestrated app's treatment, the end-of-run private-position reveal panel, the priority-sensitivity panel, the toggleable raw message-log table, the stated 8-call cost split as 6 negotiation plus 2 explanation calls, and the educational overview contrasting this pattern with orchestrated subagents and carrying the candid notes that the protocol treatment omits the network transport and that all three agents ship under one owner with the trust boundary staged for teaching"
+      },
+      {
+        "path": "frontend/src/apps/collab/message-log.tsx",
+        "purpose": "the raw message-log view: a hand-rolled Tailwind-styled table with one row per envelope (sequence, time, sender \u2192 recipient, stage, summary) and expandable plain pretty-printed JSON work items, deliberately dense and chronological so the absence of any seller-to-seller row is visible at a glance; no JSON-viewer or syntax-highlighting dependency and no copy-to-clipboard"
+      },
+      {
+        "path": "frontend/src/components/",
+        "purpose": "shared UI: nav bar, theme toggle, layout shell, and the shared markdown renderer wrapper around react-markdown with its Tailwind typography styles"
+      },
+      {
+        "path": "frontend/src/api/",
+        "purpose": "typed API client and TanStack Query hooks calling the backend, plus the SSE consumption hooks for the planning-agent, orchestrated-subagents and multi-agent collaboration run streams"
+      },
+      {
+        "path": "frontend/src/routes.tsx",
+        "purpose": "route configuration with lazy (React.lazy) imports per example app"
+      },
+      {
+        "path": "frontend/tests/",
+        "purpose": "Vitest + React Testing Library suites"
+      }
+    ],
+    "coding_style": {
+      "patterns": [
+        "functional core / imperative shell \u2014 pure functions for chunking/retrieval/scoring logic, PCA fit/transform, single-call schema validation, the chained-calls writer\u2192critic sequencing, the planning-agent plan validation/trimming and step sequencing, the orchestrated-subagents delegation validation, the moderation-response mapping, and the collaboration app's deterministic RFQ composition, message-bus recipient filtering, opacity policy checks and award-versus-priorities consistency checks, with thin FastAPI route handlers as the imperative shell",
+        "dependency injection for shared services (LiteLLM client, PydanticAI agents, DB session, Exa client, moderation service, peer message bus) via FastAPI's Depends, so tests can substitute them through app.dependency_overrides",
+        "concurrent agent work is dispatched in application code with asyncio.gather(..., return_exceptions=True) rather than delegated to a model-driven tool loop, so call counts stay fixed and one worker's failure never cancels the other \u2014 used for the orchestrated specialist pair, the collaboration app's two seller bid rounds, and its two post-award explanation calls",
+        "peer visibility is enforced structurally, never by prompt instruction: an agent's turn context is assembled only from envelopes the message bus returns for that agent, so a rival's messages and sealed constraints are unreachable by construction rather than by asking the model not to look",
+        "React: function components and hooks only, no class components",
+        "custom hooks for shared frontend logic (e.g. useExampleApps, useTheme, useRunAllowance)"
+      ],
+      "documentation": [
+        "Google-style docstrings on every public Python function",
+        "JSDoc on every exported TypeScript function",
+        "every source file, Python and TypeScript, opens with the header comment 'Built with Spec4 AI - https://spec4.ai'"
+      ]
+    },
+    "additional_decisions": [
+      {
+        "name": "collaboration_run_call_budget",
+        "description": "The declared per-run model-call budget for the multi-agent collaboration example app, and how it is disclosed and policed.",
+        "value": "8 calls per run, disclosed on the page as 6 negotiation calls (2 opening bids, 1 buyer counter, 2 best-and-final bids, 1 award) plus 2 post-award explanation calls (private-position reveal, priority sensitivity); all 8 reserved via allowance_holds before the deterministic RFQ is composed so a run is never begun that cannot complete; telemetry alerts on the negotiation-stage count differing from 6, which remains the number the pattern claim rests on. This supersedes the vision's and feature spec's 'exactly 6 model calls per run' wording, which should be updated on the next vision pass."
+      }
+    ],
+    "references": [
+      {
+        "standard": "LiteLLM",
+        "url": "https://docs.litellm.ai/docs"
+      },
+      {
+        "standard": "OpenRouter",
+        "url": "https://openrouter.ai/docs"
+      },
+      {
+        "standard": "Render",
+        "url": "https://render.com/docs"
+      },
+      {
+        "standard": "Exa Search API",
+        "url": "https://exa.ai/docs/reference/search-api-guide"
+      },
+      {
+        "standard": "Neon",
+        "url": "https://neon.com/docs/introduction"
+      },
+      {
+        "standard": "pgvector",
+        "url": "https://github.com/pgvector/pgvector"
+      },
+      {
+        "standard": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks (Lewis et al.)",
+        "url": "https://arxiv.org/abs/2005.11401"
+      },
+      {
+        "standard": "JSON Schema",
+        "url": "https://json-schema.org/specification"
+      },
+      {
+        "standard": "OpenAI Structured Outputs guide",
+        "url": "https://platform.openai.com/docs/guides/structured-outputs"
+      },
+      {
+        "standard": "OpenAI Moderation API guide",
+        "url": "https://platform.openai.com/docs/guides/moderation"
+      },
+      {
+        "standard": "Prompt Engineering Guide (general single-call prompting reference)",
+        "url": "https://www.promptingguide.ai/",
+        "note": "unique to this project"
+      },
+      {
+        "standard": "PydanticAI",
+        "url": "https://ai.pydantic.dev/"
+      },
+      {
+        "standard": "Building Effective Agents (prompt chaining / planner-executor pattern overview, Anthropic)",
+        "url": "https://www.anthropic.com/research/building-effective-agents"
+      },
+      {
+        "standard": "How we built our multi-agent research system (orchestrator-worker fan-out/fan-in, Anthropic)",
+        "url": "https://www.anthropic.com/engineering/built-multi-agent-research-system"
+      },
+      {
+        "standard": "Agent2Agent (A2A) Protocol specification",
+        "url": "https://a2a-protocol.org/latest/specification/"
+      },
+      {
+        "standard": "Agent2Agent (A2A) Protocol repository",
+        "url": "https://github.com/a2aproject/A2A"
+      },
+      {
+        "standard": "Counterfactual Explanations without Opening the Black Box (Wachter, Mittelstadt & Russell)",
+        "url": "https://arxiv.org/abs/1711.00399"
+      },
+      {
+        "standard": "Server-Sent Events (WHATWG HTML Living Standard \u00a79.2)",
+        "url": "https://html.spec.whatwg.org/multipage/server-sent-events.html"
+      },
+      {
+        "standard": "sse-starlette",
+        "url": "https://github.com/sysid/sse-starlette"
+      },
+      {
+        "standard": "@microsoft/fetch-event-source",
+        "url": "https://github.com/Azure/fetch-event-source"
+      },
+      {
+        "standard": "react-markdown",
+        "url": "https://github.com/remarkjs/react-markdown"
+      },
+      {
+        "standard": "Spec4 pattern library \u2014 orchestrated_subagents tier",
+        "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/tiers/08_orchestrated_subagents.md",
+        "note": "unique to this project"
+      },
+      {
+        "standard": "Spec4 pattern library \u2014 multi_agent_collaboration tier",
+        "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/tiers/09_multi_agent_collaboration.md",
+        "note": "unique to this project"
+      }
+    ]
+  }
+}

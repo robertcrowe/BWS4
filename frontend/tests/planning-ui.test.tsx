@@ -57,7 +57,7 @@ const PLAN_RESPONSE = {
   replanned: false,
   model: 'groq/openai/gpt-oss-120b',
   calls_used: 1,
-  call_ceiling: 7,
+  call_ceiling: 9,
 }
 
 function stepEvent(index: number, status: 'completed' | 'failed' = 'completed') {

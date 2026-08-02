@@ -47,8 +47,8 @@ class TestRunBudget:
         had zero tolerance and lost a column on roughly half of all dispatches.
         """
         assert LOGICAL_CALLS_PER_RUN == 4
-        assert STEP_REQUEST_LIMIT == 2
-        assert MAX_PROVIDER_REQUESTS == LOGICAL_CALLS_PER_RUN * STEP_REQUEST_LIMIT == 8
+        assert STEP_REQUEST_LIMIT == 3
+        assert MAX_PROVIDER_REQUESTS == LOGICAL_CALLS_PER_RUN * STEP_REQUEST_LIMIT
 
     def test_the_visitor_facing_count_does_not_follow_the_ceiling(self) -> None:
         """A re-prompt is the framework fixing its own malformed request.

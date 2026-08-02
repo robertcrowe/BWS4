@@ -4,6 +4,17 @@ export interface SearchResult {
   summary: string
   source: string
   rank: number
+  /**
+   * When the page was published, as Exa reports it, or null when it could not
+   * determine one.
+   *
+   * Shown on the card because **relevance is not recency**: Exa ranks purely
+   * on relevance, so a 2023 article can out-rank a current one for a
+   * time-sensitive question. Without a date on screen, a stale *page* is
+   * indistinguishable from the demo answering out of stale training data —
+   * which is exactly how it was read.
+   */
+  published_date: string | null
 }
 
 /**

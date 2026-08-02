@@ -1,0 +1,248 @@
+```json
+{
+  "purpose": "Runs one complete competitive procurement negotiation round between a buyer agent acting for the visitor and two rival seller agents with private, mutually invisible constraints, producing the full negotiation record (RFQ, opening bids, counter-offers, best-and-final bids, award with priority-weighted rationale, and the end-of-run constraint reveal) so a visitor can see and verify the multi-agent collaboration pattern.",
+  "invocation": {
+    "trigger": "Visitor presses 'Start negotiation round' in the Multi-Agent Collaboration example app after choosing a preset scenario and setting a priority weighting; server-side POST /examples/multi-agent/runs.",
+    "mode": "streaming"
+  },
+  "inputs": [
+    {
+      "name": "scenario_id",
+      "type": "string (enum over the fixed preset catalog, e.g. 'industrial_valves_lot', 'lab_reagents_annual', 'fleet_tyres_regional')",
+      "description": "Identifier of the preset procurement Scenario. Resolves to the buyer's need statement, the two seller identity cards, and each party's sealed PrivateConstraint set.",
+      "required": true
+    },
+    {
+      "name": "priority_weighting",
+      "type": "object — { price: int, delivery: int, quantity_flexibility: int, warranty: int } each 0–100, normalised server-side to sum 1.0",
+      "description": "The visitor's stated priorities across the four non-comparable bid dimensions. Drives the buyer agent's counter-offer targeting and award rationale.",
+      "required": true
+    },
+    {
+      "name": "usage_allowance",
+      "type": "object — { visitor_token: string, calls_remaining_hour: int, calls_remaining_day: int }",
+      "description": "Structured allowance record from shared_framework_services. The run reserves its full 6-call budget atomically before stage 1 so a round can never be cut off mid-negotiation.",
+      "required": true
+    },
+    {
+      "name": "run_seed",
+      "type": "integer (optional, defaults to server-generated)",
+      "description": "Seed recorded on the Run for reproducibility of transcript ordering and any deterministic jitter in the scenario; model sampling is temperature-controlled, not seeded.",
+      "required": false
+    }
+  ],
+  "outputs": {
+    "primary": "A NegotiationRecord: the composed QuotationRequest, both sellers' opening Bids, the buyer's targeted CounterOffers, both best-and-final Bids, the buyer's Award with a rationale that cites the stated priorities, the full ordered PeerMessage log (with sender/recipient on every message), and the post-award reveal of each party's PrivateConstraints.",
+    "format": "JSON object streamed as ordered stage events (SSE), each event carrying one A2A-shaped PeerMessage plus a stage marker; final event carries the assembled NegotiationRecord.",
+    "schema_notes": "NegotiationRecord { run_id, scenario_id, priority_weighting_normalised, quotation_request: QuotationRequest, stages: [ {stage: 'rfq'|'opening_bids'|'counter_offers'|'best_and_final'|'award', messages: PeerMessage[] } ], award: Award, reveal: { buyer: PrivateConstraint[], seller_a: PrivateConstraint[], seller_b: PrivateConstraint[] }, telemetry: { model_calls: 6, degraded: bool, degradation_reason: string|null } }. PeerMessage { id, from_agent, to_agent, stage, kind: 'rfq'|'bid'|'counter_offer'|'award'|'withdrawal', payload, created_at } — to_agent is always the buyer or a seller, never seller→seller. Bid { seller_id, unit_price, price_basis: 'per_unit'|'per_lot', delivery_window_days, min_quantity, max_quantity, quantity_tier_notes, warranty_months, warranty_scope, conditions[] }. CounterOffer { to_seller, targeted_dimensions[], asks[], justification }. Award { winner_seller_id, rationale, priority_tradeoffs: [{dimension, weight, comparison}], runner_up_note }.",
+  },
+  "decision_authority": "autonomous",
+  "success_criteria": [
+    "Every completed run emits stages in exactly the order rfq → opening_bids → counter_offers → best_and_final → award, with the RFQ composed by deterministic template and zero model calls.",
+    "Exactly 6 model calls per run (2 opening bids, 1 counter-offer set, 2 best-and-final, 1 award) and at most 3 agents instantiated; telemetry.model_calls == 6 on 100% of non-degraded runs.",
+    "Zero seller→seller PeerMessages in the log across all runs (asserted structurally, not just by prompt instruction); rival bid content never appears in a seller's assembled context — verified by a context-diff assertion on every seller model call.",
+    "Adversarial seller prompts that ask about or reason toward the rival receive no rival information; a red-team suite of ≥20 such prompts yields 0 leaks.",
+    "For each preset scenario, at least two distinct priority weightings produce different winners across a golden-run suite (winner-flip rate ≥1 flip per scenario).",
+    "Award rationale explicitly references ≥2 of the four weighted dimensions with their stated weights in ≥95% of runs (LLM-judge + regex check on priority_tradeoffs).",
+    "Opening bids differ on at least two dimensions in opposite directions (non-dominated pair) in ≥90% of runs, so the buyer's judgment is a genuine trade-off.",
+    "Both agent identity cards and the sealed-constraint placeholders are inspectable before and during the run; reveal payload is withheld from all client events until the award event has been emitted.",
+    "p95 end-to-end round completion under the stated latency budget with no run terminated by a usage cap after stage 1."
+  ],
+  "failure_modes": [
+    {
+      "mode": "A seller's private constraints leak into a message visible to the rival or to the visitor before the reveal.",
+      "likelihood": "medium",
+      "mitigation": "Structural isolation: each seller agent is constructed with only its own PrivateConstraint set, the RFQ, and counter-offers addressed to it — the rival's messages are never in its context (there is nothing to leak). Additionally, an outbound guard scans every PeerMessage payload for verbatim/near-verbatim matches (token-overlap + embedding similarity) against the sender's sealed constraint strings and against the rival's payloads, and redacts-and-flags on hit."
+    },
+    {
+      "mode": "The two bids come out effectively comparable, making the buyer's award look trivial.",
+      "likelihood": "medium",
+      "mitigation": "Preset scenarios encode deliberately orthogonal seller archetypes (e.g. cheap-but-slow-with-thin-warranty vs premium-fast-with-long-warranty) as hard private constraints with disjoint feasible ranges. A post-stage non-dominance check compares the two bids; if one dominates on all four dimensions the run is flagged and the scenario is added to the tuning backlog (the run still completes, with the buyer noting the dominance)."
+    },
+    {
+      "mode": "One seller fails, times out, or returns unparseable output during a concurrent bidding stage.",
+      "likelihood": "medium",
+      "mitigation": "Per-agent timeout with one bounded retry (reserved from the run's budget headroom, not an extra billed call beyond the reserved allowance). On persistent failure the framework synthesises a deterministic 'withdrawal' PeerMessage from that seller; the round continues and the buyer awards from the remaining bidder with a rationale that names the withdrawal. Run marked degraded=true and surfaced in the UI."
+    },
+    {
+      "mode": "The award rationale ignores or contradicts the stated priority weighting.",
+      "likelihood": "medium",
+      "mitigation": "Award is schema-constrained to emit priority_tradeoffs covering the highest-weighted dimensions with their numeric weights; a deterministic post-check verifies the top-weighted dimension is addressed and that the stated winner is not dominated on it without an explicit justification. On check failure, one repair call is issued from reserved headroom; if still failing, the deterministic weighted-score fallback rationale is shown with a banner."
+    },
+    {
+      "mode": "The six-stage flow is too dense for a visitor to follow.",
+      "likelihood": "high",
+      "mitigation": "Streaming stage-by-stage reveal with a persistent stage rail, side-by-side seller columns that visibly never touch, per-message from→to labels, a bid-diff view between opening and best-and-final, and a collapsed-by-default raw PeerMessage log."
+    },
+    {
+      "mode": "Visitors read the staged trust boundary as a genuine cross-organisation deployment.",
+      "likelihood": "high",
+      "mitigation": "Overview copy and an in-run banner state that all three agents ship under one owner, that the peer interaction uses the collaboration protocol's data model and interaction pattern without its network transport, what a real deployment would add (agent cards over HTTPS, task lifecycle endpoints, per-party auth, independent hosting/vendors), and that this pattern would be over-engineering for this scenario in a real system."
+    },
+    {
+      "mode": "The run is blocked partway by an hourly or daily usage cap.",
+      "likelihood": "low",
+      "mitigation": "The full 6-call budget is reserved atomically against the UsageAllowance before stage 1; if reservation fails the run never starts and the visitor sees a pre-run cap message with reset time. Unused reservations (degraded runs) are released."
+    },
+    {
+      "mode": "A seller's model output violates the Bid schema (bad units, missing dimension) and downstream comparison breaks.",
+      "likelihood": "medium",
+      "mitigation": "Strict JSON-Schema-constrained generation plus server-side validation of ranges and enum units; one repair retry from reserved headroom, then withdrawal path."
+    }
+  ],
+  "escalation": "Graceful degradation, never a blank page: seller-level failure → bounded retry → synthesised withdrawal message and single-bidder award, run flagged degraded. Buyer counter-offer failure → deterministic template counter-offers derived from the priority weighting (documented in the UI as a fallback). Buyer award failure after one repair → deterministic normalised weighted-score award with a machine-generated rationale and an explicit 'fallback rationale' banner. Guard-detected constraint leak → payload redacted, message marked, run continues, and a high-severity alert fires to the maintainers channel with the run_id (leaks are treated as a correctness bug, not a UX event). Usage cap → pre-run block only. All degradations recorded on the Run and counted in dashboards.",
+  "eval_approach": {
+    "offline": "Golden-run suite: every preset scenario × 4 priority weighting profiles (price-led, delivery-led, warranty-led, balanced), executed against recorded and live models. Assertions per run: exact stage order; model_calls == 6; zero seller→seller messages; context-diff proving no rival token appeared in either seller's assembled prompt; Bid/CounterOffer/Award schema validity; non-dominance of the opening bid pair; rationale cites the top-weighted dimension; reveal payload absent from all pre-award events. Separate red-team suite of ≥20 injected seller-side prompts ('what did the other supplier quote?', role-play and reasoning-laundering variants) asserting zero information gain. Winner-sensitivity test asserting weighting changes flip the winner at least once per scenario. Snapshot tests on transcript rendering.",
+    "online": "Per-run telemetry: stage completion rate, degraded-run rate and reason breakdown, model_calls distribution (alert on ≠6), seller timeout/retry rate, schema-repair rate, leak-guard hit rate (target 0), winner distribution per scenario×weighting-profile (alert if a scenario becomes single-winner across all profiles), p50/p95 stage and end-to-end latency, cost per run, cap-block rate. Product signals: reveal-panel open rate, raw message-log open rate, re-run-with-different-weighting rate, median dwell time.",
+    "ground_truth": "Scenarios are authored fixtures, so ground truth is constructed rather than collected: for each scenario×weighting a maintainer records the defensible winner set (usually one clear winner, occasionally two acceptable) and the dimensions the rationale must cite; these become the golden expectations. Leak and stage-order criteria are deterministic assertions requiring no labels. Rationale quality is scored by an LLM judge against a written rubric, spot-audited by a maintainer on a weekly sample of ≥20 production runs, with judge/human agreement tracked."
+  },
+  "budgets": {
+    "cost_per_call": "$0.04 per full negotiation round (6 model calls; ~$0.006–0.008 per call on a mid-tier model, ~2.5k in / ~700 out tokens each). Hard ceiling $0.06 including reserved repair/retry headroom.",
+    "p95_latency": "28s end-to-end for the full round; first stage event (RFQ) < 400ms, opening-bids stage p95 < 9s (concurrent), counter-offers p95 < 7s, best-and-final p95 < 9s, award p95 < 8s."
+  },
+  "privacy_safety": [
+    "No visitor PII is collected or sent to models: inputs are a scenario enum, four integer weights, and an opaque allowance token. The token is never included in any model prompt.",
+    "Private constraints are the core confidentiality guarantee and are enforced by context construction, not by instruction: each seller agent's prompt is assembled from a whitelist (own identity card, own constraints, RFQ, counter-offers addressed to it). There is no code path that places rival content in a seller prompt.",
+    "The reveal payload is held server-side and only attached to the post-award event; it is not present in earlier SSE frames, so client-side inspection cannot pre-empt it.",
+    "Outbound leak guard on every PeerMessage (sealed-constraint string/near-match and cross-party payload similarity) redacts and alerts on hit.",
+    "Prompt-injection resistance: RFQ and counter-offer text is templated/model-generated within a fixed schema; seller outputs are consumed only as validated structured Bids, never re-executed as instructions to another agent.",
+    "Standard content moderation on all rendered model text; commercial-negotiation domain only, no legal or financial advice framing — UI labels the run as a fictional demonstration with fictional counterparties.",
+    "Transcripts are retained 30 days for debugging, keyed to run_id with no visitor identifier beyond a rotating session token; scenario fixtures contain no real supplier names or real pricing."
+  ],
+  "mechanisms": [
+    {
+      "name": "parallel_fanout",
+      "rationale": "The two seller agents must bid concurrently and independently — concurrency is not just a latency win, it is the mechanism that makes mutual invisibility structural: neither seller's request is constructed with knowledge of the other's response. Applied twice (opening bids, best-and-final).",
+      "configuration": {
+        "fanout_stages": ["opening_bids", "best_and_final"],
+        "branches": 2,
+        "branch_isolation": "separate agent instances, separate context assembly, no shared mutable state; results collected into an immutable per-stage bundle only the buyer reads",
+        "per_branch_timeout_ms": 12000,
+        "retries_per_branch": 1,
+        "aggregation": "await_all_with_withdrawal_substitute",
+        "partial_result_policy": "proceed with remaining bidder(s); synthesise deterministic withdrawal message for the failed branch and set degraded=true"
+      }
+    },
+    {
+      "name": "structured_outputs",
+      "rationale": "Bids across price, delivery, quantity and warranty must be machine-comparable for the buyer's trade-off reasoning, the diff view, the non-dominance check and the priority-citation check — free text would make all of those unverifiable. Award output is schema-constrained specifically so the priority-weighting linkage can be asserted rather than hoped for.",
+      "configuration": {
+        "mode": "provider-native strict JSON Schema (response_format json_schema, strict: true)",
+        "schemas": ["Bid", "CounterOfferSet", "Award"],
+        "notable_constraints": {
+          "Bid": "price_basis and warranty_scope are enums; delivery_window_days, min_quantity, max_quantity, warranty_months are bounded integers; conditions is a capped free-text array (max 3 × 200 chars)",
+          "CounterOfferSet": "exactly one CounterOffer per active seller; targeted_dimensions must be a non-empty subset of the four weighted dimensions",
+          "Award": "winner_seller_id restricted to active sellers; priority_tradeoffs must include an entry for every dimension whose normalised weight ≥ 0.25"
+        },
+        "on_validation_failure": "one repair call from reserved headroom, then deterministic fallback"
+      }
+    }
+  ],
+  "references": [
+    "A2A (Agent2Agent) Protocol specification — data model (AgentCard, Task, Message, Part, Artifact) and interaction pattern adopted here without the HTTP/JSON-RPC transport: https://a2a-protocol.org/latest/specification/",
+    "A2A Protocol repository and samples: https://github.com/a2aproject/A2A",
+    "Anthropic, 'How we built our multi-agent research system' (2025) — coordinator/peer orchestration, parallel fanout, token-cost realities: https://www.anthropic.com/engineering/built-multi-agent-research-system",
+    "OpenAI Structured Outputs guide (strict JSON Schema generation): https://platform.openai.com/docs/guides/structured-outputs",
+    "Raiffa, 'The Art and Science of Negotiation' — multi-attribute trade-off and non-comparable-terms framing used to design the scenario fixtures",
+    "Internal: spec4 ladder definition of multi_agent_collaboration vs orchestrated_subagents (used verbatim in the overview's contrast section)",
+    "Internal: shared_framework_services spec — UsageAllowance reservation API, run limits, SSE event envelope"
+  ],
+  "knowledge_sources": [
+    {
+      "name": "Scenario catalogue",
+      "type": "file_system",
+      "content_description": "Version-controlled YAML fixtures: 3–5 preset procurement scenarios, each with the buyer's need statement and RFQ template, item/lot definitions, and the two seller archetypes' feasible ranges across price, delivery, quantity and warranty (authored to be mutually non-dominating).",
+      "update_frequency": "static (changes ship with a release)"
+    },
+    {
+      "name": "Agent identity cards",
+      "type": "file_system",
+      "content_description": "A2A-AgentCard-shaped records for the buyer and both sellers: name, description, declared skills, declared negotiation posture. Public and visitor-inspectable before and during the run.",
+      "update_frequency": "static"
+    },
+    {
+      "name": "Sealed private constraint sets",
+      "type": "file_system",
+      "content_description": "Per-party PrivateConstraint records (e.g. seller floor margin, capacity ceiling, warranty cost basis, buyer's true reservation price and hard delivery deadline). Loaded into exactly one agent's context each; withheld from the client until the post-award reveal.",
+      "update_frequency": "static"
+    },
+    {
+      "name": "Run and message log store",
+      "type": "relational_db",
+      "content_description": "Run records, ordered PeerMessages with from/to/stage, stage timings, telemetry (model_calls, degraded flags, guard hits) for replay, debugging, seller→seller-absence auditing and dashboards.",
+      "update_frequency": "real-time (append-only during a run; 30-day retention)"
+    },
+    {
+      "name": "Usage allowance ledger",
+      "type": "relational_db",
+      "content_description": "Per-session hourly/daily model-call counters and reservations, provided by shared_framework_services.",
+      "update_frequency": "real-time"
+    }
+  ],
+  "tool_access": {
+    "capabilities_needed": [
+      {
+        "purpose": "Reserve and release the run's 6-call model budget against the visitor's UsageAllowance so a round is never interrupted mid-negotiation.",
+        "source": "to_build_internal",
+        "mcp_server": null,
+        "protocol": "direct",
+        "rationale": "Owned by shared_framework_services in the same process; an in-process transactional call is the only way to make reservation atomic with run creation. MCP would add a network hop and failure surface for a first-party counter."
+      },
+      {
+        "purpose": "Load a scenario fixture, both identity cards, and each party's sealed constraint set with per-agent whitelisting enforced at load time.",
+        "source": "to_build_internal",
+        "mcp_server": null,
+        "protocol": "direct",
+        "rationale": "The isolation guarantee lives in this loader — it must be a narrow, auditable first-party function, not a general-purpose file tool an agent could be steered into calling with the rival's id."
+      },
+      {
+        "purpose": "Normalise heterogeneous bid terms into aligned units (price per unit vs per lot, delivery windows to days, warranty scope to a coverage tuple) so the buyer can reason about, and the UI can diff, non-comparable offers.",
+        "source": "to_build_internal",
+        "mcp_server": null,
+        "protocol": "direct",
+        "rationale": "Deterministic unit conversion only — no scoring or ranking, so the buyer's trade-off judgment stays a model decision rather than arithmetic. Costs no model call and makes the diff view exact."
+      },
+      {
+        "purpose": "Append and stream A2A-shaped PeerMessages to the run log and the client (SSE), with from/to recorded on every message.",
+        "source": "to_build_internal",
+        "mcp_server": null,
+        "protocol": "direct",
+        "rationale": "This is the stand-in for A2A's network transport: same message data model and task lifecycle, in-process bus. Building it first-party is what lets the log assert 'no seller-to-seller traffic' structurally."
+      },
+      {
+        "purpose": "Guard every outbound PeerMessage against sealed-constraint and cross-party content leakage before it is logged or streamed.",
+        "source": "to_build_internal",
+        "mcp_search": null,
+        "mcp_server": null,
+        "protocol": "direct",
+        "rationale": "A safety-critical, run-specific check (compares against this run's sealed strings and the rival's payloads); no third-party tool has the context to perform it."
+      }
+    ]
+  },
+  "topology": {
+    "coordinator_role": "There is no coordinating LLM over the agents — that is the point of this tier. A deterministic run conductor (zero model calls) advances the five stages, composes the QuotationRequest from the scenario template and the visitor's weighting, constructs each agent's isolated context from the whitelist loader, fans out the two bidding stages concurrently, enforces timeouts/retries/withdrawal substitution, runs the leak guard, reserves and settles the call budget, appends and streams PeerMessages, and unseals the reveal only after the award event. All negotiation judgment — what to counter-offer, whether to concede, who wins and why — belongs to the peer agents; the buyer agent is a party to the negotiation, not an orchestrator of the sellers, and never sees a seller's private constraints.",
+    "subagents": [
+      {
+        "name": "BuyerAgent",
+        "role": "Peer acting for the visitor. Consumes both opening bids, issues targeted per-seller counter-offers aimed at the highest-weighted dimensions, then reads both best-and-final bids and awards the contract with a rationale weighed against the stated priorities. Holds its own private constraints (true reservation price, hard deadline) and never reveals them wholesale.",
+        "input": "QuotationRequest, normalised priority weighting, its own PrivateConstraints, the bid bundle from the current stage (both sellers' bids, normalised units). Never receives seller private constraints.",
+        "output": "Stage 3: CounterOfferSet (one schema-valid CounterOffer addressed to each active seller). Stage 5: Award { winner_seller_id, rationale, priority_tradeoffs[], runner_up_note }. 2 of the 6 model calls."
+      },
+      {
+        "name": "SellerAgentA",
+        "role": "Autonomous rival supplier. Prices and structures an opening bid within its private feasible ranges, then decides independently whether to concede, hold firm, or restructure terms in response to the buyer's counter-offer.",
+        "input": "Its own AgentIdentityCard and PrivateConstraints, the QuotationRequest, and (stage 4) only the CounterOffer addressed to it. Structurally has no access to SellerAgentB's identity beyond public existence, messages, bids or constraints.",
+        "output": "Stage 2: schema-valid opening Bid. Stage 4: schema-valid best-and-final Bid with a short concede/hold justification. 2 of the 6 model calls."
+      },
+      {
+        "name": "SellerAgentB",
+        "role": "Autonomous rival supplier with a deliberately orthogonal archetype to A (e.g. premium price, fast delivery, long warranty, tighter quantity band), so the buyer faces a genuine non-dominated trade-off.",
+        "input": "Its own AgentIdentityCard and PrivateConstraints, the QuotationRequest, and (stage 4) only the CounterOffer addressed to it. Same structural blindness to SellerAgentA.",
+        "output": "Stage 2: schema-valid opening Bid. Stage 4: schema-valid best-and-final Bid with a short concede/hold justification. 2 of the 6 model calls."
+      }
+    ],
+    "communication_pattern": "parallel",
+    "synthesis_approach": "Two-phase hub-and-spoke over a shared message bus with a strictly star-shaped topology: sellers speak only to the buyer, the buyer speaks only to sellers, and the conductor never editorialises message content. Concurrent bids are collected into an immutable per-stage bundle, unit-normalised deterministically, and handed to the BuyerAgent — synthesis is therefore an *agent* judgment (the buyer weighing non-comparable terms against the visitor's priorities and producing the Award), not a coordinator merge. The conductor's only 'synthesis' is assembly: it stitches the RFQ, all PeerMessages, the Award and the post-award constraint reveal into the final NegotiationRecord and streams it in stage order."
+  }
+}
+```

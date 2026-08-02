@@ -167,11 +167,26 @@ describe('the catalogue entry', () => {
     expect(entry?.route).toBe('/orchestrated')
   })
 
-  it('is appended last rather than slotted into the machinery progression', () => {
+  it('is appended after the machinery progression rather than slotted into it', () => {
     // The newest app goes on the end. The first four ascend by machinery
     // required; inserting there would break a reading order the landing page
     // depends on.
-    expect(exampleApps.at(-1)?.id).toBe('orchestrated_subagents_example_app')
+    //
+    // This asserts *position relative to the progression*, not "is last" --
+    // which was the previous form and which the next appended app necessarily
+    // breaks. "Is last" belongs with whichever app currently is, and lives in
+    // that app's own suite. This is the same correction v5 Phase 7 made when
+    // the planning test claimed it.
+    const ids = exampleApps.map((app) => app.id)
+    const progression = [
+      'embeddings_example_app',
+      'single_call_example_app',
+      'rag_example_app',
+      'tool_use_integration',
+    ]
+
+    expect(ids.slice(0, 4)).toEqual(progression)
+    expect(ids.indexOf('orchestrated_subagents_example_app')).toBeGreaterThan(3)
   })
 
   it('explains the pattern rather than only selling the demo', () => {

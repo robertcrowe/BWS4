@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.chained_calls import router as chained_calls_router
+from backend.app.api.collab import router as collab_router
 from backend.app.api.embeddings import router as embeddings_router
 from backend.app.api.health import router as health_router
 from backend.app.api.orchestrated import router as orchestrated_router
@@ -71,3 +72,4 @@ app.include_router(single_call_router)
 app.include_router(chained_calls_router)
 app.include_router(planning_router)
 app.include_router(orchestrated_router)
+app.include_router(collab_router)

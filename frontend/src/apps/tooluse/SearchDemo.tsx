@@ -190,6 +190,25 @@ function AgentTrace({
   )
 }
 
+/**
+ * Render a result's publish date, or say plainly that there isn't one.
+ *
+ * "Undated" rather than a blank: an empty slot reads as "recent" to a visitor
+ * scanning a list, and the honest statement is that the search did not report
+ * a date for this page.
+ *
+ * @param published - Exa's ISO date for the page, or null.
+ * @returns A short date, or "undated".
+ */
+function formatPublished(published: string | null): string {
+  if (!published) {
+    return 'undated'
+  }
+  const parsed = new Date(published)
+  return Number.isNaN(parsed.getTime()) ? 'undated' : parsed.toISOString().slice(0, 10)
+}
+
+
 function AnswerPanel({
   answer,
   results,
@@ -230,6 +249,16 @@ function AnswerPanel({
                 <strong className="text-[13px] text-gray-900 dark:text-gray-100">
                   [{result.rank}] {result.title}
                 </strong>
+                {/* Relevance is not recency: the search ranks on relevance
+                    alone, so an old page can come back first. Showing the date
+                    is what lets a visitor tell a stale source from a stale
+                    answer. */}
+                <span
+                  data-testid={`result-date-${result.rank}`}
+                  className="shrink-0 font-mono text-[11px] text-gray-500"
+                >
+                  {formatPublished(result.published_date)}
+                </span>
               </div>
               <p className="mb-1.5 text-xs text-gray-600 dark:text-gray-400">{result.summary}</p>
               <span className="rounded-md border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-2 py-0.5 font-mono text-[11px] text-gray-500">

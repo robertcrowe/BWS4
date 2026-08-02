@@ -1,0 +1,172 @@
+{
+  "ai_catalog": [
+    {
+      "name": "rag_example_app",
+      "scope": "feature",
+      "rough_description": "Takes a natural-language question plus a small public dataset and produces a generated answer grounded in retrieved passages from that dataset, illustrating the RAG pattern end-to-end.",
+      "tier_recommendation": "single_call",
+      "tier_decision": "rag",
+      "tier_decision_rationale": "The whole point of this example is to illustrate the use of RAG, so the retrieval pipeline is intentional despite the small dataset size."
+    },
+    {
+      "name": "custom_text_semantic_placement",
+      "scope": "feature",
+      "rough_description": "Takes a user-entered custom word, phrase, or sentence and produces its semantic position relative to the curated preset examples in the shared 2D visualization, letting users see how their own text clusters with (or diverges from) existing categories and sentences.",
+      "tier_recommendation": "embeddings",
+      "tier_decision": "embeddings",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "single_call_generation",
+      "scope": "feature",
+      "rough_description": "Takes a user-entered or preset prompt and returns either a plain-text response or a JSON-schema-conforming structured response depending on the selected mode, demonstrating a single direct LLM call with no retrieval or chaining.",
+      "tier_recommendation": "single_call",
+      "tier_decision": "single_call",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "chained_role_play_generation",
+      "scope": "feature",
+      "rough_description": "Takes a user's free-form story prompt and produces two sequential, role-conditioned outputs (a short story from a 'struggling writer' persona, then a critique from a 'harsh critic' persona reacting to that story) \u2014 both shown to the user. Requires generation because the story and critique content must be composed in natural language conditioned on persona and prior output, not looked up or computed.",
+      "tier_recommendation": "chained_calls",
+      "tier_decision": "chained_calls",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "trip_day_planning_agent",
+      "scope": "feature",
+      "rough_description": "Takes a user's city and free-form interests and produces a one-day itinerary: a planner model call decomposes the fuzzy natural-language goal into a small displayed plan of research and synthesis steps, and executor model calls carry out those steps (using the shared Exa web search tool for research) to compose the final itinerary. A model is required because interpreting open-ended interests, decomposing them into a plan, grounding research in unstructured web results, and writing a coherent itinerary are semantic, generative tasks that plain code cannot perform.",
+      "tier_recommendation": "planning_agent",
+      "tier_decision": "planning_agent",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "orchestrated_specialist_answer",
+      "scope": "feature",
+      "rough_description": "Takes a user's preset or free-form question and returns a delegation decision (which two of the four fixed specialists were chosen, why, and the brief written for each), each specialist's answer to its brief, and a single merged final response. Demonstrates fan-out/fan-in delegation as a working, visible example. Coordinates question_moderation, specialist_disagreement_note. Depends on question_moderation.",
+      "tier_recommendation": "orchestrated_subagents",
+      "tier_decision": "orchestrated_subagents",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "question_moderation",
+      "scope": "sub_feature",
+      "rough_description": "Takes a visitor's free-form question submitted to the public demo and returns whether it is safe and in scope for the knowledge-only specialists, with a short reason when it is not. Protects an unauthenticated public demo from abusive or off-topic prompts before quota is spent. Part of the orchestrated_specialist_answer capability.",
+      "tier_recommendation": "single_call",
+      "tier_decision": "single_call",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "specialist_disagreement_note",
+      "scope": "sub_feature",
+      "rough_description": "Takes the two specialists' independent answers and returns a short note describing where they overlap, complement, or contradict each other, displayed alongside the merged response. Makes the educational point that independent subagents can reach differing conclusions. Part of the orchestrated_specialist_answer capability. Depends on orchestrated_specialist_answer.",
+      "tier_recommendation": "single_call",
+      "tier_decision": "single_call",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "procurement_negotiation_run",
+      "scope": "feature",
+      "rough_description": "Takes a preset procurement scenario and the visitor's priority weighting and returns the full negotiation outcome: competing seller bids across price, delivery, quantity and warranty, the buyer's counter-offers, best-and-final revised bids, and an award decision with a rationale weighed against the stated priorities. Requires models because each party must reason from private, non-comparable constraints and produce natural-language bids, counters and justifications that plain code cannot compute. Coordinates private_position_reveal_explanation, priority_sensitivity_explanation.",
+      "tier_recommendation": "multi_agent_collaboration",
+      "tier_decision": "multi_agent_collaboration",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "private_position_reveal_explanation",
+      "scope": "sub_feature",
+      "rough_description": "Takes each party's hidden constraints (cost floor, stock level, delivery capability, support capacity) together with the bids it actually made and returns a plain-language account of why that party held firm or conceded on each axis. Requires a model because it must interpret negotiating behaviour against undisclosed positions rather than report stored values. Part of the procurement_negotiation_run capability. Depends on procurement_negotiation_run.",
+      "tier_recommendation": "single_call",
+      "tier_decision": "single_call",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "priority_sensitivity_explanation",
+      "scope": "sub_feature",
+      "rough_description": "Takes a completed negotiation run and returns an explanation of how a different priority weighting would likely have shifted the award to the other supplier. Requires a model because it must reason counterfactually over non-comparable trade-offs rather than recompute a score. Part of the procurement_negotiation_run capability. Depends on procurement_negotiation_run.",
+      "tier_recommendation": "single_call",
+      "tier_decision": "single_call",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "chunking_pipeline",
+      "scope": "feature",
+      "rough_description": "Enabling infrastructure (chunking pipeline): shared substrate injected because the selected rag feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "tier_recommendation": "",
+      "tier_decision": "infrastructure",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "embedding_pipeline",
+      "scope": "feature",
+      "rough_description": "Enabling infrastructure (embedding pipeline): shared substrate injected because the selected rag feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "tier_recommendation": "",
+      "tier_decision": "infrastructure",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "retriever",
+      "scope": "feature",
+      "rough_description": "Enabling infrastructure (retriever): shared substrate injected because the selected rag feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "tier_recommendation": "",
+      "tier_decision": "infrastructure",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "vector_index",
+      "scope": "feature",
+      "rough_description": "Enabling infrastructure (vector index): shared substrate injected because the selected rag feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "tier_recommendation": "",
+      "tier_decision": "infrastructure",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "pipeline_runner",
+      "scope": "feature",
+      "rough_description": "Enabling infrastructure (pipeline runner): shared substrate injected because the selected chained_calls feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "tier_recommendation": "",
+      "tier_decision": "infrastructure",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "agent_loop_runtime",
+      "scope": "feature",
+      "rough_description": "Enabling infrastructure (agent loop runtime): shared substrate injected because the selected planning_agent feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "tier_recommendation": "",
+      "tier_decision": "infrastructure",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "tool_execution_harness",
+      "scope": "feature",
+      "rough_description": "Enabling infrastructure (tool execution harness): shared substrate injected because the selected planning_agent feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "tier_recommendation": "",
+      "tier_decision": "infrastructure",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "subagent_orchestration_runtime",
+      "scope": "feature",
+      "rough_description": "Enabling infrastructure (subagent orchestration runtime): shared substrate injected because the selected orchestrated_subagents feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "tier_recommendation": "",
+      "tier_decision": "infrastructure",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "agent_message_bus",
+      "scope": "feature",
+      "rough_description": "Enabling infrastructure (agent message bus): shared substrate injected because the selected multi_agent_collaboration feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "tier_recommendation": "",
+      "tier_decision": "infrastructure",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "protocol_runtime",
+      "scope": "feature",
+      "rough_description": "Enabling infrastructure (protocol runtime): shared substrate injected because the selected multi_agent_collaboration feature(s) require it. Not a user-selected feature \u2014 foundational and tier-derived.",
+      "tier_recommendation": "",
+      "tier_decision": "infrastructure",
+      "tier_decision_rationale": ""
+    }
+  ]
+}

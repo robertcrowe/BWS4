@@ -57,12 +57,14 @@ describe('ToolUseApp', () => {
           summary: 'Adds first-class support for composing multiple example-app agents.',
           source: 'spec4.dev/changelog',
           rank: 1,
+          published_date: '2026-07-14T00:00:00.000Z',
         },
         {
           title: 'Spec4 Release Notes Archive',
           summary: 'Full history of Spec4 releases.',
           source: 'github.com/spec4/spec4',
           rank: 2,
+          published_date: null,
         },
       ],
     })
@@ -85,6 +87,44 @@ describe('ToolUseApp', () => {
     expect(screen.getByText('[1] Spec4 v0.9 — Agent Composition Update')).toBeInTheDocument()
     expect(screen.getByText('[2] Spec4 Release Notes Archive')).toBeInTheDocument()
     expect(screen.getByText(/Source: spec4\.dev\/changelog/)).toBeInTheDocument()
+  })
+
+  it('shows when each source was published, and says so when it cannot', async () => {
+    // Relevance is not recency: the search ranks on relevance alone, so an old
+    // page can come back first. Without the date on screen a stale *source* is
+    // indistinguishable from the demo answering out of stale training data --
+    // which is exactly how it was read when this was missing.
+    mockedSearchTool.mockResolvedValue({
+      answer: 'The latest release is v0.9.',
+      model: 'openrouter/nvidia/some-model:free',
+      iterations: 1,
+      queries: ['Spec4 release'],
+      steps: [],
+      results: [
+        {
+          title: 'Spec4 v0.9',
+          summary: 'Adds agent composition.',
+          source: 'spec4.dev/changelog',
+          rank: 1,
+          published_date: '2026-07-14T00:00:00.000Z',
+        },
+        {
+          title: 'Spec4 on PyPI',
+          summary: 'Package index page.',
+          source: 'pypi.org/project/spec4',
+          rank: 2,
+          published_date: null,
+        },
+      ],
+    })
+
+    renderToolUseApp()
+    await submitQuery('What is the latest Spec4 release?')
+
+    expect(await screen.findByTestId('result-date-1')).toHaveTextContent('2026-07-14')
+    // "undated" rather than blank: an empty slot reads as "recent" to someone
+    // scanning the list.
+    expect(screen.getByTestId('result-date-2')).toHaveTextContent('undated')
   })
 
   it('renders a markdown answer as formatted elements even though the prompt forbade it', async () => {

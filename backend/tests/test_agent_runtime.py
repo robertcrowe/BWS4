@@ -9,8 +9,12 @@ example app being edited. Nothing here calls a model or touches a database.
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
+from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.models.fallback import FallbackModel
+from structlog.testing import capture_logs
 
 from backend.app.services import agent_runtime, model_registry
 from backend.app.services.agent_runtime import (
@@ -79,25 +83,35 @@ def test_a_probe_exclusion_applies_to_this_lane_only() -> None:
     assert "groq/llama-3.1-8b-instant" in model_registry.TOOL_MODEL_CHAIN
 
 
-def test_a_step_with_tools_gets_a_narrower_chain_than_one_without() -> None:
+def test_the_two_exclusion_sets_are_alternatives_rather_than_layers() -> None:
     """A fourth capability, with a fourth probe result behind it.
 
-    Offering a function tool and a typed-output tool at once is not implied by
-    doing either alone: four slugs that return clean typed output cannot do it
-    while calling a tool -- two never stop calling it, one emits malformed
-    call syntax, one returns an empty answer.
-    """
-    plain = lane_chain()
-    with_tools = lane_chain(tools=True)
+    The tools case is *different*, not merely harder. It was modelled as harder
+    -- tools-mode excluded both sets, so its chain was necessarily a subset --
+    until `groq/llama-3.1-8b-instant` was measured failing the tool-less case
+    (2 of 3 probes 400) while passing the tools case (10 of 12). Its recorded
+    tool-less fault is that it invents a tool it was never offered; give it a
+    real one and there is nothing to invent.
 
-    assert set(with_tools) < set(plain)
-    assert set(plain) - set(with_tools) == set(TOOL_LANE_KNOWN_BAD) & set(plain)
+    So each set governs its own case and neither may be applied to the other's.
+    Asserting a subset relation here is what would re-impose the layering.
+    """
+    plain = set(lane_chain())
+    with_tools = set(lane_chain(tools=True))
+
+    # Each chain excludes exactly its own set, and nothing else.
+    assert plain.isdisjoint(AGENT_LANE_KNOWN_BAD)
+    assert with_tools.isdisjoint(TOOL_LANE_KNOWN_BAD)
+
+    # Neither is a subset of the other: each carries a model the other excludes.
+    assert not with_tools <= plain
+    assert not plain <= with_tools
 
 
 def test_the_tool_capable_chain_still_spans_both_providers() -> None:
     """Failover that survives one provider must survive the narrowing too.
 
-    The exclusions cut the chain to three entries; if they all sat on one
+    The exclusions cut the chain to five entries; if they all sat on one
     provider, an outage there would take the planning app's executors down with
     no fallback at all.
     """
@@ -106,17 +120,25 @@ def test_the_tool_capable_chain_still_spans_both_providers() -> None:
     assert providers == {"groq", "openrouter"}
 
 
-def test_a_tool_exclusion_does_not_leak_into_the_toolless_chain() -> None:
-    """The standing rule again, in the direction this list makes tempting.
+def test_an_exclusion_does_not_leak_between_the_two_cases() -> None:
+    """The standing rule again, now enforced in both directions.
 
-    These models are fine for the chained-calls app, which asks for typed output
-    and offers no tools. Excluding them there would remove working capacity for
-    a fault they do not have in that use.
+    `groq/openai/gpt-oss-20b` loops on the search tool until the request limit
+    ends the step, and is excluded with tools. It returns clean typed output
+    without them, and excluding it there would remove working capacity from the
+    chained-calls app for a fault it does not have in that use.
+
+    `groq/llama-3.1-8b-instant` is the same statement reversed, and it is the
+    one that would not have been caught by a rule assuming tools are harder.
     """
     plain = lane_chain()
+    with_tools = lane_chain(tools=True)
 
-    assert "groq/llama-3.3-70b-versatile" in plain
-    assert "groq/llama-3.3-70b-versatile" not in lane_chain(tools=True)
+    assert "groq/openai/gpt-oss-20b" in plain
+    assert "groq/openai/gpt-oss-20b" not in with_tools
+
+    assert "groq/llama-3.1-8b-instant" in with_tools
+    assert "groq/llama-3.1-8b-instant" not in plain
 
 
 def test_a_benched_model_disappears_from_this_lane_too() -> None:
@@ -211,3 +233,128 @@ def test_an_adapter_reuses_one_provider_object_across_calls() -> None:
     second = adapter.build_model("b")
 
     assert first.client is second.client
+
+
+class TestTheFallbackObserver:
+    """What the chain walked past, made visible and made cheaper.
+
+    A successful run hides the failures underneath it: when the head slug is
+    rate-limited and the next model answers, the step succeeds and
+    `agent_step_completed` records only the model that served. Live, a chain
+    serving every research step from its slow tail was indistinguishable in the
+    console from a healthy one, and was reported as "the research steps are
+    slow" with nothing to say why.
+    """
+
+    def test_it_reproduces_pydantic_ais_default_eligibility_rule(self) -> None:
+        """This handler *replaces* the framework default, so it must restate it.
+
+        PydanticAI's default is `fallback_on=(ModelAPIError,)`. Passing a
+        handler overrides that wholesale -- a handler that returned True for
+        everything would fall through on a programming error, and one that
+        returned False for a provider outage would stop failing over at all.
+        """
+        observe = agent_runtime._observe_fallback("research-step-1")
+
+        assert observe(ModelHTTPError(status_code=429, model_name="x", body=None)) is True
+        assert observe(ValueError("a bug in this repo, not a provider fault")) is False
+
+    def test_a_rate_limited_slug_leaves_the_chain_for_its_stated_window(self) -> None:
+        """The whole point: the *next* step must not pay for the same refusal."""
+        busy = model_registry.TOOL_MODEL_CHAIN[0]
+        assert busy in model_registry.active_chain(model_registry.TOOL_MODEL_CHAIN)
+
+        agent_runtime._observe_fallback("research-step-1")(
+            ModelHTTPError(
+                status_code=429,
+                model_name=busy.split("/", 1)[1],
+                body={"message": "Rate limit reached ... Please try again in 3m36s"},
+            )
+        )
+
+        assert busy not in model_registry.active_chain(model_registry.TOOL_MODEL_CHAIN)
+
+    def test_an_ordinary_failure_benches_nothing(self) -> None:
+        """A 400 is the model refusing one request, not the model being busy.
+
+        Two of the tool chain's Groq entries 400 intermittently and are in the
+        chain anyway, precisely because the cost is one fast round trip. Benching
+        them on that would remove the capacity this change exists to add.
+        """
+        before = model_registry.active_chain(model_registry.TOOL_MODEL_CHAIN)
+
+        agent_runtime._observe_fallback("research-step-1")(
+            ModelHTTPError(
+                status_code=400,
+                model_name=model_registry.TOOL_MODEL_CHAIN[0].split("/", 1)[1],
+                body={"message": "Failed to call a function."},
+            )
+        )
+
+        assert model_registry.active_chain(model_registry.TOOL_MODEL_CHAIN) == before
+
+    def test_the_log_line_says_which_step_walked_past_which_model(self) -> None:
+        busy = model_registry.TOOL_MODEL_CHAIN[0]
+
+        with capture_logs() as logs:
+            agent_runtime._observe_fallback("research-step-2")(
+                ModelHTTPError(
+                    status_code=429,
+                    model_name=busy.split("/", 1)[1],
+                    body={"message": "Rate limit reached ... Please try again in 30s"},
+                )
+            )
+
+        entry = next(log for log in logs if log["event"] == "model_fallback")
+        assert entry["label"] == "research-step-2"
+        assert entry["model"] == busy
+        assert entry["status"] == 429
+        assert entry["reason"] == "rate_limited"
+        assert entry["benched_seconds"] == 30.0
+        assert entry["falls_through"] is True
+
+    def test_the_provider_body_never_reaches_the_log(self) -> None:
+        """A Groq 400 body embeds `failed_generation` -- the model's own output.
+
+        On a research step that output is derived from the visitor's city and
+        interests, and this project's rule is that planning telemetry carries
+        neither. The body is read for the retry window and classified; it is
+        never logged. Asserted over every value of every entry rather than the
+        fields this handler happens to set, so a field added later without
+        thought is caught.
+        """
+        secret = "Kyoto-with-teenagers-on-a-budget"
+
+        with capture_logs() as logs:
+            agent_runtime._observe_fallback("research-step-1")(
+                ModelHTTPError(
+                    status_code=400,
+                    model_name=model_registry.TOOL_MODEL_CHAIN[0].split("/", 1)[1],
+                    body={"failed_generation": f"web_search(query='{secret}')"},
+                )
+            )
+
+        for entry in logs:
+            for value in entry.values():
+                assert secret not in str(value)
+                assert "failed_generation" not in str(value)
+
+    def test_an_unrecognised_model_name_is_logged_rather_than_guessed(self) -> None:
+        """Failing to attribute must not mean failing to report."""
+        with capture_logs() as logs:
+            agent_runtime._observe_fallback("planner")(
+                ModelHTTPError(status_code=503, model_name="acme/mystery", body=None)
+            )
+
+        entry = next(log for log in logs if log["event"] == "model_fallback")
+        assert entry["benched_seconds"] is None
+        assert entry["reason"] == "error"
+
+    def test_the_observer_is_actually_installed_on_the_built_model(self) -> None:
+        """Otherwise every assertion above tests a function nothing calls."""
+        with patch.object(
+            agent_runtime, "_observe_fallback", wraps=agent_runtime._observe_fallback
+        ) as spy:
+            agent_runtime.build_fallback_model(label="research-step-1")
+
+        spy.assert_called_once_with("research-step-1")

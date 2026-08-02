@@ -36,6 +36,7 @@ about which models were healthy while agreeing completely about which were
 from __future__ import annotations
 
 import os
+import re
 import time
 from dataclasses import dataclass
 
@@ -194,7 +195,9 @@ COOLDOWN_SECONDS = 30 * 60
 #: Substrings that mark a model as gone rather than merely busy. Rate limits
 #: and timeouts are explicitly NOT in this list: they are transient, and
 #: benching a healthy model because it was briefly busy is how a fallback
-#: chain eats itself.
+#: chain eats itself. Rate limits get their own, much shorter bench below --
+#: "busy until the provider says otherwise" is a third state, distinct from
+#: both "healthy" and "withdrawn".
 _PERMANENT_FAILURE_MARKERS = (
     "no endpoints found",
     "unavailable for free",
@@ -202,6 +205,34 @@ _PERMANENT_FAILURE_MARKERS = (
     "model not found",
     "does not exist",
 )
+
+#: Bounds on how long a *rate-limited* slug sits out.
+#:
+#: The provider states its own retry window and that figure is honoured, but
+#: never unbounded in either direction. The floor stops a sub-second hint from
+#: being no bench at all; the ceiling stops one bad reading (or a provider
+#: quoting the reset of a daily bucket) from taking a healthy model out of the
+#: chain for the rest of a dyno's life. A window this bench under-estimates
+#: costs one more failed attempt and re-benches; one it over-estimates costs
+#: real capacity, so the ceiling is the tighter of the two on purpose.
+MIN_RATE_LIMIT_BENCH_SECONDS = 5.0
+MAX_RATE_LIMIT_BENCH_SECONDS = 10 * 60.0
+
+#: Used when a response is plainly rate-limited but names no retry window.
+DEFAULT_RATE_LIMIT_BENCH_SECONDS = 60.0
+
+#: Markers that identify a rate limit in an error whose status code is not to
+#: hand -- LiteLLM surfaces one final string rather than a typed exception.
+_RATE_LIMIT_MARKERS = ("rate limit", "rate_limit", "too many requests", "429")
+
+#: "Please try again in 3m36s", "try again in 7.66s", "try again in 1h2m3s".
+_RETRY_IN_RE = re.compile(
+    r"try again in\s+(?:(\d+(?:\.\d+)?)h)?(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?",
+    re.IGNORECASE,
+)
+
+#: A plain `Retry-After` header value, in seconds.
+_RETRY_AFTER_RE = re.compile(r"retry[-_ ]after[\"']?\s*[:=]?\s*[\"']?(\d+(?:\.\d+)?)", re.IGNORECASE)
 
 #: slug -> monotonic timestamp at which it becomes eligible again.
 _benched: dict[str, float] = {}
@@ -344,6 +375,96 @@ def note_failure(error: BaseException) -> list[str]:
             remaining_generation=len(active_chain(GENERATION_MODEL_CHAIN)),
         )
     return newly_benched
+
+
+def looks_rate_limited(detail: str) -> bool:
+    """Report whether an error string describes a rate limit.
+
+    For callers that have no status code to hand -- the LiteLLM lane surfaces
+    one final string rather than a typed exception.
+
+    Args:
+        detail: The provider's error text.
+
+    Returns:
+        True if the text names a rate limit.
+    """
+    lowered = detail.lower()
+    return any(marker in lowered for marker in _RATE_LIMIT_MARKERS)
+
+
+def parse_retry_after(detail: str) -> float | None:
+    """Extract the retry window a provider stated, in seconds.
+
+    Providers say this two different ways and neither is a header this code
+    ever sees: Groq writes "Please try again in 3m36s" into the message body,
+    and a `Retry-After` value can appear in a stringified response. Both are
+    parsed; anything else returns None so the caller can apply its default.
+
+    Args:
+        detail: The provider's error text.
+
+    Returns:
+        The stated window in seconds, or None if the text states none.
+    """
+    match = _RETRY_IN_RE.search(detail)
+    if match and any(match.groups()):
+        hours, minutes, seconds = (float(part or 0) for part in match.groups())
+        return hours * 3600 + minutes * 60 + seconds
+
+    match = _RETRY_AFTER_RE.search(detail)
+    if match:
+        return float(match.group(1))
+
+    return None
+
+
+def note_rate_limit(model: str, detail: str = "") -> float | None:
+    """Bench one slug for as long as its provider asked to be left alone.
+
+    A rate limit is the opposite of a permanent failure and must not be treated
+    as one: the model is healthy and will serve again shortly, so `note_failure`
+    deliberately ignores it. But *retrying it every time* is not free either --
+    a saturated free-tier slug at the head of a chain costs every request a
+    failed round trip before the real work starts, which is precisely how a
+    fast chain comes to behave like a slow one.
+
+    Benching for the stated window is the middle position: the slug leaves the
+    chain for as long as the provider says it is unavailable, and returns by
+    itself with no redeploy and no probe.
+
+    Only ever *extends* an existing bench. A slug already benched as
+    permanently gone must not have its 30-minute cooldown cut to 60 seconds by
+    a later rate limit.
+
+    Args:
+        model: The chain slug, or any name `normalize` can map onto one.
+        detail: The provider's error text, scanned for a stated retry window.
+
+    Returns:
+        The bench length applied in seconds, or None if the slug is unknown --
+        an unrecognised name is not benched, since guessing which model a
+        provider meant would take a healthy one out of the chain.
+    """
+    slug = normalize(model)
+    if slug not in _ALL_MODELS:
+        return None
+
+    stated = parse_retry_after(detail)
+    window = DEFAULT_RATE_LIMIT_BENCH_SECONDS if stated is None else stated
+    window = min(max(window, MIN_RATE_LIMIT_BENCH_SECONDS), MAX_RATE_LIMIT_BENCH_SECONDS)
+
+    until = time.monotonic() + window
+    if _benched.get(slug, 0.0) < until:
+        _benched[slug] = until
+
+    logger.info(
+        "model_rate_limited",
+        model=slug,
+        bench_seconds=round(window, 1),
+        window_stated_by_provider=stated is not None,
+    )
+    return window
 
 
 def normalize(model: str) -> str:

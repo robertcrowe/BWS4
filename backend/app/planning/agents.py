@@ -45,6 +45,7 @@ from backend.app.planning.schemas import (
     StepResult,
 )
 from backend.app.services import agent_runtime
+from backend.app.services.prompt_context import with_current_date
 from backend.app.services.prompt_loader import load_prompt
 from backend.app.services.web_search import ExaResult
 
@@ -57,14 +58,40 @@ PROMPTS_DIR = Path(__file__).parent / "prompts"
 #: whole run and is the harder limit of the two.
 #:
 #: A research step needs at least two requests -- one to emit the tool call, one
-#: to read the results and answer -- so its allowance of three is what buys the
-#: single query reformulation the capability's empty-results mitigation calls
-#: for. The planner and synthesis steps use no tools, so one request suffices;
-#: their allowance of two leaves room for PydanticAI's own retry when a
-#: response fails schema validation.
+#: to read the results and answer. Everything above that is measured padding:
+#:
+#:     1  the first search
+#:     2  the reformulation the empty-results mitigation calls for
+#:     3  the turn spent refusing a third search (measured: models ask anyway)
+#:     4  the answer
+#:     5  PydanticAI's own retry when that answer fails schema validation
+#:
+#: Three was the shipped value and budgeted the reformulation and the schema
+#: retry into the same slot, so a step that reformulated had nothing left to
+#: answer with. Four covered every request a re-probe actually observed -- and
+#: exactly, with no margin, which is what this fifth adds. The planner and
+#: synthesis steps use no tools, so one request suffices; their allowance of
+#: two is that same schema-retry headroom.
 PLANNER_REQUEST_LIMIT = 2
-RESEARCH_REQUEST_LIMIT = 3
+RESEARCH_REQUEST_LIMIT = 5
 SYNTHESIS_REQUEST_LIMIT = 2
+
+#: Searches one research step may run, enforced in code below.
+#:
+#: `research_v1.md` tells the model "One reformulation, never more". **A limit
+#: stated in a prompt is not a limit**, and measurement is unambiguous about it:
+#: probed against this repo's own lane, a step given *useful* results searched
+#: four times in one run of three, and a step given empty results searched six
+#: times in every run -- exhausting even a deliberately generous six-request
+#: budget without ever answering. That is the failure reported from the running
+#: app, where two research steps in a row died on `StepRequestLimitExceeded`.
+#:
+#: The cost is not only the run's own budget. `service.py` reserves a
+#: `CAPABILITY_SEARCH` unit per search against an hourly cap of five shared
+#: across the whole showcase, so one unbounded step could take the tool-use app
+#: dark as well. The tool-use agent has always bounded its searches in code for
+#: exactly this reason (`tools/agent.py::MAX_SEARCHES`); this step never did.
+MAX_SEARCHES_PER_STEP = 2
 
 #: Search results kept per step, after de-duplication by URL.
 MAX_SOURCES_PER_STEP = 5
@@ -228,16 +255,47 @@ async def run_research(
         Returns:
             The ranked results as text, inside an untrusted-content block.
         """
+        if len(queries) >= MAX_SEARCHES_PER_STEP:
+            # Refused *before* `execute_search`, so a model that keeps asking
+            # spends this step's requests but no further search quota. Outside
+            # the untrusted block on purpose: this sentence is the framework
+            # speaking, and wrapping it in the delimiters the prompt is told to
+            # distrust would be telling the model to ignore it.
+            return (
+                f"No searches remain for this step -- you have used all "
+                f"{MAX_SEARCHES_PER_STEP}. Do not call `web_search` again. "
+                "Answer now from the results you already have, and say plainly "
+                "what you could not find."
+            )
+
         queries.append(query)
         results = await execute_search(query)
         retrieved.extend(results)
-        return sanitize.untrusted_block(
+        block = sanitize.untrusted_block(
             f"search results for {query!r}", _format_results(results)
+        )
+
+        if len(queries) < MAX_SEARCHES_PER_STEP:
+            return block
+
+        # The last permitted search says so in the same turn that delivers its
+        # results. Waiting for the model to ask again would be correct and cost
+        # a whole extra request to say no -- and measurement says it does ask
+        # again, so that request would be spent most of the time.
+        return (
+            f"{block}\n\nThat was the last of your {MAX_SEARCHES_PER_STEP} "
+            "searches for this step. Answer now from what you have, and say "
+            "plainly what you could not find."
         )
 
     result = await agent_runtime.run_typed_step(
         label=f"research-step-{step.index}",
-        instructions=load_prompt(PROMPTS_DIR, RESEARCH_PROMPT_VERSION),
+        # Dated: this is the one planning step that composes a *search query*,
+        # and a model with no clock anchors "recent" on its training cutoff and
+        # writes that year into the query. See services/prompt_context.py.
+        instructions=with_current_date(
+            load_prompt(PROMPTS_DIR, RESEARCH_PROMPT_VERSION)
+        ),
         user_prompt=_RESEARCH_TEMPLATE.format(
             goal=goal,
             index=step.index,
