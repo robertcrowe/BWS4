@@ -265,6 +265,22 @@ Two failure modes worth telling apart:
   chain and shipped in the generation chain), so don't move slugs between the two chains
   without re-verifying.
 
+  There are **four** capabilities in total, and discovery automates only the first. The other
+  three — generation, typed output, and typed output *while calling a tool* — are checked per
+  slug by:
+
+  ```shell
+  uv run python -m backend.app.services.probe_capabilities --slug groq/openai/gpt-oss-120b
+  ```
+
+  It reports a pass count *and* a failure class, because those lead to different decisions: a
+  hard API error is absorbed by the fallback chain for free and a model that fails that way
+  intermittently can still earn a place, whereas a model that loops until its request limit
+  trips, or returns an empty-but-valid object, takes the whole step down with it. A rate limit
+  is reported as `INCONCLUSIVE`, never as a failure — at probe time the two are
+  indistinguishable, and treating a busy model as an incapable one is how a healthy slug gets
+  permanently excluded.
+
 - **Structured mode returns "Schema mismatch detected".** Not a bug, and not necessarily worth
   fixing. Support for provider-native constrained decoding is uneven across the free tier: of
   the eight models in the generation chain, five return conforming JSON under a strict
@@ -300,7 +316,7 @@ blueprint at the repo root defines both targets; you can either point Render at 
 | Build command | `pip install uv && uv sync --frozen --no-dev`, followed by the embedding-model prefetch (see `render.yaml`) |
 | Start command | `uv run uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT` |
 | Health check path | `/health` |
-| Env vars | `DATABASE_URL`, `CORS_ORIGIN`, `OPENROUTER_API_KEY`, `EXA_API_KEY`, `HF_HOME`, optional `SENTRY_DSN` / `SENTRY_ENVIRONMENT` / `HF_TOKEN` |
+| Env vars | `DATABASE_URL`, `CORS_ORIGIN`, `OPENROUTER_API_KEY`, `EXA_API_KEY`, `HF_HOME`, optional `GROQ_API_KEY` / `OPENAI_API_KEY` / `MODERATION_HASH_SALT` / `SENTRY_DSN` / `SENTRY_ENVIRONMENT` / `HF_TOKEN` |
 
 The API embeds text **in-process** with sentence-transformers rather than calling a hosted
 embedding API, so the ~88 MB `all-MiniLM-L6-v2` model has to be on disk before the first
@@ -335,6 +351,7 @@ Other deployment notes:
 - **Database**: Neon's free tier, which — unlike many providers' free Postgres offerings — persists indefinitely rather than expiring after a fixed window.
 - **Deploys are manual** (`autoDeploy: false`) rather than automatic on every push.
 - **Error tracking**: Sentry, wired up via `SENTRY_DSN` / `VITE_SENTRY_DSN`. Both sides no-op cleanly when their DSN is unset, so local dev and forks need no Sentry account at all.
+- **Chain-health reporting**: two classes of event are sent to Sentry explicitly, because neither would arrive on its own. `run_abort:*` covers a run that ended without producing what it set out to — those are caught deliberately and turned into a stream event so the visitor keeps partial results, so nothing raises. `model_health:*` covers the model chains decaying: a slug withdrawn from the free tier (`models_benched`), a provider's daily allowance spent (`daily_quota_exhausted`), and a chain that has started serving every request from its tail rather than its preferred head (`chain_head_not_serving`). That last one is the important one operationally — it produces **no error at all**, since the fallback chain answers correctly from further down, so the only visible symptom is that the app has quietly got slower.
 
 ## Roadmap
 
