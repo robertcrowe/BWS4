@@ -1,7 +1,11 @@
 # Built with Spec4 (BWS4)
 
 ## Overview
-<a href='https://spec4.ai' style='float:right'><img src='BWS4-white-100.png'></a>
+<a href="https://spec4.ai"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="BWS4-black-100.png">
+  <source media="(prefers-color-scheme: light)" srcset="BWS4-white-100.png">
+  <img src="BWS4-white-100.png" align="right" width="100" alt="Built with Spec4">
+</picture></a>
 Built with Spec4 (BWS4) is a living showcase of common AI application patterns, presented as a collection of small, self-contained example apps behind a single landing page. Each example demonstrates one pattern end-to-end: how it's built, what it depends on, and how it behaves, so that visitors unfamiliar with the underlying technique can understand it by seeing it work rather than by reading about it abstractly.
 
 Eight examples ship today. The first four are listed in order of how much machinery each pattern needs — **embeddings** (turn text into a position and compare positions), **single-call** (one prompt in, one response out), **RAG** (retrieve first, then answer from what you retrieved), and **tool use** (let the model decide what to call). Four more are appended after them, each adding a way of composing calls rather than a new kind of call: **chained calls** (one call's output becomes the next call's input), **planning agent** (one call decomposes a goal into a plan you approve before any step runs, then executes the steps and composes an itinerary), **orchestrated subagents** (a coordinator picks two of four fixed specialists, briefs each differently, runs them at the same time, and merges their independent answers), and **multi-agent collaboration** (a buyer agent negotiates with two rival sellers that hold private constraints neither can see, across a staged trust boundary). Seeing them side by side is the point: each one exists partly to show what the cheaper tier below it cannot do.
