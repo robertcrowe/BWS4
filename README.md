@@ -293,9 +293,15 @@ Two failure modes worth telling apart:
 
 ## Deployment
 
-This project is designed to run entirely on free hosting tiers. A [`render.yaml`](./render.yaml)
-blueprint at the repo root defines both targets; you can either point Render at it
-(**New → Blueprint**) or create the two services by hand with the settings below.
+This project runs on free tiers everywhere it matters — Neon Postgres, the model providers,
+and Exa search — which is what the usage caps in `Settings` exist to protect. The one
+exception is web hosting: the blueprint puts the API on Render's paid **Starter** plan so it
+stays always-on, because this process pays an unusually large cold start (see the note
+below). It runs correctly on `plan: free`; the cost is the wait.
+
+A [`render.yaml`](./render.yaml) blueprint at the repo root defines both targets; you can
+either point Render at it (**New → Blueprint**) or create the two services by hand with the
+settings below.
 
 **`bws4-web` — the frontend, as a Render Static Site** (CDN-served, no spin-down)
 
@@ -307,7 +313,8 @@ blueprint at the repo root defines both targets; you can either point Render at 
 | Rewrite rule | `/*` → `/index.html` (client-side routing) |
 | Env vars | `VITE_API_BASE_URL` (the API service's URL), optional `VITE_SENTRY_DSN` |
 
-**`bws4-api` — the backend, as a Render free Web Service** (Python 3.12)
+**`bws4-api` — the backend, as a Render Web Service** (Python 3.12; **Starter** plan in the
+blueprint, works on Free)
 
 | Setting | Value |
 | --- | --- |
@@ -334,15 +341,20 @@ service silently re-downloads the model on every cold start.
 4. Deploy `bws4-web` with `VITE_API_BASE_URL` set to that API URL.
 5. Set the API's `CORS_ORIGIN` to the static site's exact origin (e.g. `https://bws4-web.onrender.com`) and redeploy the API. The blueprint wires this automatically via `fromService`.
 
-> **Free-tier cold starts.** The `bws4-api` service spins down after roughly **15 minutes
-> of inactivity**. The next request wakes it, which can take **30–60 seconds** — including
-> time to load the (already-downloaded) sentence-transformers embedding model into memory.
-> A slow first request after an idle period is expected behavior, not a broken
-> deployment. If cold starts are much slower than that, check that `HF_HOME` matches
-> between build and run time — a mismatch turns every cold start into a fresh 88 MB
-> model download. An external
-> uptime checker (UptimeRobot, Better Stack) pinging `/health` keeps the service warm
-> during demos. The static frontend is CDN-served and never spins down.
+> **Why the API is not on the free plan.** This process pays an unusually large start-up
+> cost: it imports torch and sentence-transformers, then fits the embeddings projection in
+> `lifespan` before serving its first request — **30–60 seconds**, even with the model
+> already on disk. On Render's free plan the service spins down after roughly **15 minutes
+> of inactivity**, so the first visitor of every quiet period pays that in full, which for a
+> showcase is the worst possible moment to spend it. The **Starter** plan keeps the process
+> resident and the cost is paid once per deploy instead.
+>
+> On the free plan the deployment is still correct, just slower to greet you; a slow first
+> request after an idle period is expected behaviour, not a broken deployment, and an
+> external uptime checker (UptimeRobot, Better Stack) pinging `/health` keeps it warm during
+> demos. On either plan, if start-up is much slower than 30–60 seconds, check that `HF_HOME`
+> matches between build and run time — a mismatch turns every start into a fresh 88 MB model
+> download. The static frontend is CDN-served and never spins down on any plan.
 
 Other deployment notes:
 

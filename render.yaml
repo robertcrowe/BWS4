@@ -6,7 +6,15 @@
 # a model download, or (apart from the two optional keys below) a variable.
 #
 #   web_client -> Render Static Site (CDN-served, no spin-down)
-#   api        -> Render free Web Service (Python 3.12, spins down after ~15 min idle)
+#   api        -> Render Starter Web Service (Python 3.12, always on)
+#
+# The api runs on `starter` rather than `free` for one reason: the free tier
+# spins down after ~15 min idle, and this process pays an unusually large cold
+# start — it loads torch and sentence-transformers, then fits the embeddings
+# projection in `lifespan` before serving. Paying that on the first visitor of
+# every quiet period is the showcase's most visible rough edge. Everything else
+# the project runs on is still a free tier (Neon, the model providers, Exa), so
+# the usage caps in `Settings` remain exactly as load-bearing as before.
 #
 # Both targets are HTTPS-only: Render terminates TLS and issues certificates for
 # every service, and the static site redirects HTTP to HTTPS by default. Secrets
@@ -18,7 +26,7 @@ services:
   - type: web
     name: bws4-api
     runtime: python
-    plan: free
+    plan: starter
     region: oregon
     rootDir: .
     # The trailing python -c pre-downloads the sentence-transformers embedding
