@@ -62,6 +62,12 @@ def _vendor_of(slug: str) -> str:
 
     `openrouter/nvidia/x:free` -> `nvidia`; `groq/llama-3.1-8b-instant` has no
     vendor segment, so the model name stands in for it.
+
+    Note the blind spot, in case a single-vendor provider is ever added: for a
+    provider that publishes only its own models, two of its slugs would read as
+    two vendors and the head-of-chain rule below would not see the relation.
+    Neither shipped provider is like that -- Groq serves OpenAI, Meta and Qwen
+    models -- so no special case is carried for a situation that does not exist.
     """
     parts = slug.split("/")
     return parts[1] if len(parts) > 2 else parts[-1]
@@ -80,15 +86,19 @@ def test_every_chain_spans_more_than_one_provider(name: str, chain: list[str]) -
 
 
 @pytest.mark.parametrize(("name", "chain"), ALL_CHAINS)
-def test_every_chain_head_and_tail_are_different_providers(name: str, chain: list[str]) -> None:
+def test_every_chain_head_and_tail_are_different_providers(
+    name: str, chain: list[str]
+) -> None:
     """The deep fallback has to be somewhere the head's outage can't reach."""
-    assert model_registry.provider_of(chain[0]) != model_registry.provider_of(chain[-1]), (
-        f"{name} chain starts and ends on the same provider"
-    )
+    assert model_registry.provider_of(chain[0]) != model_registry.provider_of(
+        chain[-1]
+    ), f"{name} chain starts and ends on the same provider"
 
 
 @pytest.mark.parametrize(("name", "chain"), ALL_CHAINS)
-def test_no_chain_leads_with_two_models_from_one_vendor(name: str, chain: list[str]) -> None:
+def test_no_chain_leads_with_two_models_from_one_vendor(
+    name: str, chain: list[str]
+) -> None:
     """One vendor's withdrawal must not take out the head of a chain.
 
     Only the head is constrained: deeper duplicates are fine, since by then
@@ -100,7 +110,9 @@ def test_no_chain_leads_with_two_models_from_one_vendor(name: str, chain: list[s
 
 
 @pytest.mark.parametrize(("name", "chain"), ALL_CHAINS)
-def test_every_chain_entry_is_a_known_free_tier_slug(name: str, chain: list[str]) -> None:
+def test_every_chain_entry_is_a_known_free_tier_slug(
+    name: str, chain: list[str]
+) -> None:
     """The binding project constraint: free tier only.
 
     OpenRouter marks free models in the slug; Groq's free tier is a property
@@ -109,9 +121,13 @@ def test_every_chain_entry_is_a_known_free_tier_slug(name: str, chain: list[str]
     """
     for slug in chain:
         provider = model_registry.provider_of(slug)
-        assert provider in {"openrouter", "groq"}, f"unknown provider in {name} chain: {slug}"
+        assert provider in {"openrouter", "groq"}, (
+            f"unknown provider in {name} chain: {slug}"
+        )
         if provider == "openrouter":
-            assert slug.endswith(":free"), f"non-free OpenRouter slug in {name} chain: {slug}"
+            assert slug.endswith(":free"), (
+                f"non-free OpenRouter slug in {name} chain: {slug}"
+            )
 
 
 @pytest.mark.parametrize(("name", "chain"), ALL_CHAINS)
@@ -131,7 +147,10 @@ def test_a_withdrawn_model_is_benched_and_skipped() -> None:
 
     assert benched == [withdrawn]
     assert withdrawn not in model_registry.active_chain(TOOL)
-    assert len(model_registry.active_chain(TOOL)) == len(model_registry.TOOL_MODEL_CHAIN) - 1
+    assert (
+        len(model_registry.active_chain(TOOL))
+        == len(model_registry.TOOL_MODEL_CHAIN) - 1
+    )
 
 
 def test_a_rate_limited_model_is_not_benched_as_withdrawn() -> None:
@@ -145,7 +164,9 @@ def test_a_rate_limited_model_is_not_benched_as_withdrawn() -> None:
     bare = busy.split("/", 1)[1]
 
     benched = model_registry.note_failure(
-        RuntimeError(f"RateLimitError: {bare} - Rate limit exceeded: free-models-per-day")
+        RuntimeError(
+            f"RateLimitError: {bare} - Rate limit exceeded: free-models-per-day"
+        )
     )
 
     assert benched == []
@@ -164,7 +185,9 @@ def test_paid_only_withdrawal_is_recognised_as_permanent() -> None:
     bare = withdrawn.split("/", 1)[1]
 
     model_registry.note_failure(
-        RuntimeError(f"{bare}: This model is unavailable for free. The paid version is available")
+        RuntimeError(
+            f"{bare}: This model is unavailable for free. The paid version is available"
+        )
     )
 
     assert withdrawn not in model_registry.active_chain(TOOL)
@@ -221,7 +244,9 @@ def test_discovery_interleaves_vendors_so_one_outage_cannot_empty_the_head() -> 
     )
 
     assert len(ordered) == 5
-    head_vendors = [slug.removeprefix("openrouter/").split("/")[0] for slug in ordered[:3]]
+    head_vendors = [
+        slug.removeprefix("openrouter/").split("/")[0] for slug in ordered[:3]
+    ]
     assert len(set(head_vendors)) == 3
 
 
@@ -229,7 +254,9 @@ def test_discovery_prefers_models_that_answered_over_ones_that_only_looped() -> 
     ordered = rank_cross_vendor(
         [
             _passing("openrouter/nvidia/looped:free", note="issued a follow-up search"),
-            _passing("openrouter/nvidia/answered:free", note="answered from tool results"),
+            _passing(
+                "openrouter/nvidia/answered:free", note="answered from tool results"
+            ),
         ]
     )
 
@@ -287,13 +314,16 @@ def test_the_known_bad_models_are_not_in_the_shipped_chain() -> None:
 
 def _fake_settings(groq_key: str | None):
     """A stand-in for Settings; pydantic fields can't be patched as properties."""
-    return SimpleNamespace(openrouter_api_key="test-openrouter-key", groq_api_key=groq_key)
+    return SimpleNamespace(
+        openrouter_api_key="test-openrouter-key", groq_api_key=groq_key
+    )
 
 
 def test_groq_slugs_are_dropped_when_no_groq_key_is_configured() -> None:
     """An OpenRouter-only deployment must not burn attempts on 401s."""
     with patch(
-        "backend.app.services.model_registry.get_settings", return_value=_fake_settings(None)
+        "backend.app.services.model_registry.get_settings",
+        return_value=_fake_settings(None),
     ):
         chain = model_registry.configured_chain(TOOL)
 
@@ -314,7 +344,8 @@ def test_groq_slugs_are_kept_when_a_groq_key_is_configured() -> None:
 def test_active_chain_drops_groq_before_applying_cooldowns() -> None:
     """Without a key, a benched OpenRouter slug must not resurrect Groq ones."""
     with patch(
-        "backend.app.services.model_registry.get_settings", return_value=_fake_settings(None)
+        "backend.app.services.model_registry.get_settings",
+        return_value=_fake_settings(None),
     ):
         openrouter_slugs = model_registry.configured_chain(TOOL)
         for slug in openrouter_slugs:
@@ -341,7 +372,8 @@ def test_ensure_provider_credentials_omits_groq_when_unset() -> None:
     os.environ.pop("GROQ_API_KEY", None)
 
     with patch(
-        "backend.app.services.model_registry.get_settings", return_value=_fake_settings(None)
+        "backend.app.services.model_registry.get_settings",
+        return_value=_fake_settings(None),
     ):
         model_registry.ensure_provider_credentials()
 
@@ -420,7 +452,10 @@ class TestTheRateLimitBench:
         """Guessing which model a provider meant would remove a healthy one."""
         before = model_registry.active_chain(TOOL)
 
-        assert model_registry.note_rate_limit("acme/not-a-real-model", "try again in 60s") is None
+        assert (
+            model_registry.note_rate_limit("acme/not-a-real-model", "try again in 60s")
+            is None
+        )
         assert model_registry.active_chain(TOOL) == before
 
     def test_it_never_shortens_an_existing_bench(self) -> None:
@@ -443,4 +478,203 @@ class TestTheRateLimitBench:
         """For the LiteLLM lane, which surfaces a string and no status code."""
         assert model_registry.looks_rate_limited("Error code: 429 - too many requests")
         assert model_registry.looks_rate_limited("RateLimitError: rate limit exceeded")
-        assert not model_registry.looks_rate_limited("No endpoints found for this model")
+        assert not model_registry.looks_rate_limited(
+            "No endpoints found for this model"
+        )
+
+
+class TestModelIdsThatArePrefixesOfEachOther:
+    """Benching must name one model, not every model whose id starts the same.
+
+    Model ids are routinely prefixes of one another, so a containment test
+    benches a healthy model for half an hour every time its longer sibling is
+    withdrawn. The shipped slugs escape this only by coincidence, which is why
+    the pair here is synthetic: the guarantee must not depend on whichever chain
+    happens to be shipped today. A real instance, found in a provider catalogue
+    surveyed during an evaluation: `gemini-2.5-flash` inside
+    `gemini-2.5-flash-lite`.
+    """
+
+    #: Synthetic, but under a *configured* provider -- `active_chain` filters
+    #: out slugs whose provider has no key, so an invented prefix would leave
+    #: every assertion below comparing empty lists and passing vacuously.
+    PAIR = ["openrouter/acme/model-1.0-flash", "openrouter/acme/model-1.0-flash-lite"]
+
+    @pytest.fixture(autouse=True)
+    def _synthetic_chain(self):
+        with patch.object(model_registry, "_ALL_MODELS", list(self.PAIR)):
+            yield
+
+    def test_withdrawing_the_longer_id_leaves_the_shorter_one_alone(self) -> None:
+        short, long = self.PAIR
+
+        benched = model_registry.note_failure(
+            RuntimeError(f"NotFoundError: {long.split('/', 1)[1]} - No endpoints found")
+        )
+
+        assert benched == [long]
+        assert short in model_registry.active_chain(list(self.PAIR))
+
+    def test_withdrawing_the_shorter_id_still_benches_it(self) -> None:
+        """The fix must not overshoot into matching nothing."""
+        short, long = self.PAIR
+
+        benched = model_registry.note_failure(
+            RuntimeError(f"{short.split('/', 1)[1]}: No endpoints found")
+        )
+
+        assert benched == [short]
+        assert long in model_registry.active_chain(list(self.PAIR))
+
+    @pytest.mark.parametrize(
+        "template",
+        [
+            "{bare}: No endpoints found",
+            "model not found: '{bare}'",
+            "NotFoundError: the model {bare} does not exist",
+            "`{bare}` is not a valid model id",
+            "{bare}. No endpoints found",
+        ],
+    )
+    def test_the_id_is_still_found_however_the_provider_punctuates_it(
+        self, template: str
+    ) -> None:
+        """Bounding the match must not stop it matching real provider wording."""
+        short = self.PAIR[0]
+
+        benched = model_registry.note_failure(
+            RuntimeError(template.format(bare=short.split("/", 1)[1]))
+        )
+
+        assert benched == [short]
+
+
+def test_a_retirement_worded_the_google_way_is_recognised_as_permanent() -> None:
+    """Observed while evaluating Google as a provider, and kept afterwards.
+
+    Its wording matched none of the older markers, which were written from
+    OpenRouter's and Groq's phrasing. A withdrawal that reads as a transient 404
+    is retried on every request, forever -- so the marker earns its place even
+    though that provider is not shipped.
+    """
+    message = (
+        "This model models/gemini-2.5-flash-lite is no longer available to new "
+        "users. Please update your code to use a newer model."
+    )
+
+    assert model_registry.names_permanent_failure(message)
+    assert not model_registry.looks_rate_limited(message)
+
+
+class TestADailyAllowanceIsBenchedForLongerThanTheProviderSays:
+    """The one case where the provider's own retry window must be ignored.
+
+    Measured on Gemini: with the per-*day* allowance spent, it still answers
+    `"retryDelay": "46s"` -- the per-minute window, which says nothing about
+    when the day's budget returns. Honouring it re-admits the slug 46 seconds
+    later to fail again, all day, which is exactly the churn the bench exists to
+    stop. Groq's TPD exhaustion has the same shape.
+    """
+
+    GEMINI_DAILY = (
+        "Quota exceeded for quota metric: generativelanguage.googleapis.com/"
+        "generate_content_free_tier_requests, quotaId: "
+        '"GenerateRequestsPerDayPerProjectPerModel-FreeTier", quotaValue: "20". '
+        "Please retry in 46s."
+    )
+    GROQ_DAILY = (
+        "Rate limit reached for model `x` on tokens per day (TPD): Limit 200000, "
+        "Used 199580. Please try again in 3m36s."
+    )
+    PER_MINUTE = (
+        'quotaId: "GenerateRequestsPerMinutePerProjectPerModel-FreeTier", '
+        'quotaValue: "5". Please retry in 35.9s.'
+    )
+
+    @pytest.mark.parametrize("detail", [GEMINI_DAILY, GROQ_DAILY])
+    def test_a_daily_bucket_ignores_the_stated_window(self, detail: str) -> None:
+        slug = model_registry.TOOL_MODEL_CHAIN[0]
+
+        applied = model_registry.note_rate_limit(slug, detail)
+
+        assert applied == model_registry.DAILY_QUOTA_BENCH_SECONDS
+        assert slug not in model_registry.active_chain(TOOL)
+
+    def test_a_per_minute_bucket_still_honours_it(self) -> None:
+        """The fix must not swallow the ordinary case into a half-hour bench."""
+        slug = model_registry.TOOL_MODEL_CHAIN[0]
+
+        applied = model_registry.note_rate_limit(slug, self.PER_MINUTE)
+
+        assert applied == 35.9
+
+    def test_the_two_are_told_apart_by_the_text_alone(self) -> None:
+        assert model_registry.names_daily_quota(self.GEMINI_DAILY)
+        assert model_registry.names_daily_quota(self.GROQ_DAILY)
+        assert not model_registry.names_daily_quota(self.PER_MINUTE)
+
+
+class TestRotIsReportedAndNotJustLogged:
+    """Sentry cannot see any of these events unless something says so explicitly.
+
+    Logging here is structlog over `PrintLoggerFactory`, which writes to stdout
+    without passing through stdlib `logging` -- so Sentry's LoggingIntegration
+    never sees a line of it. And the auto-integrations only capture what
+    *raises* through a request, while chain rot does not even fail: the chain
+    falls through and answers correctly from further down. A `logger.warning`
+    is therefore not a report, and these assertions are what stop one being
+    mistaken for one.
+    """
+
+    def test_benching_a_withdrawn_model_is_reported(self) -> None:
+        withdrawn = model_registry.TOOL_MODEL_CHAIN[0]
+
+        with patch.object(model_registry, "report_model_health") as reported:
+            model_registry.note_failure(
+                RuntimeError(f"{withdrawn.split('/', 1)[1]}: No endpoints found")
+            )
+
+        reported.assert_called_once()
+        assert reported.call_args.args[0] == "models_benched"
+        assert withdrawn in reported.call_args.kwargs["models"]
+
+    def test_an_error_that_benches_nothing_reports_nothing(self) -> None:
+        with patch.object(model_registry, "report_model_health") as reported:
+            model_registry.note_failure(RuntimeError("connection reset by peer"))
+
+        reported.assert_not_called()
+
+    def test_a_spent_daily_allowance_is_reported(self) -> None:
+        """This slug is gone until tomorrow, which changes what the chain can
+        serve for the rest of the day."""
+        slug = model_registry.TOOL_MODEL_CHAIN[0]
+
+        with patch.object(model_registry, "report_model_health") as reported:
+            model_registry.note_rate_limit(
+                slug, "on tokens per day (TPD): Limit 200000. Please try again in 3m36s."
+            )
+
+        reported.assert_called_once()
+        assert reported.call_args.args[0] == "daily_quota_exhausted"
+
+    def test_an_ordinary_per_minute_limit_is_not_reported(self) -> None:
+        """Backpressure that clears itself inside a minute is not an incident,
+        and reporting it would bury the daily case that is."""
+        slug = model_registry.TOOL_MODEL_CHAIN[0]
+
+        with patch.object(model_registry, "report_model_health") as reported:
+            model_registry.note_rate_limit(slug, "Please retry in 35.9s.")
+
+        reported.assert_not_called()
+
+    def test_no_visitor_text_can_ride_along(self) -> None:
+        """Same rule the abort reporter documents: identifiers and counts only."""
+        withdrawn = model_registry.TOOL_MODEL_CHAIN[0]
+
+        with patch.object(model_registry, "report_model_health") as reported:
+            model_registry.note_failure(
+                RuntimeError(f"{withdrawn.split('/', 1)[1]}: No endpoints found")
+            )
+
+        for value in reported.call_args.kwargs.values():
+            assert isinstance(value, str | int)

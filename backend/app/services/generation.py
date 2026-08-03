@@ -16,7 +16,7 @@ from typing import Any
 import litellm
 import structlog
 
-from backend.app.services import model_registry
+from backend.app.services import chain_health, model_registry
 
 logger = structlog.get_logger()
 
@@ -121,5 +121,6 @@ def generate_text(
         raise GenerationServiceError("text-generation service returned an empty response")
 
     served = model_registry.normalize(getattr(response, "model", "") or chain[0])
+    chain_health.note_served(served)
     logger.info("generation_completed", model=served, chars=len(content))
     return GenerationResult(text=content, model=served)

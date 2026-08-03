@@ -28,6 +28,24 @@ os.environ["SENTRY_DSN"] = ""
 # `get_moderator`" a visible failure rather than a silent network call.
 os.environ["OPENAI_API_KEY"] = ""
 
+# Give every routing provider a key, so chain-shape assertions do not depend on
+# which providers the developer running the suite happens to have configured.
+#
+# `configured_chain()` drops the slugs of any provider with no key, so without
+# this a machine lacking GROQ_API_KEY sees a shorter chain than one that has it
+# and tests like "active_chain returns the full chain" fail for a reason that
+# has nothing to do with the code. That was latent while the only unkeyed
+# provider was one most developers had, and it surfaced the moment a third
+# provider was trialled.
+#
+# Derived from PROVIDER_CREDENTIALS rather than listed, so a third provider is
+# covered by declaring it and nothing else. `setdefault`, not assignment: a real
+# key stays usable for the probes, which are run deliberately and not by pytest.
+from backend.app.services.model_registry import PROVIDER_CREDENTIALS  # noqa: E402
+
+for _credential in PROVIDER_CREDENTIALS.values():
+    os.environ.setdefault(_credential.env_var, f"test-{_credential.env_var.lower()}")
+
 import pytest  # noqa: E402
 
 

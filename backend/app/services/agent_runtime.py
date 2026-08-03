@@ -26,12 +26,19 @@ Three edits, none of them in an example app:
 1. `Settings` grows an optional `<name>_api_key` field.
 2. `model_registry.PROVIDER_CREDENTIALS` grows one entry naming that field and
    the environment variable LiteLLM reads it from.
-3. `register_provider(...)` below -- usually one line via
+3. `register_provider(...)` below -- often one line via
    `openai_compatible_adapter()`, since most providers expose an
    OpenAI-shaped `/chat/completions` endpoint.
 
 Then add the provider's slugs to whichever chain in `model_registry` they
 belong to, **and probe them for this lane** (see AGENT_LANE_KNOWN_BAD).
+
+Step 3 is "often" rather than "always" one line: OpenRouter gets a bespoke
+adapter because PydanticAI ships a provider class for it at no dependency cost,
+while Groq uses the generic factory because its native model would need an SDK
+extra this project does not install. The rule is not "prefer the generic
+factory" but "take first-class support when it is free" -- see each adapter's
+docstring.
 
 ## Credentials work differently here, and that is not an inconsistency
 
@@ -62,7 +69,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.providers.openrouter import OpenRouterProvider
 from pydantic_ai.usage import UsageLimits
 
-from backend.app.services import model_registry
+from backend.app.services import chain_health, model_registry
 
 logger = structlog.get_logger()
 
@@ -622,6 +629,7 @@ async def run_typed_step[T: BaseModel](
         raise AgentLaneError(label, f"The {label} call could not be completed.") from exc
 
     served = model_registry.normalize(result.response.model_name or "unknown")
+    chain_health.note_served(served)
     requests = result.usage.requests
     logger.info("agent_step_completed", label=label, model=served, requests=requests)
     return StepResult(output=result.output, model=served, requests=requests)

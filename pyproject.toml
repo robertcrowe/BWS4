@@ -166,6 +166,8 @@ module = [
     "backend.app.services.untrusted",
     "backend.app.services.message_bus",
     "backend.app.services.prompt_context",
+    "backend.app.services.probe_capabilities",
+    "backend.app.services.chain_health",
 ]
 ignore_errors = false
 

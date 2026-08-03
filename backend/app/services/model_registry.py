@@ -43,6 +43,7 @@ from dataclasses import dataclass
 import structlog
 
 from backend.app.core.config import get_settings
+from backend.app.core.observability import report_model_health
 
 logger = structlog.get_logger()
 
@@ -67,7 +68,7 @@ class ProviderCredential:
 
 #: Every provider this deployment can route to, keyed by the routing prefix its
 #: chain slugs carry. **This table is the one place a provider is declared.**
-#: Adding a third means one entry here, one optional field on `Settings`, and
+#: Adding one means one entry here, one optional field on `Settings`, and
 #: (for the PydanticAI lane) one `register_provider()` call in
 #: `services/agent_runtime.py` -- nothing else in the codebase names a provider.
 #:
@@ -204,6 +205,12 @@ _PERMANENT_FAILURE_MARKERS = (
     "is not a valid model id",
     "model not found",
     "does not exist",
+    # Observed on a Google slug while evaluating that provider: "This model
+    # models/x is no longer available to new users." Kept even though Google is
+    # not a shipped provider, because it matched none of the markers above --
+    # all of which were written from OpenRouter's and Groq's phrasing -- and a
+    # withdrawal that reads as a transient 404 is retried forever.
+    "no longer available",
 )
 
 #: Bounds on how long a *rate-limited* slug sits out.
@@ -221,18 +228,49 @@ MAX_RATE_LIMIT_BENCH_SECONDS = 10 * 60.0
 #: Used when a response is plainly rate-limited but names no retry window.
 DEFAULT_RATE_LIMIT_BENCH_SECONDS = 60.0
 
+#: How long a slug sits out when the exhausted bucket is a **daily** one.
+#:
+#: Not a padding guess -- the provider's own figure is untrustworthy in exactly
+#: this case, and this is the bucket that caused the reported slowdown. Groq
+#: meters **tokens per day** as well as requests, and when that bucket drains it
+#: answers "try again in 3m36s" -- a figure about its short window, not about
+#: when the day's budget returns. The same shape was measured on a Google slug,
+#: which reports `"retryDelay": "46s"` with its per-*day* request allowance
+#: spent. Honouring either re-admits the slug in minutes to fail again, all day,
+#: which is the churn the bench exists to stop. A daily bucket cannot
+#: meaningfully refill in under half an hour, so a stated window is ignored when
+#: the error names a daily metric.
+DAILY_QUOTA_BENCH_SECONDS = 30 * 60.0
+
+#: Substrings identifying a per-day allowance in a provider's quota metadata.
+#: Google names the metric (`GenerateRequestsPerDayPerProjectPerModel`); Groq
+#: spells it out in prose ("tokens per day (TPD)"); OpenRouter says
+#: "free-models-per-day".
+_DAILY_QUOTA_MARKERS = ("perday", "per day", "per-day", "tpd", "rpd")
+
 #: Markers that identify a rate limit in an error whose status code is not to
 #: hand -- LiteLLM surfaces one final string rather than a typed exception.
 _RATE_LIMIT_MARKERS = ("rate limit", "rate_limit", "too many requests", "429")
 
-#: "Please try again in 3m36s", "try again in 7.66s", "try again in 1h2m3s".
+#: Providers put the window in the message body rather than in a header, and
+#: each words it differently -- Groq says "Please try again in 3m36s", Google
+#: says "Please retry in 35.98s". Both spellings are matched rather than one
+#: being treated as the format; the breadth costs a line and spared a provider
+#: evaluation from silently falling back to the default window.
 _RETRY_IN_RE = re.compile(
-    r"try again in\s+(?:(\d+(?:\.\d+)?)h)?(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?",
+    r"(?:try again|retry) in\s+"
+    r"(?:(\d+(?:\.\d+)?)h)?(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?",
     re.IGNORECASE,
 )
 
+#: Some providers also repeat the window as structured `RetryInfo` in the error
+#: body, which survives when the prose message does not.
+_RETRY_DELAY_RE = re.compile(r'"?retrydelay"?\s*:\s*"?(\d+(?:\.\d+)?)s', re.IGNORECASE)
+
 #: A plain `Retry-After` header value, in seconds.
-_RETRY_AFTER_RE = re.compile(r"retry[-_ ]after[\"']?\s*[:=]?\s*[\"']?(\d+(?:\.\d+)?)", re.IGNORECASE)
+_RETRY_AFTER_RE = re.compile(
+    r"retry[-_ ]after[\"']?\s*[:=]?\s*[\"']?(\d+(?:\.\d+)?)", re.IGNORECASE
+)
 
 #: slug -> monotonic timestamp at which it becomes eligible again.
 _benched: dict[str, float] = {}
@@ -338,6 +376,41 @@ def active_chain(chain: list[str]) -> list[str]:
     return available or configured
 
 
+def _names_model(text: str, bare: str) -> bool:
+    r"""Report whether `text` names exactly this model id, not a longer one.
+
+    A plain containment test benches too much, because model ids are routinely
+    prefixes of each other. The shipped slugs escape this only by coincidence --
+    `openai/gpt-oss-20b` is not inside `openai/gpt-oss-120b`, because of the `1`
+    -- which is not a property to keep relying on, and the wider the chains grow
+    the more such pairs there are. A real example, from a provider catalogue
+    surveyed while evaluating one: `gemini-2.5-flash` sits inside
+    `gemini-2.5-flash-lite`, so a withdrawal notice naming *lite* would have
+    benched both for half an hour.
+
+    So the match is bounded by the characters that can *continue* a model id.
+    Note the asymmetry in how a dot is treated, which a first version got wrong:
+    ids carry dots as version separators (`llama-3.3-70b`), so a trailing dot
+    must still terminate the match when it is sentence punctuation
+    (`"model-1.0-flash. No endpoints found"`) while blocking it when a digit
+    follows and the id therefore continues (`1.0` inside `1.05`). Hence
+    `(?!\.\w)` rather than putting `.` in the character class.
+
+    `normalize()` avoids the same trap by matching exactly, and
+    `collab/opacity.value_appears()` exists for this class of bug on numbers.
+
+    Args:
+        text: The provider's error text, already lowercased.
+        bare: The model id without its routing prefix, already lowercased.
+
+    Returns:
+        True if the id appears as a whole token.
+    """
+    return (
+        re.search(rf"(?<![\w.-]){re.escape(bare)}(?![\w-])(?!\.\w)", text) is not None
+    )
+
+
 def note_failure(error: BaseException) -> list[str]:
     """Bench any chain slug the error names as permanently gone.
 
@@ -355,26 +428,72 @@ def note_failure(error: BaseException) -> list[str]:
         The slugs newly benched by this call, for logging/assertion.
     """
     text = str(error).lower()
-    if not any(marker in text for marker in _PERMANENT_FAILURE_MARKERS):
+    if not names_permanent_failure(text):
         return []
 
     newly_benched = []
     for model in _ALL_MODELS:
         # LiteLLM may report the slug with or without its routing prefix.
         bare = model.split("/", 1)[1]
-        if bare.lower() in text and model not in newly_benched:
+        if _names_model(text, bare.lower()) and model not in newly_benched:
             _benched[model] = time.monotonic() + COOLDOWN_SECONDS
             newly_benched.append(model)
 
     if newly_benched:
+        remaining_tool = len(active_chain(TOOL_MODEL_CHAIN))
+        remaining_generation = len(active_chain(GENERATION_MODEL_CHAIN))
         logger.warning(
             "models_benched",
             models=newly_benched,
             cooldown_seconds=COOLDOWN_SECONDS,
-            remaining_tool=len(active_chain(TOOL_MODEL_CHAIN)),
-            remaining_generation=len(active_chain(GENERATION_MODEL_CHAIN)),
+            remaining_tool=remaining_tool,
+            remaining_generation=remaining_generation,
+        )
+        # A withdrawn slug is chain rot, and rot never raises: the chain falls
+        # through and answers correctly from further down, so nothing else
+        # would ever tell an operator the lists have started to decay.
+        report_model_health(
+            "models_benched",
+            models=",".join(newly_benched),
+            remaining_tool=remaining_tool,
+            remaining_generation=remaining_generation,
         )
     return newly_benched
+
+
+def names_daily_quota(detail: str) -> bool:
+    """Report whether the exhausted allowance is a per-day one.
+
+    Matters because the two exhaust on completely different timescales while
+    both arriving as a 429, and the provider's own retry hint does not
+    distinguish them -- see `DAILY_QUOTA_BENCH_SECONDS`.
+
+    Args:
+        detail: The provider's error text.
+
+    Returns:
+        True if the text names a daily bucket.
+    """
+    lowered = detail.lower()
+    return any(marker in lowered for marker in _DAILY_QUOTA_MARKERS)
+
+
+def names_permanent_failure(detail: str) -> bool:
+    """Report whether an error string describes a model that is gone for good.
+
+    The opposite of `looks_rate_limited`: a withdrawn slug fails every time,
+    where a rate-limited one is healthy and busy. Exposed so callers outside the
+    bench -- the capability probes especially -- can tell a retired model from
+    an intermittent one instead of recording it as a flake.
+
+    Args:
+        detail: The provider's error text.
+
+    Returns:
+        True if the text names a permanent failure.
+    """
+    lowered = detail.lower()
+    return any(marker in lowered for marker in _PERMANENT_FAILURE_MARKERS)
 
 
 def looks_rate_limited(detail: str) -> bool:
@@ -412,9 +531,10 @@ def parse_retry_after(detail: str) -> float | None:
         hours, minutes, seconds = (float(part or 0) for part in match.groups())
         return hours * 3600 + minutes * 60 + seconds
 
-    match = _RETRY_AFTER_RE.search(detail)
-    if match:
-        return float(match.group(1))
+    for pattern in (_RETRY_DELAY_RE, _RETRY_AFTER_RE):
+        match = pattern.search(detail)
+        if match:
+            return float(match.group(1))
 
     return None
 
@@ -450,9 +570,18 @@ def note_rate_limit(model: str, detail: str = "") -> float | None:
     if slug not in _ALL_MODELS:
         return None
 
-    stated = parse_retry_after(detail)
-    window = DEFAULT_RATE_LIMIT_BENCH_SECONDS if stated is None else stated
-    window = min(max(window, MIN_RATE_LIMIT_BENCH_SECONDS), MAX_RATE_LIMIT_BENCH_SECONDS)
+    daily = names_daily_quota(detail)
+    if daily:
+        # The provider's stated window is about its *per-minute* bucket even
+        # when the exhausted one is daily, so it is deliberately not consulted.
+        window = DAILY_QUOTA_BENCH_SECONDS
+        stated = None
+    else:
+        stated = parse_retry_after(detail)
+        window = DEFAULT_RATE_LIMIT_BENCH_SECONDS if stated is None else stated
+        window = min(
+            max(window, MIN_RATE_LIMIT_BENCH_SECONDS), MAX_RATE_LIMIT_BENCH_SECONDS
+        )
 
     until = time.monotonic() + window
     if _benched.get(slug, 0.0) < until:
@@ -463,7 +592,15 @@ def note_rate_limit(model: str, detail: str = "") -> float | None:
         model=slug,
         bench_seconds=round(window, 1),
         window_stated_by_provider=stated is not None,
+        daily_quota=daily,
     )
+    if daily:
+        # Only the daily case is reported. A per-minute limit is ordinary
+        # backpressure that clears itself in under a minute; a spent daily
+        # allowance means this slug is gone until tomorrow, which changes what
+        # the chain can serve for the rest of the day and is worth an operator
+        # knowing before visitors find out by waiting.
+        report_model_health("daily_quota_exhausted", model=slug)
     return window
 
 

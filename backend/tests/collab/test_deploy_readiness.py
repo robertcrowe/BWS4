@@ -48,15 +48,23 @@ class TestTheSliceAddsNothingToTheBuild:
         )
         assert "collab" not in API_SERVICE["startCommand"]
 
-    def test_the_slice_needs_no_new_environment_variable(self) -> None:
-        """v6 introduced none. A slice that quietly required one would fail on
-        a deploy rather than in CI, which is the worst place to find out.
+    def test_render_yaml_declares_exactly_the_settings_the_app_reads(self) -> None:
+        """The deploy config and the code must agree, in both directions.
 
-        Asserted **both ways**. The subset check alone was too weak and let a
-        real gap through: `MODERATION_HASH_SALT` had never been declared in
-        `render.yaml` at all, and a test that only forbids *extra* keys passes
-        happily on a missing one. Every setting the app reads must be declared,
-        and nothing beyond them may appear.
+        Written for v6, which introduced no environment variable, and named for
+        that at the time. What it *enforces* is the more durable property, so it
+        is named for that now: a variable the app reads but `render.yaml` never
+        declares fails on a deploy rather than in CI, which is the worst place
+        to find out, and a variable declared here but read nowhere is a stale
+        instruction to whoever configures the service by hand.
+
+        Asserted **both ways**, because the subset check alone was too weak and
+        let a real gap through: `MODERATION_HASH_SALT` had never been declared
+        in `render.yaml` at all, and a test that only forbids *extra* keys
+        passes happily on a missing one.
+
+        Adding a key here is therefore a deliberate act, and the list is spelled
+        out rather than derived from `Settings` so it stays one.
         """
         declared = {var["key"] for var in API_SERVICE["envVars"]}
         expected = {

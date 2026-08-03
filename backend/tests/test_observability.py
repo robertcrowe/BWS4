@@ -40,7 +40,9 @@ def test_configure_sentry_initializes_when_dsn_is_set() -> None:
     dsn = "https://public@o0.ingest.sentry.io/1234567"
 
     with patch("backend.app.core.observability.sentry_sdk.init") as init:
-        enabled = configure_sentry(_settings(sentry_dsn=dsn, sentry_environment="production"))
+        enabled = configure_sentry(
+            _settings(sentry_dsn=dsn, sentry_environment="production")
+        )
 
     assert enabled is True
     init.assert_called_once()
@@ -84,6 +86,49 @@ def test_report_abort_sends_no_visitor_text() -> None:
 
     assert capture.call_count == 1
     message = capture.call_args[0][0]
-    assert message == "orchestrated_abort:synthesis_failed"
+    assert message == "run_abort:synthesis_failed"
     # The message carries an outcome, never content.
     assert "?" not in message
+
+
+def test_the_abort_prefix_does_not_name_one_app_when_two_call_it() -> None:
+    """It used to be `orchestrated_abort:`, and two apps call this.
+
+    That filed collab's aborts -- leak detection among them, the most serious
+    event that app can report -- under the orchestrated app's name, so they
+    sorted and grouped wrong in Sentry. Each app's reasons stay distinguishable
+    on their own: collab's carry a `collab_` prefix, orchestrated's are its
+    `Outcome` values.
+    """
+    from unittest.mock import patch
+
+    from backend.app.core import observability
+
+    with patch.object(observability.sentry_sdk, "capture_message") as capture:
+        observability.report_abort("collab_leak_detected", run_id="r1")
+
+    assert capture.call_args[0][0] == "run_abort:collab_leak_detected"
+    assert "orchestrated" not in capture.call_args[0][0]
+
+
+def test_model_health_is_reported_under_its_own_prefix() -> None:
+    """Chain rot is not a run abort, and grouping them together would bury the
+    one inside the other -- aborts are per-run and frequent by comparison."""
+    from unittest.mock import patch
+
+    from backend.app.core import observability
+
+    with patch.object(observability.sentry_sdk, "capture_message") as capture:
+        observability.report_model_health("models_benched", models="groq/x")
+
+    (message,) = capture.call_args[0]
+    assert message == "model_health:models_benched"
+    assert capture.call_args.kwargs["level"] == "warning"
+
+
+def test_model_health_is_a_no_op_without_a_dsn() -> None:
+    """Called from inside exception handlers and hot paths; it must never raise
+    or require configuration."""
+    from backend.app.core import observability
+
+    observability.report_model_health("chain_head_not_serving", chain="tool")

@@ -220,8 +220,27 @@ def test_an_empty_lane_fails_loudly() -> None:
 
 
 def test_the_built_in_providers_are_registered_on_import() -> None:
-    """A caller should not have to bootstrap the providers this build ships."""
+    """A caller should not have to bootstrap the providers this build ships.
+
+    Spelled out rather than derived from `_builtin_adapters()`, which would make
+    it vacuous -- the point is that *these* are reachable without a caller doing
+    anything.
+    """
     assert agent_runtime.registered_providers() == {"openrouter", "groq"}
+
+
+def test_every_shipped_provider_can_actually_be_constructed() -> None:
+    """A credential entry with no adapter drops its slugs from this lane silently.
+
+    That combination is *supported* -- the LiteLLM lane may reach a provider this
+    one cannot, and `lane_chain` routes around it deliberately. But for a
+    provider this build ships slugs for, it would be a chain quietly shorter
+    than it reads, which is the failure mode this whole area keeps producing.
+    """
+    for provider in model_registry.PROVIDER_CREDENTIALS:
+        assert provider in agent_runtime.registered_providers(), (
+            f"{provider} is declared in PROVIDER_CREDENTIALS but has no lane adapter"
+        )
 
 
 def test_an_adapter_reuses_one_provider_object_across_calls() -> None:
