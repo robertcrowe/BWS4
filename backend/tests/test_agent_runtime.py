@@ -9,6 +9,8 @@ example app being edited. Nothing here calls a model or touches a database.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 from unittest.mock import patch
 
 import pytest
@@ -28,7 +30,7 @@ from backend.app.services.agent_runtime import (
 
 
 @pytest.fixture(autouse=True)
-def _clean_lane():
+def _clean_lane() -> Iterator[None]:
     """Registration and cooldowns are process-local; they must not leak."""
     model_registry.reset_cooldowns()
     agent_runtime.reset_providers()
@@ -251,7 +253,7 @@ def test_an_adapter_reuses_one_provider_object_across_calls() -> None:
     first = adapter.build_model("a")
     second = adapter.build_model("b")
 
-    assert first.client is second.client
+    assert first.client is second.client  # type: ignore[attr-defined]  # concrete OpenAIChatModel, not the Model protocol
 
 
 class TestTheFallbackObserver:

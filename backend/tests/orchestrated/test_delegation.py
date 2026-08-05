@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -114,9 +115,9 @@ class _Session:
         self.holds: dict[str, AllowanceHold] = {}
         self._caps = caps or {}
 
-    async def execute(self, statement: object, *_a: object, **_k: object) -> _Result:
+    async def execute(self, statement: Any, *_a: object, **_k: object) -> _Result:
         try:
-            params = list(statement.compile().params.values())  # type: ignore[attr-defined]
+            params = list(statement.compile().params.values())
         except Exception:  # noqa: BLE001 - fake session, best effort
             params = []
         key = params[0] if params else None
@@ -183,7 +184,7 @@ def _moderator(verdict: ModerationVerdict) -> tuple[object, list[str]]:
     return moderate, seen
 
 
-def _run(session: _Session, *, question: str, preset_id: str | None, moderate: object):
+def _run(session: Any, *, question: str, preset_id: str | None, moderate: Any) -> Any:
     return asyncio.run(
         service.begin_run(
             session, question=question, preset_id=preset_id, moderate=moderate
@@ -194,7 +195,7 @@ def _run(session: _Session, *, question: str, preset_id: str | None, moderate: o
 class TestOrdering:
     def test_a_curated_preset_skips_moderation_entirely(self) -> None:
         """Pre-vetted, so the gate costs nothing and needs nothing reachable."""
-        session = _Session()
+        session: Any = _Session()
         moderate, seen = _moderator(ALLOWED)
         agent = _Coordinator(_draft(["technical", "financial"], briefs=_good_briefs()))
 
@@ -215,7 +216,7 @@ class TestOrdering:
         Accepting it would let any text bypass the safety gate by attaching an
         id — the text must byte-match the stored question.
         """
-        session = _Session()
+        session: Any = _Session()
         moderate, seen = _moderator(ALLOWED)
         agent = _Coordinator(_draft(["technical", "financial"], briefs=_good_briefs()))
 
@@ -231,7 +232,7 @@ class TestOrdering:
 
     def test_a_blocked_question_reserves_nothing_and_calls_nothing(self) -> None:
         """The order's whole point: refuse before spending anything."""
-        session = _Session()
+        session: Any = _Session()
         moderate, _ = _moderator(BLOCKED)
         agent = _Coordinator(_draft(["technical", "financial"], briefs=_good_briefs()))
 
@@ -247,7 +248,7 @@ class TestOrdering:
 
     def test_the_hold_is_reserved_before_the_coordinator_is_called(self) -> None:
         """A decision must never reach the screen that the allowance cannot run."""
-        session = _Session()
+        session: Any = _Session()
         moderate, _ = _moderator(ALLOWED)
         observed: dict[str, object] = {}
 
@@ -271,7 +272,7 @@ class TestOrdering:
         assert observed["holds_at_call_time"] == [outcome.decision_id]
 
     def test_an_exhausted_hourly_gate_refuses_before_reserving_or_calling(self) -> None:
-        session = _Session(caps={shared.CAPABILITY_GENERATION: 0})
+        session: Any = _Session(caps={shared.CAPABILITY_GENERATION: 0})
         moderate, _ = _moderator(ALLOWED)
         agent = _Coordinator(_draft(["technical", "financial"], briefs=_good_briefs()))
 
@@ -314,7 +315,7 @@ class TestOrdering:
         question as rejected when nothing examined it. Found by a live run
         against a deployment with no moderation key.
         """
-        session = _Session()
+        session: Any = _Session()
         unavailable = ModerationVerdict(
             allowed=False,
             category=ModerationCategory.UNAVAILABLE,
@@ -329,7 +330,7 @@ class TestOrdering:
             )
 
         assert outcome.outcome is Outcome.MODERATION_UNAVAILABLE
-        assert outcome.outcome is not Outcome.MODERATION_BLOCKED
+        assert outcome.outcome is not Outcome.MODERATION_BLOCKED  # type: ignore[comparison-overlap]  # distinctness is the assertion: two enum members given the same value would alias at runtime
         assert agent.calls == 0
         assert session.holds == {}
 
@@ -349,7 +350,7 @@ class TestExactlyOneModelCall:
     def test_each_malformed_delegation_is_repaired_without_a_second_call(
         self, ids: list[str], label: str
     ) -> None:
-        session = _Session()
+        session: Any = _Session()
         moderate, _ = _moderator(ALLOWED)
         agent = _Coordinator(_draft(ids))
 
@@ -369,7 +370,7 @@ class TestExactlyOneModelCall:
         assert len(set(outcome.decision.chosen_specialists)) == 2
 
     def test_a_valid_delegation_also_costs_exactly_one_call(self) -> None:
-        session = _Session()
+        session: Any = _Session()
         moderate, _ = _moderator(ALLOWED)
         agent = _Coordinator(_draft(["technical", "financial"], briefs=_good_briefs()))
 
@@ -531,7 +532,7 @@ class TestFailureRefundsTheHold:
     def test_a_coordinator_failure_refunds_rather_than_stranding_the_budget(
         self,
     ) -> None:
-        session = _Session()
+        session: Any = _Session()
         moderate, _ = _moderator(ALLOWED)
         agent = _Coordinator(raises=AgentLaneError("coordinator", "chain exhausted"))
 
@@ -550,7 +551,7 @@ class TestFailureRefundsTheHold:
     def test_a_successful_run_leaves_the_hold_reserved_for_dispatch(self) -> None:
         # Redeeming happens when the specialists actually run, which is a later
         # phase. Until then the budget stays claimed.
-        session = _Session()
+        session: Any = _Session()
         moderate, _ = _moderator(ALLOWED)
         agent = _Coordinator(_draft(["technical", "financial"], briefs=_good_briefs()))
 
@@ -568,7 +569,7 @@ class TestFailureRefundsTheHold:
 
 class TestPersistence:
     def test_the_log_line_carries_no_question_text(self) -> None:
-        session = _Session()
+        session: Any = _Session()
         moderate, _ = _moderator(ALLOWED)
         agent = _Coordinator(_draft(["technical", "financial"], briefs=_good_briefs()))
 
@@ -587,8 +588,8 @@ class TestPersistence:
 
 
 class TestRunStream:
-    def _stream(self, body: dict) -> list[tuple[str, dict]]:
-        events: list[tuple[str, dict]] = []
+    def _stream(self, body: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+        events: list[tuple[str, dict[str, Any]]] = []
         pending: str | None = None
 
         with client.stream("POST", "/api/orchestrated/run", json=body) as response:
@@ -605,7 +606,7 @@ class TestRunStream:
         return events
 
     def test_it_emits_exactly_one_delegation_event_then_closes(self) -> None:
-        session = _Session()
+        session: Any = _Session()
         moderate, _ = _moderator(ALLOWED)
         agent = _Coordinator(_draft(["technical", "financial"], briefs=_good_briefs()))
 
@@ -635,7 +636,7 @@ class TestRunStream:
         single coordinator call would be caught — not only one that happened to
         be labelled "specialist".
         """
-        session = _Session()
+        session: Any = _Session()
         moderate, _ = _moderator(ALLOWED)
         agent = _Coordinator(_draft(["technical", "financial"], briefs=_good_briefs()))
         lane_calls: list[str] = []
@@ -655,7 +656,7 @@ class TestRunStream:
         assert lane_calls == [], "no further lane request was issued"
 
     def test_a_refusal_arrives_as_a_categorised_error_event(self) -> None:
-        session = _Session()
+        session: Any = _Session()
 
         async def blocking(text: str, calling_context: str) -> ModerationVerdict:
             return BLOCKED

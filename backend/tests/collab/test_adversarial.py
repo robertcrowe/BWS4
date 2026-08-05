@@ -30,6 +30,11 @@ from backend.app.collab.scenarios import SCENARIOS, PrivateConstraint
 from backend.app.collab.schemas import Bid
 from backend.app.services.message_bus import PeerMessageBus, PeerMessageEnvelope
 
+#: Where this suite patches the collaborators the module under test
+#: resolved at import time -- patch-at-point-of-use, kept as one
+#: constant so the dotted path is stated once.
+_PATCH_BASE = "backend.app.collab.sequencer.agents"
+
 SELLERS = sorted(opacity.SELLER_IDS_SET)
 
 #: Prompts a seller might be given, or might talk itself into, to get at the
@@ -64,7 +69,7 @@ PROBES: list[tuple[str, str]] = [
 ]
 
 
-def _bus_with_rfq(scenario, rfq_text: str) -> PeerMessageBus:
+def _bus_with_rfq(scenario: Any, rfq_text: str) -> PeerMessageBus:
     """A bus carrying the RFQ to both sellers, as stage 1 leaves it."""
     bus = PeerMessageBus()
     for seller in SELLERS:
@@ -91,7 +96,7 @@ def _bus_with_rfq(scenario, rfq_text: str) -> PeerMessageBus:
 @pytest.mark.parametrize("probe", PROBES, ids=[name for name, _ in PROBES])
 class TestAProbingSellerLearnsNothing:
     def test_its_context_contains_no_rival_material(
-        self, scenario, probe: tuple[str, str]
+        self, scenario: Any, probe: tuple[str, str]
     ) -> None:
         """The probe is appended to the seller's own turn and changes nothing:
         the context is assembled from its own inbox and its own constraints, so
@@ -129,7 +134,7 @@ class TestAProbingSellerLearnsNothing:
             assert own.seller_id == seller
 
     def test_the_probe_cannot_widen_what_the_assembler_returns(
-        self, scenario, probe: tuple[str, str]
+        self, scenario: Any, probe: tuple[str, str]
     ) -> None:
         """Whatever the prompt says, `assemble_context` takes the same four
         arguments. There is no parameter an injection could reach."""
@@ -143,7 +148,7 @@ class TestAProbingSellerLearnsNothing:
         }
 
 
-def scenario_weighting():
+def scenario_weighting() -> Any:
     """The weighting the probes run under. Any preset does; this one is neutral."""
     from backend.app.collab.scenarios import WEIGHTINGS_BY_ID
 
@@ -159,17 +164,19 @@ class TestTheRunStillCompletesUnderProbing:
         request = compose_rfq(scenario, weighting)
         seen_prompts: list[str] = []
 
-        async def _opening(context, *, budget, nudge=""):
+        async def _opening(context: Any, *, budget: Any, nudge: Any = "") -> Any:
             # The injection rides along in the seller's own turn.
             seen_prompts.append(context.rfq_text)
             budget.spend()
             return _step(context.agent_id, "opening_bids")
 
-        async def _final(context, *, counter, budget):
+        async def _final(context: Any, *, counter: Any, budget: Any) -> Any:
             budget.spend()
             return _step(context.agent_id, "final_bids")
 
-        async def _counters(*, request, weighting, bids, budget):
+        async def _counters(
+            *, request: Any, weighting: Any, bids: Any, budget: Any
+        ) -> Any:
             budget.spend()
             from backend.app.collab.schemas import CounterOffer, CounterOfferSet
 
@@ -187,7 +194,14 @@ class TestTheRunStillCompletesUnderProbing:
                 )
             )
 
-        async def _award(*, request, weighting, final_bids, budget, inconsistency=""):
+        async def _award(
+            *,
+            request: Any,
+            weighting: Any,
+            final_bids: Any,
+            budget: Any,
+            inconsistency: Any = "",
+        ) -> Any:
             budget.spend()
             from backend.app.collab.schemas import Award
 
@@ -213,10 +227,10 @@ class TestTheRunStillCompletesUnderProbing:
         async def _go() -> None:
             nonlocal outcome
             with (
-                patch.object(sequencer.agents, "seller_opening_bid", _opening),
-                patch.object(sequencer.agents, "seller_final_bid", _final),
-                patch.object(sequencer.agents, "buyer_counter_offers", _counters),
-                patch.object(sequencer.agents, "buyer_award", _award),
+                patch(f"{_PATCH_BASE}.seller_opening_bid", _opening),
+                patch(f"{_PATCH_BASE}.seller_final_bid", _final),
+                patch(f"{_PATCH_BASE}.buyer_counter_offers", _counters),
+                patch(f"{_PATCH_BASE}.buyer_award", _award),
                 patch.object(explanations, "run_agent_step", _no_explanation),
             ):
                 async for item in sequencer.run_negotiation(
@@ -251,7 +265,7 @@ _STUB_BIDS = {
 }
 
 
-def _step(seller_id: str, stage: str):
+def _step(seller_id: str, stage: str) -> Any:
     price, quantity, days, warranty = _STUB_BIDS[seller_id]
     return _wrap(
         Bid(
@@ -266,7 +280,7 @@ def _step(seller_id: str, stage: str):
     )
 
 
-def _wrap(output: Any):
+def _wrap(output: Any) -> Any:
     from backend.app.services.agent_runtime import StepResult
 
     return StepResult(output=output, model="probe/replay")
@@ -275,7 +289,7 @@ def _wrap(output: Any):
 class TestTheSellerPromptItselfCarriesNoRivalMaterial:
     @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda s: s.id)
     def test_the_assembled_system_prompt_names_only_its_own_position(
-        self, scenario
+        self, scenario: Any
     ) -> None:
         """Checked on the *rendered prompt* the agent module builds, not just
         on the context object — the last place rival material could enter."""

@@ -14,6 +14,8 @@ pytest-asyncio, and `@pytest.mark.asyncio` would silently skip.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import asyncio
 from unittest.mock import patch
 
@@ -42,7 +44,7 @@ RESULTS = [
 ]
 
 
-def _search_returning(*batches: list[ExaResult]):
+def _search_returning(*batches: list[ExaResult]) -> Any:
     """Build an injected search that returns each batch in call order."""
     queue = list(batches)
     seen: list[str] = []
@@ -54,7 +56,7 @@ def _search_returning(*batches: list[ExaResult]):
     return execute, seen
 
 
-def _run(coro):
+def _run(coro: Any) -> Any:
     return asyncio.run(coro)
 
 
@@ -78,7 +80,7 @@ class TestResearchExecutor:
 
         execute, seen = _search_returning(RESULTS)
 
-        with patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
             outcome = _run(
                 agents.run_research(goal=GOAL, step=STEP, execute_search=execute)
             )
@@ -110,7 +112,7 @@ class TestResearchExecutor:
 
         execute, _ = _search_returning(RESULTS)
 
-        with patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
             outcome = _run(agents.run_research(goal=GOAL, step=STEP, execute_search=execute))
 
         urls = {source.url for source in outcome.sources}
@@ -132,7 +134,7 @@ class TestResearchExecutor:
 
         execute, _ = _search_returning(RESULTS)
 
-        with patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
             _run(agents.run_research(goal=GOAL, step=STEP, execute_search=execute))
 
         assert captured
@@ -163,7 +165,7 @@ class TestResearchExecutor:
 
         execute, seen = _search_returning([], RESULTS)
 
-        with patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
             outcome = _run(agents.run_research(goal=GOAL, step=STEP, execute_search=execute))
 
         assert seen == ["first", "second"]
@@ -186,7 +188,7 @@ class TestResearchExecutor:
 
         execute, _ = _search_returning(RESULTS, RESULTS)
 
-        with patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
             outcome = _run(agents.run_research(goal=GOAL, step=STEP, execute_search=execute))
 
         assert len(outcome.sources) == 2
@@ -201,7 +203,7 @@ class TestResearchExecutor:
 
         execute, seen = _search_returning(RESULTS)
 
-        with patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
             outcome = _run(agents.run_research(goal=GOAL, step=STEP, execute_search=execute))
 
         assert seen == []
@@ -225,7 +227,7 @@ class TestTheSearchCapIsEnforcedInCode:
     """
 
     @staticmethod
-    def _always_searches():
+    def _always_searches() -> Any:
         """A model that ignores the prompt and searches on every single turn.
 
         This is not a contrived adversary -- it is what the shipped lane did
@@ -247,9 +249,7 @@ class TestTheSearchCapIsEnforcedInCode:
         behave, attempts = self._always_searches()
         execute, seen = _search_returning([], [], [], [], [])
 
-        with patch.object(
-            agents.agent_runtime,
-            "build_fallback_model",
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model",
             lambda chain=None, **_: FunctionModel(behave),
         ):
             with pytest.raises(StepRequestLimitExceeded):
@@ -276,9 +276,7 @@ class TestTheSearchCapIsEnforcedInCode:
             calls.append(query)
             return []
 
-        with patch.object(
-            agents.agent_runtime,
-            "build_fallback_model",
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model",
             lambda chain=None, **_: FunctionModel(behave),
         ):
             with pytest.raises(StepRequestLimitExceeded):
@@ -312,9 +310,7 @@ class TestTheSearchCapIsEnforcedInCode:
 
         execute, seen = _search_returning(RESULTS, RESULTS)
 
-        with patch.object(
-            agents.agent_runtime,
-            "build_fallback_model",
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model",
             lambda chain=None, **_: FunctionModel(behave),
         ):
             outcome = _run(
@@ -339,11 +335,9 @@ class TestTheSearchCapIsEnforcedInCode:
 
         def capture(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
             refusals.append(str(messages[-1]))
-            return behave(messages, info)
+            return cast(ModelResponse, behave(messages, info))
 
-        with patch.object(
-            agents.agent_runtime,
-            "build_fallback_model",
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model",
             lambda chain=None, **_: FunctionModel(capture),
         ):
             with pytest.raises(StepRequestLimitExceeded):
@@ -379,9 +373,7 @@ class TestTheSearchCapIsEnforcedInCode:
 
         execute, seen = _search_returning([], RESULTS)
 
-        with patch.object(
-            agents.agent_runtime,
-            "build_fallback_model",
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model",
             lambda chain=None, **_: FunctionModel(behave),
         ):
             outcome = _run(
@@ -543,7 +535,7 @@ class TestPlanner:
                 ]
             )
 
-        with patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
             _run(
                 agents.run_planner(
                     goal=GOAL,
@@ -571,7 +563,7 @@ class TestPlanner:
                 ]
             )
 
-        with patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
             _run(agents.run_planner(goal=GOAL))
 
         assert "rejected by the plan checker" not in prompts[0]
@@ -613,7 +605,7 @@ class TestSynthesis:
             StepResult(step_index=1, status="failed", summary="This step could not be completed."),
         ]
 
-        with patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
             _run(agents.run_synthesis(goal=GOAL, plan=plan, results=results))
 
         assert "failed" in prompts[0]
@@ -635,7 +627,7 @@ class TestSynthesis:
         plan = Plan(goal="g", steps=[STEP, PlanStep(index=2, kind="synthesis", description="d")])
         results = [StepResult(step_index=1, status="completed", summary="Found things.")]
 
-        with patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
             _run(agents.run_synthesis(goal=GOAL, plan=plan, results=results))
 
         assert "UNTRUSTED_WEB_CONTENT" in prompts[0]

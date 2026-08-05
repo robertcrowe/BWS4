@@ -29,6 +29,7 @@ import inspect
 import json
 import time
 from collections.abc import Iterator
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -123,9 +124,9 @@ class _Session:
         self.added: list[object] = []
         self.holds: dict[str, AllowanceHold] = {}
 
-    async def execute(self, statement: object, *_a: object, **_k: object) -> _Result:
+    async def execute(self, statement: Any, *_a: object, **_k: object) -> _Result:
         try:
-            params = list(statement.compile().params.values())  # type: ignore[attr-defined]
+            params = list(statement.compile().params.values())
         except Exception:  # noqa: BLE001 - fake session, best effort
             params = []
         key = params[0] if params else None
@@ -145,10 +146,10 @@ class _Session:
         return [row.summary for row in self.added if isinstance(row, ServiceLogEntry)]
 
 
-async def _reserved(session: _Session, decision_id: str) -> None:
+async def _reserved(session: Any, decision_id: str) -> None:
     """Put a live reserved hold in place, as the delegation phase would."""
     await allowance_holds.reserve(
-        session,  # type: ignore[arg-type]
+        session,
         hold_key=decision_id,
         capability="generation",
         app_name=service.ORCHESTRATED_APP_NAME,
@@ -240,7 +241,7 @@ async def _stub_synthesis(
 
 
 def _dispatch(
-    session: _Session,
+    session: Any,
     *,
     decision_id: str = "run-1",
     decision: DelegationDecision | None = None,
@@ -253,7 +254,7 @@ def _dispatch(
         return [
             event
             async for event in service.confirm_dispatch(
-                session,  # type: ignore[arg-type]
+                session,
                 decision_id=decision_id,
                 decision=decision or _decision(),
                 question=QUESTION,
@@ -308,7 +309,7 @@ class TestTheGoAheadGate:
         events = asyncio.run(go())
 
         assert events[0].payload["outcome"] == Outcome.DISPATCH_EXPIRED.value
-        assert Outcome.DISPATCH_EXPIRED is not Outcome.DISPATCH_UNKNOWN
+        assert Outcome.DISPATCH_EXPIRED is not Outcome.DISPATCH_UNKNOWN  # type: ignore[comparison-overlap]  # distinctness is the assertion: two enum members given the same value would alias at runtime
 
     def test_the_same_confirmation_cannot_be_replayed(self) -> None:
         """Redeeming before dispatch is what makes a decision id single-use.
@@ -705,7 +706,10 @@ class TestTheArithmetic:
                 budget=RunBudget(),
             )
 
-        with patch.object(runtime.agent_runtime, "run_typed_step", fake_typed_step):
+        with patch(
+            "backend.app.orchestrated.runtime.agent_runtime.run_typed_step",
+            fake_typed_step,
+        ):
             asyncio.run(go())
 
         assert captured["request_limit"] == STEP_REQUEST_LIMIT
@@ -868,7 +872,7 @@ class TestTheSpecialistsThemselves:
 
         assert "tools" not in captured
         # And the helper it calls cannot pass any: it has no such parameter.
-        assert "tools" not in inspect.signature(specialists.run_agent_step).parameters
+        assert "tools" not in inspect.signature(specialists.run_agent_step).parameters  # type: ignore[attr-defined]  # reaching the module's own import on purpose -- patch/identity at point of use
 
     def test_every_roster_member_is_reachable_by_id_alone(self) -> None:
         """Selection by id, never by import -- the tool-protocol requirement."""

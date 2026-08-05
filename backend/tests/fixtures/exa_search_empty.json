@@ -1,0 +1,9 @@
+{
+  "_recorded": "Exa returning a well-formed 200 with no results. This is the web's answer to the question, not a failure -- the loop must be made to react to it.",
+  "_query": "highest mountain in a country that does not exist",
+  "status_code": 200,
+  "body": {
+    "requestId": "recorded-fixture-empty",
+    "results": []
+  }
+}

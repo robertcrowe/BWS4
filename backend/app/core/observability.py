@@ -9,6 +9,9 @@ request handling, the ``httpx`` calls the Exa search client makes, and the
 outbound HTTP LiteLLM issues against OpenRouter.
 """
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 import sentry_sdk
 import structlog
 
@@ -112,6 +115,40 @@ def report_model_health(event: str, **context: object) -> None:
             rule `report_abort` documents, for the same reason.
     """
     _capture("model_health", event, context)
+
+
+@contextmanager
+def span(op: str, name: str, **data: object) -> Iterator[None]:
+    """Wrap one unit of work in a Sentry performance span.
+
+    Every existing slice leans on Sentry's auto-enabling integrations, which
+    trace a request and the `httpx` calls inside it. That is enough while a
+    request makes one outbound call; it stops being enough for a loop, where a
+    run is a *sequence* of model and search calls and the question an operator
+    asks is "which cycle was slow, and was it the model or the search?" The auto
+    spans cannot answer that, because they carry no cycle number.
+
+    Safe to call unconditionally. With no DSN, `sentry_sdk` was never
+    initialized and `start_span` yields a no-op, so the whole path costs
+    nothing -- the same property `report_abort` relies on.
+
+    **Pass no visitor text.** Span data reaches Sentry and `send_default_pii` is
+    off precisely so questions and search queries stay out of it. A cycle
+    number, a status and a result count are the kind of thing that belongs here.
+
+    Args:
+        op: The span's operation category, e.g. "react.cycle.model".
+        name: A short human-readable description.
+        **data: Identifiers and counts only. Never a question, a query, or a
+            snippet.
+
+    Yields:
+        None. The span closes when the block exits, including on an exception.
+    """
+    with sentry_sdk.start_span(op=op, name=name) as active:
+        for key, value in data.items():
+            active.set_data(key, value)
+        yield
 
 
 def _capture(prefix: str, reason: str, context: dict[str, object]) -> None:

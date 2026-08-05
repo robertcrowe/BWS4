@@ -10,6 +10,10 @@ than none, because the operator learns to ignore it.
 
 from __future__ import annotations
 
+from typing import Any
+
+from collections.abc import Iterator
+
 from unittest.mock import patch
 
 import pytest
@@ -23,7 +27,7 @@ TAIL = TOOL[-1]
 
 
 @pytest.fixture(autouse=True)
-def _clean():
+def _clean() -> Iterator[None]:
     chain_health.reset()
     model_registry.reset_cooldowns()
     yield
@@ -31,7 +35,7 @@ def _clean():
     model_registry.reset_cooldowns()
 
 
-def _serve(model: str, times: int = 1, chain: str = "tool") -> list[dict]:
+def _serve(model: str, times: int = 1, chain: str = "tool") -> list[Any]:
     """Serve `times` requests and return the alerts raised for one chain.
 
     Scoped to a chain because both shipped chains lead with the *same* slug, so

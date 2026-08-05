@@ -1,4 +1,6 @@
 # Built with Spec4 AI - https://spec4.ai
+
+from typing import Any
 import asyncio
 import math
 
@@ -56,7 +58,7 @@ def test_retrieve_passages_maps_ranked_rows_to_similarity_scores() -> None:
             0.4,
         ),
     ]
-    session = _FakeSession(rows)
+    session: Any = _FakeSession(rows)
 
     passages = asyncio.run(retrieve_passages(session, "When did Voyager 1 launch?"))
 

@@ -75,7 +75,7 @@ AWARD = Award(
 )
 
 
-def _facts():
+def _facts() -> Any:
     return explanations._facts_for_run(SCENARIO, OPENING, FINAL)
 
 
@@ -174,7 +174,9 @@ class TestTheRecomputedFacts:
 
 
 class TestTheChecksCatchRationalisation:
-    def _run_reveal(self, produced: RevealExplanation, budget: RunBudget | None = None):
+    def _run_reveal(
+        self, produced: RevealExplanation, budget: RunBudget | None = None
+    ) -> Any:
         calls: list[str] = []
 
         async def _step(**kwargs: Any) -> StepResult[RevealExplanation]:
@@ -301,12 +303,12 @@ class TestTheChecksCatchRationalisation:
 
 
 class TestTheSensitivityIsNarratedNotDerived:
-    def _counterfactual(self):
+    def _counterfactual(self) -> Any:
         return compute_counterfactual(
             SCENARIO, WEIGHTING, [to_scored_bid(bid) for bid in FINAL]
         )
 
-    def _run(self, produced: SensitivityExplanation):
+    def _run(self, produced: SensitivityExplanation) -> Any:
         calls: list[str] = []
 
         async def _step(**kwargs: Any) -> StepResult[SensitivityExplanation]:
@@ -410,6 +412,10 @@ class TestBothRunConcurrentlyAndIndependently:
             SCENARIO, WEIGHTING, [to_scored_bid(bid) for bid in FINAL]
         )
 
+        assert counterfactual is not None
+
+        assert counterfactual is not None
+
         async def _step(**kwargs: Any) -> StepResult[Any]:
             if "reveal" in str(kwargs.get("label", "")):
                 raise RuntimeError("the reveal call broke")
@@ -445,6 +451,8 @@ class TestBothRunConcurrentlyAndIndependently:
             SCENARIO, WEIGHTING, [to_scored_bid(bid) for bid in FINAL]
         )
         windows: dict[str, tuple[float, float]] = {}
+
+        assert counterfactual is not None
 
         async def _step(**kwargs: Any) -> StepResult[Any]:
             label = "reveal" if "reveal" in str(kwargs.get("label", "")) else "sens"
@@ -529,6 +537,8 @@ class TestThePanelsAreProducedOncePerRun:
             SCENARIO, WEIGHTING, [to_scored_bid(bid) for bid in FINAL]
         )
         labels: list[str] = []
+
+        assert counterfactual is not None
 
         async def _step(**kwargs: Any) -> StepResult[Any]:
             label = str(kwargs.get("label", ""))

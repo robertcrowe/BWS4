@@ -12,8 +12,10 @@ assert on the *model's* query rather than the visitor's.
 
 from __future__ import annotations
 
+from typing import Any
+
 import json
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterator
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -32,7 +34,7 @@ from backend.app.services.web_search import ExaRateLimitError, ExaResult
 
 
 @pytest.fixture(autouse=True)
-def _gate_allows_everything(allow_all_moderation):
+def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
     The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
@@ -94,7 +96,7 @@ class _FakeToolCall:
 
 
 class _FakeMessage:
-    def __init__(self, content: str | None = None, tool_calls: list | None = None) -> None:
+    def __init__(self, content: str | None = None, tool_calls: list[Any] | None = None) -> None:
         self.content = content
         self.tool_calls = tool_calls
 
@@ -122,7 +124,7 @@ def _answer(text: str) -> _FakeResponse:
     return _FakeResponse(_FakeMessage(content=text))
 
 
-def _override_with(session: _FakeSession):
+def _override_with(session: Any) -> Any:
     async def _override() -> AsyncGenerator[_FakeSession, None]:
         yield session
 
@@ -130,13 +132,13 @@ def _override_with(session: _FakeSession):
 
 
 @pytest.fixture(autouse=True)
-def _clear_cooldowns():
+def _clear_cooldowns() -> Iterator[None]:
     model_registry.reset_cooldowns()
     yield
     model_registry.reset_cooldowns()
 
 
-def _post(session: _FakeSession, model_responses: list, search_mock: object, query: str):
+def _post(session: Any, model_responses: list[Any], search_mock: object, query: str) -> Any:
     app.dependency_overrides[get_db_session] = _override_with(session)
     try:
         with patch(
@@ -151,7 +153,7 @@ def _post(session: _FakeSession, model_responses: list, search_mock: object, que
 
 
 def test_search_endpoint_returns_the_agents_answer_and_its_step_trace() -> None:
-    session = _FakeSession(
+    session: Any = _FakeSession(
         queued_results=[_FakeExecuteResult(scalar=None), _FakeExecuteResult(scalar=None)]
     )
     fake_results = [
@@ -225,7 +227,7 @@ def test_search_endpoint_returns_the_agents_answer_and_its_step_trace() -> None:
 
 def test_search_endpoint_answers_without_searching_when_the_model_declines() -> None:
     """The model may decide no tool call is warranted -- that is still a valid run."""
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=None)])
+    session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=None)])
     search_mock = AsyncMock()
 
     response = _post(session, [_answer("Two plus two is four.")], search_mock, "What is 2 + 2?")
@@ -243,7 +245,7 @@ def test_search_endpoint_answers_without_searching_when_the_model_declines() -> 
 
 
 def test_search_endpoint_returns_clear_unavailable_message_on_exa_rate_limit() -> None:
-    session = _FakeSession(
+    session: Any = _FakeSession(
         queued_results=[_FakeExecuteResult(scalar=None), _FakeExecuteResult(scalar=None)]
     )
 
@@ -267,7 +269,7 @@ def test_search_endpoint_returns_clear_unavailable_message_on_exa_rate_limit() -
 def test_search_endpoint_returns_clear_unavailable_message_when_search_cap_reached() -> None:
     """Generation is available, but the search capability is exhausted."""
     exhausted = UsageLimit(capability="search", used=30, cap=30)
-    session = _FakeSession(
+    session: Any = _FakeSession(
         queued_results=[_FakeExecuteResult(scalar=None), _FakeExecuteResult(scalar=exhausted)]
     )
     search_mock = AsyncMock()
@@ -283,7 +285,7 @@ def test_search_endpoint_returns_clear_unavailable_message_when_search_cap_reach
 def test_search_endpoint_reports_a_model_outage_distinctly_from_a_search_cap() -> None:
     """An exhausted model chain is a different operator problem from a search cap."""
     exhausted = UsageLimit(capability="generation", used=100, cap=100)
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=exhausted)])
+    session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=exhausted)])
     search_mock = AsyncMock()
 
     response = _post(session, [], search_mock, "latest Spec4 release")

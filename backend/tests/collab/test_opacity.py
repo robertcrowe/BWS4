@@ -15,6 +15,8 @@ only checked "the seller got its own constraints" would pass against a
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from backend.app.collab import opacity
@@ -33,7 +35,7 @@ SELLERS = sorted(opacity.SELLER_IDS_SET)
 
 
 def _envelope(
-    sender: str, recipient: str, text: str = "", data: dict | None = None
+    sender: str, recipient: str, text: str = "", data: dict[str, Any] | None = None
 ) -> PeerMessageEnvelope:
     """Build an undelivered envelope carrying text and/or structured data."""
     parts: list[TextPart | DataPart] = []

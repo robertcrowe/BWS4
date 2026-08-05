@@ -1,4 +1,6 @@
 # Built with Spec4 AI - https://spec4.ai
+
+from collections.abc import Iterator
 import os
 
 # Local test defaults so Settings() validates without a real Neon connection.
@@ -50,7 +52,7 @@ import pytest  # noqa: E402
 
 
 @pytest.fixture
-def allow_all_moderation():
+def allow_all_moderation() -> Iterator[None]:
     """Override the moderation gate app-wide with an always-allow stub.
 
     For tests whose subject is something else entirely and which would

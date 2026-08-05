@@ -13,7 +13,7 @@ is where that gets caught.
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from backend.app.planning import agents
 from backend.app.planning.schemas import (
@@ -28,7 +28,7 @@ from backend.app.planning.schemas import (
 from backend.app.services.prompt_loader import load_prompt
 
 
-def _fields(model: type) -> set[str]:
+def _fields(model: type[BaseModel]) -> set[str]:
     return set(model.model_fields)
 
 
@@ -65,13 +65,13 @@ def test_the_enumerated_fields_reject_a_value_outside_the_specification() -> Non
     executor as a step it has no branch for.
     """
     with pytest.raises(ValidationError):
-        PlanStep(index=1, kind="browse", description="d", search_query="q")
+        PlanStep(index=1, kind="browse", description="d", search_query="q")  # type: ignore[arg-type]
 
     with pytest.raises(ValidationError):
-        ItineraryBlock(time_of_day="midnight", activity="a", why_it_matches="w")
+        ItineraryBlock(time_of_day="midnight", activity="a", why_it_matches="w")  # type: ignore[arg-type]
 
     with pytest.raises(ValidationError):
-        StepResult(step_index=1, status="partial", summary="s")
+        StepResult(step_index=1, status="partial", summary="s")  # type: ignore[arg-type]
 
 
 def test_a_research_model_cannot_author_its_own_sources() -> None:

@@ -33,6 +33,7 @@ from __future__ import annotations
 import ast
 import asyncio
 import inspect
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -58,9 +59,14 @@ from backend.app.collab.schemas import (
 from backend.app.collab.telemetry import RunTelemetry
 from backend.app.services.agent_runtime import AgentLaneError, StepResult
 
+#: Where this suite patches the collaborators the module under test
+#: resolved at import time -- patch-at-point-of-use, kept as one
+#: constant so the dotted path is stated once.
+_PATCH_BASE = "backend.app.collab.sequencer.agents"
+
 
 @pytest.fixture(autouse=True)
-def _no_live_explanations():
+def _no_live_explanations() -> Iterator[None]:
     """Refuse to let the post-award calls reach a provider.
 
     Autouse: the cost of forgetting is real money and a slow suite, and the
@@ -75,7 +81,7 @@ def _no_live_explanations():
     # explanation stage still runs and degrades to its deterministic template
     # exactly as it would in production. Raising from `explain_run` itself
     # would break the run instead of exercising the fallback.
-    with patch.object(sequencer.explanations, "run_agent_step", _refuse):
+    with patch("backend.app.collab.sequencer.explanations.run_agent_step", _refuse):
         yield
 
 
@@ -84,7 +90,9 @@ WEIGHTING = WEIGHTINGS_BY_ID["balanced"]
 SELLERS = sorted(opacity.SELLER_IDS_SET)
 
 
-def _bid(seller_id: str, *, price: float, days: float, qty: float, warranty: float):
+def _bid(
+    seller_id: str, *, price: float, days: float, qty: float, warranty: float
+) -> Bid:
     return Bid(
         seller_id=seller_id,
         unit_price=price,
@@ -136,12 +144,14 @@ class _Recorder:
         self.contexts: list[Any] = []
         self.award_prompts: list[str] = []
 
-    async def opening_bid(self, context, *, budget, nudge=""):
+    async def opening_bid(
+        self, context: Any, *, budget: Any, nudge: Any = ""
+    ) -> StepResult[Any]:
         self.calls.append(f"opening:{context.agent_id}{':nudged' if nudge else ''}")
         self.contexts.append(context)
         budget.spend()
         if context.agent_id in self.fail:
-            raise AgentLaneError("every model failed")
+            raise AgentLaneError("seller-bid", "every model failed")
         return StepResult(
             output=self.opening[context.agent_id].model_copy(
                 update={"stage": NegotiationStage.OPENING_BIDS.value}
@@ -149,11 +159,13 @@ class _Recorder:
             model="fake/model",
         )
 
-    async def final_bid(self, context, *, counter, budget):
+    async def final_bid(
+        self, context: Any, *, counter: Any, budget: Any
+    ) -> StepResult[Any]:
         self.calls.append(f"final:{context.agent_id}")
         budget.spend()
         if f"final:{context.agent_id}" in self.fail:
-            raise AgentLaneError("every model failed")
+            raise AgentLaneError("seller-bid", "every model failed")
         return StepResult(
             output=self.opening[context.agent_id].model_copy(
                 update={"stage": NegotiationStage.FINAL_BIDS.value}
@@ -161,11 +173,13 @@ class _Recorder:
             model="fake/model",
         )
 
-    async def counter_offers(self, *, request, weighting, bids, budget):
+    async def counter_offers(
+        self, *, request: Any, weighting: Any, bids: Any, budget: Any
+    ) -> StepResult[Any]:
         self.calls.append("counters")
         budget.spend()
         if "counters" in self.fail:
-            raise AgentLaneError("every model failed")
+            raise AgentLaneError("seller-bid", "every model failed")
         produced = self.counters or CounterOfferSet(
             offers=[
                 CounterOffer(
@@ -179,16 +193,24 @@ class _Recorder:
         )
         return StepResult(output=produced, model="fake/model")
 
-    async def award(self, *, request, weighting, final_bids, budget, inconsistency=""):
+    async def award(
+        self,
+        *,
+        request: Any,
+        weighting: Any,
+        final_bids: Any,
+        budget: Any,
+        inconsistency: Any = "",
+    ) -> StepResult[Any]:
         self.calls.append(f"award{':retry' if inconsistency else ''}")
         self.award_prompts.append(inconsistency)
         budget.spend()
         if "award" in self.fail:
-            raise AgentLaneError("every model failed")
+            raise AgentLaneError("seller-bid", "every model failed")
         return StepResult(output=self.award_value, model="fake/model")
 
 
-def _drive(recorder: _Recorder, *, budget: RunBudget | None = None):
+def _drive(recorder: _Recorder, *, budget: RunBudget | None = None) -> Any:
     """Run the sequencer to completion with the recorder substituted."""
     request = compose_rfq(SCENARIO, WEIGHTING)
     telemetry = RunTelemetry(
@@ -197,15 +219,13 @@ def _drive(recorder: _Recorder, *, budget: RunBudget | None = None):
     events: list[sequencer.StageEvent] = []
     outcome: sequencer.NegotiationOutcome | None = None
 
-    async def _go():
+    async def _go() -> None:
         nonlocal outcome
         with (
-            patch.object(sequencer.agents, "seller_opening_bid", recorder.opening_bid),
-            patch.object(sequencer.agents, "seller_final_bid", recorder.final_bid),
-            patch.object(
-                sequencer.agents, "buyer_counter_offers", recorder.counter_offers
-            ),
-            patch.object(sequencer.agents, "buyer_award", recorder.award),
+            patch(f"{_PATCH_BASE}.seller_opening_bid", recorder.opening_bid),
+            patch(f"{_PATCH_BASE}.seller_final_bid", recorder.final_bid),
+            patch(f"{_PATCH_BASE}.buyer_counter_offers", recorder.counter_offers),
+            patch(f"{_PATCH_BASE}.buyer_award", recorder.award),
         ):
             async for item in sequencer.run_negotiation(
                 run_id="run-1",

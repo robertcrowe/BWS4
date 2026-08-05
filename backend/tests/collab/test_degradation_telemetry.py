@@ -29,6 +29,11 @@ from backend.app.collab.schemas import Award, Bid, CounterOffer, CounterOfferSet
 from backend.app.collab.telemetry import RunTelemetry
 from backend.app.services.agent_runtime import AgentLaneError, StepResult
 
+#: Where this suite patches the collaborators the module under test
+#: resolved at import time -- patch-at-point-of-use, kept as one
+#: constant so the dotted path is stated once.
+_PATCH_BASE = "backend.app.collab.sequencer.agents"
+
 SCENARIO = SCENARIOS_BY_ID["refurbished_laptops_school"]
 WEIGHTING = WEIGHTINGS_BY_ID["balanced"]
 SELLERS = sorted(opacity.SELLER_IDS_SET)
@@ -70,7 +75,7 @@ class Driver:
         self.fail_counters = fail_counters
         self.fail_award = fail_award
 
-    async def opening(self, context, *, budget, nudge=""):
+    async def opening(self, context: Any, *, budget: Any, nudge: Any = "") -> Any:
         budget.spend()
         if context.agent_id == self.timeout_seller:
             # Longer than the branch timeout, so the fan-out reports it as
@@ -78,11 +83,13 @@ class Driver:
             await asyncio.sleep(5)
         return _wrap(_bid(context.agent_id, "opening_bids"))
 
-    async def final(self, context, *, counter, budget):
+    async def final(self, context: Any, *, counter: Any, budget: Any) -> Any:
         budget.spend()
         return _wrap(_bid(context.agent_id, "final_bids"))
 
-    async def counters(self, *, request, weighting, bids, budget):
+    async def counters(
+        self, *, request: Any, weighting: Any, bids: Any, budget: Any
+    ) -> Any:
         budget.spend()
         if self.fail_counters:
             raise AgentLaneError("collab_counter_offers", "every model failed")
@@ -100,7 +107,15 @@ class Driver:
             )
         )
 
-    async def award(self, *, request, weighting, final_bids, budget, inconsistency=""):
+    async def award(
+        self,
+        *,
+        request: Any,
+        weighting: Any,
+        final_bids: Any,
+        budget: Any,
+        inconsistency: Any = "",
+    ) -> Any:
         budget.spend()
         if self.fail_award:
             raise AgentLaneError("collab_award", "every model failed")
@@ -119,7 +134,7 @@ class Driver:
         raise RuntimeError("no provider in tests")
 
 
-def drive(driver: Driver, *, timeout: float = 0.2):
+def drive(driver: Driver, *, timeout: float = 0.2) -> Any:
     """Run the sequencer with this driver, with a short branch timeout.
 
     The timeout is applied by wrapping `fan_out` rather than by patching
@@ -130,7 +145,7 @@ def drive(driver: Driver, *, timeout: float = 0.2):
     """
     from backend.app.collab import runtime
 
-    async def _short_fan_out(first, second, **_kwargs):
+    async def _short_fan_out(first: Any, second: Any, **_kwargs: Any) -> Any:
         return await runtime.fan_out(first, second, timeout=timeout)
 
     request = compose_rfq(SCENARIO, WEIGHTING)
@@ -143,10 +158,10 @@ def drive(driver: Driver, *, timeout: float = 0.2):
     async def _go() -> None:
         nonlocal outcome
         with (
-            patch.object(sequencer.agents, "seller_opening_bid", driver.opening),
-            patch.object(sequencer.agents, "seller_final_bid", driver.final),
-            patch.object(sequencer.agents, "buyer_counter_offers", driver.counters),
-            patch.object(sequencer.agents, "buyer_award", driver.award),
+            patch(f"{_PATCH_BASE}.seller_opening_bid", driver.opening),
+            patch(f"{_PATCH_BASE}.seller_final_bid", driver.final),
+            patch(f"{_PATCH_BASE}.buyer_counter_offers", driver.counters),
+            patch(f"{_PATCH_BASE}.buyer_award", driver.award),
             patch.object(explanations, "run_agent_step", driver.explanation),
             patch.object(sequencer, "fan_out", _short_fan_out),
         ):
@@ -244,7 +259,7 @@ class TestTheRefundPathOnFailure:
             async def commit(self) -> None:
                 pass
 
-        with patch.object(service.allowance_holds, "refund", _refund):
+        with patch("backend.app.collab.service.allowance_holds.refund", _refund):
             done = asyncio.run(
                 service.abandon_run(_Session(), "run-1", reason="award_failed")  # type: ignore[arg-type]
             )
@@ -278,13 +293,13 @@ class TestACapExhaustedRequest:
         async def _gate(*_a: object, **_k: object) -> None:
             raise shared.ServiceUnavailableError("no room this hour")
 
-        session = _Session()
+        session: Any = _Session()
 
         async def _collect() -> list[Any]:
             return [
                 event
                 async for event in service.stream_run(
-                    session,  # type: ignore[arg-type]
+                    session,
                     run_id="run-1",
                     scenario_id=SCENARIO.id,
                     weighting_id=WEIGHTING.id,

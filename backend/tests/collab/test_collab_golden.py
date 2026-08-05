@@ -74,6 +74,11 @@ from backend.app.collab.schemas import (
 from backend.app.collab.telemetry import RunTelemetry
 from backend.app.services.agent_runtime import StepResult
 
+#: Where this suite patches the collaborators the module under test
+#: resolved at import time -- patch-at-point-of-use, kept as one
+#: constant so the dotted path is stated once.
+_PATCH_BASE = "backend.app.collab.sequencer.agents"
+
 GOLDEN = json.loads(
     (Path(__file__).parent / "golden" / "negotiation_cases.json").read_text()
 )
@@ -92,7 +97,9 @@ class GoldenPlayer:
         self.prompts: list[str] = []
         self.labels: list[str] = []
 
-    async def opening_bid(self, context, *, budget, nudge=""):
+    async def opening_bid(
+        self, context: Any, *, budget: Any, nudge: Any = ""
+    ) -> StepResult[Any]:
         self.contexts.append(context)
         self.prompts.append(context.rfq_text)
         budget.spend()
@@ -101,7 +108,9 @@ class GoldenPlayer:
             model="golden/replay",
         )
 
-    async def final_bid(self, context, *, counter, budget):
+    async def final_bid(
+        self, context: Any, *, counter: Any, budget: Any
+    ) -> StepResult[Any]:
         self.contexts.append(context)
         budget.spend()
         return StepResult(
@@ -109,7 +118,9 @@ class GoldenPlayer:
             model="golden/replay",
         )
 
-    async def counter_offers(self, *, request, weighting, bids, budget):
+    async def counter_offers(
+        self, *, request: Any, weighting: Any, bids: Any, budget: Any
+    ) -> StepResult[Any]:
         budget.spend()
         return StepResult(
             output=CounterOfferSet(
@@ -118,7 +129,15 @@ class GoldenPlayer:
             model="golden/replay",
         )
 
-    async def award(self, *, request, weighting, final_bids, budget, inconsistency=""):
+    async def award(
+        self,
+        *,
+        request: Any,
+        weighting: Any,
+        final_bids: Any,
+        budget: Any,
+        inconsistency: Any = "",
+    ) -> StepResult[Any]:
         budget.spend()
         return StepResult(output=Award(**self.case["award"]), model="golden/replay")
 
@@ -136,7 +155,7 @@ class GoldenPlayer:
         raise RuntimeError("golden replay: no provider")
 
 
-def play(case: dict[str, Any], *, probe: str = ""):
+def play(case: dict[str, Any], *, probe: str = "") -> Any:
     """Drive the real sequencer over one recorded case."""
     scenario = SCENARIOS_BY_ID[case["scenario_id"]]
     weighting = WEIGHTINGS_BY_ID[case["weighting_id"]]
@@ -151,12 +170,10 @@ def play(case: dict[str, Any], *, probe: str = ""):
     async def _go() -> None:
         nonlocal outcome
         with (
-            patch.object(sequencer.agents, "seller_opening_bid", player.opening_bid),
-            patch.object(sequencer.agents, "seller_final_bid", player.final_bid),
-            patch.object(
-                sequencer.agents, "buyer_counter_offers", player.counter_offers
-            ),
-            patch.object(sequencer.agents, "buyer_award", player.award),
+            patch(f"{_PATCH_BASE}.seller_opening_bid", player.opening_bid),
+            patch(f"{_PATCH_BASE}.seller_final_bid", player.final_bid),
+            patch(f"{_PATCH_BASE}.buyer_counter_offers", player.counter_offers),
+            patch(f"{_PATCH_BASE}.buyer_award", player.award),
             patch.object(explanations, "run_agent_step", player.explanation_step),
         ):
             async for item in sequencer.run_negotiation(
@@ -205,7 +222,7 @@ class TestTheSuiteIsOffline:
 @pytest.mark.parametrize("case_id", CASE_IDS)
 class TestEveryGoldenRun:
     def test_the_six_stages_occur_in_the_specified_order(
-        self, case_id: str, played
+        self, case_id: str, played: Any
     ) -> None:
         events, _, _, _ = played[case_id]
         order = [event.stage for event in events]
@@ -220,7 +237,7 @@ class TestEveryGoldenRun:
             assert order.index(earlier.value) < order.index(later.value)
 
     def test_stage_one_and_stage_four_consume_zero_model_calls(
-        self, case_id: str, played
+        self, case_id: str, played: Any
     ) -> None:
         events, _, _, _ = played[case_id]
         free = [
@@ -234,7 +251,7 @@ class TestEveryGoldenRun:
         assert all(event.payload["model_calls"] == 0 for event in free)
 
     def test_the_negotiation_costs_exactly_six_calls(
-        self, case_id: str, played
+        self, case_id: str, played: Any
     ) -> None:
         """The number the whole pattern claim rests on."""
         _, outcome, telemetry, _ = played[case_id]
@@ -243,7 +260,7 @@ class TestEveryGoldenRun:
         assert telemetry.negotiation_stage_calls == 6
 
     def test_the_run_costs_exactly_eight_provider_requests(
-        self, case_id: str, played
+        self, case_id: str, played: Any
     ) -> None:
         """Six negotiation plus the two post-award explanations -- the whole
         reservation, and never more than it."""
@@ -253,7 +270,7 @@ class TestEveryGoldenRun:
         assert telemetry.total_model_calls == 8
         assert outcome.budget.used <= outcome.budget.ceiling
 
-    def test_exactly_three_agents_participate(self, case_id: str, played) -> None:
+    def test_exactly_three_agents_participate(self, case_id: str, played: Any) -> None:
         _, outcome, _, _ = played[case_id]
 
         parties = {envelope.sender for envelope in outcome.bus.log()} | {
@@ -262,7 +279,7 @@ class TestEveryGoldenRun:
         assert parties == {opacity.BUYER_ID, *SELLERS}
 
     def test_every_artifact_conforms_to_its_narrow_schema(
-        self, case_id: str, played
+        self, case_id: str, played: Any
     ) -> None:
         _, outcome, _, _ = played[case_id]
 
@@ -278,7 +295,7 @@ class TestEveryGoldenRun:
         assert Award.model_validate(outcome.award.model_dump()) == outcome.award
 
     def test_concessions_are_recorded_rather_than_empty(
-        self, case_id: str, played
+        self, case_id: str, played: Any
     ) -> None:
         """A best-and-final that conceded nothing anywhere would make the
         counter-offer stage decorative."""
@@ -287,7 +304,7 @@ class TestEveryGoldenRun:
         assert any(bid.concessions_made for bid in outcome.final_bids)
 
     def test_the_two_opening_bids_differ_on_at_least_two_terms(
-        self, case_id: str, played
+        self, case_id: str, played: Any
     ) -> None:
         """Otherwise the award is a dominance check rather than a trade-off."""
         _, outcome, _, _ = played[case_id]
@@ -301,7 +318,7 @@ class TestEveryGoldenRun:
         assert len(differing) >= 2
 
     def test_both_explanations_render_despite_no_provider(
-        self, case_id: str, played
+        self, case_id: str, played: Any
     ) -> None:
         """The panels can be worse than they might have been; they can never be
         blank. Every case here degrades to the deterministic template."""
@@ -324,14 +341,16 @@ _FIELD = {
 
 @pytest.mark.parametrize("case_id", CASE_IDS)
 class TestIsolationAcrossEveryPreset:
-    def test_no_message_has_a_seller_at_both_ends(self, case_id: str, played) -> None:
+    def test_no_message_has_a_seller_at_both_ends(
+        self, case_id: str, played: Any
+    ) -> None:
         _, outcome, telemetry, _ = played[case_id]
 
         assert opacity.seller_to_seller_count(outcome.bus) == 0
         assert telemetry.seller_to_seller_messages == 0
 
     def test_each_seller_s_prompt_holds_only_what_it_is_entitled_to(
-        self, case_id: str, played
+        self, case_id: str, played: Any
     ) -> None:
         """The RFQ, its own constraints, and buyer messages addressed to it —
         and nothing else, checked by construction rather than by reading."""
@@ -356,7 +375,7 @@ class TestIsolationAcrossEveryPreset:
             _ = scenario_id
 
     def test_no_pre_reveal_artifact_carries_a_rival_sealed_value(
-        self, case_id: str, played
+        self, case_id: str, played: Any
     ) -> None:
         """Every bid, counter-offer and award, checked against the *other*
         seller's corpus — measured over the public baseline so a coincidence
@@ -424,7 +443,7 @@ class TestTheSqlOpacityProof:
 class TestSensitivityAcrossEveryScenario:
     @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda s: s.id)
     def test_at_least_one_pair_of_weightings_changes_the_winner(
-        self, scenario, played
+        self, scenario: Any, played: Any
     ) -> None:
         """Proves the buyer's judgment is weighting-driven rather than
         scenario-locked -- run over the *golden outcomes*, not just the
@@ -442,7 +461,7 @@ class TestSensitivityAcrossEveryScenario:
 
     @pytest.mark.parametrize("case_id", CASE_IDS)
     def test_the_award_rationale_names_the_top_weighted_priorities(
-        self, case_id: str, played
+        self, case_id: str, played: Any
     ) -> None:
         _, outcome, _, _ = played[case_id]
         case = CASES[CASE_IDS.index(case_id)]

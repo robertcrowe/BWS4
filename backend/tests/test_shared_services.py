@@ -1,4 +1,6 @@
 # Built with Spec4 AI - https://spec4.ai
+
+from typing import Any
 import asyncio
 from unittest.mock import patch
 
@@ -61,7 +63,7 @@ class _FakeSession:
 
 
 def test_generate_text_through_shared_interface_records_log_and_usage_rows() -> None:
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=None)])
+    session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=None)])
 
     with patch(
         "backend.app.services.generation.generate_text",
@@ -102,7 +104,7 @@ def test_represent_text_logs_but_never_meters_the_local_embedding_model() -> Non
     ever reserves a capability again, the reservation's SELECT raises rather
     than silently passing.
     """
-    session = _FakeSession(queued_results=[])
+    session: Any = _FakeSession(queued_results=[])
 
     with patch(
         "backend.app.services.embedding.embed_text", return_value=[0.1, 0.2, 0.3]
@@ -128,7 +130,7 @@ def test_representation_cannot_be_metered_by_accident() -> None:
     The cheapest way this regresses is someone 'restoring consistency' by
     adding representation back to the cap table, so the lookup refuses it.
     """
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=None)])
+    session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=None)])
 
     with pytest.raises(ValueError, match="deliberately unmetered"):
         asyncio.run(
@@ -139,7 +141,7 @@ def test_representation_cannot_be_metered_by_accident() -> None:
 
 
 def test_set_record_through_shared_interface_records_log_and_usage_rows() -> None:
-    session = _FakeSession(
+    session: Any = _FakeSession(
         queued_results=[_FakeExecuteResult(scalar=None), _FakeExecuteResult(scalar=None)]
     )
 
@@ -164,7 +166,7 @@ def test_generate_text_raises_service_unavailable_once_capability_cap_is_reached
     """A mocked low cap must reject the request before the provider is ever
     called -- the shared interface's clear-failure behavior."""
     exhausted_limit = UsageLimit(capability="generation", used=2, cap=2)
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=exhausted_limit)])
+    session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=exhausted_limit)])
 
     with patch("backend.app.services.generation.generate_text") as mocked_generate:
         try:

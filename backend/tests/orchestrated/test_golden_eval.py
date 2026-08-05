@@ -31,6 +31,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -61,14 +62,16 @@ from backend.app.services.moderation import ModerationCategory, ModerationVerdic
 GOLDEN_DIR = Path(__file__).parent / "golden"
 
 
-def _load_cases() -> list[dict]:
+def _load_cases() -> list[dict[str, Any]]:
     """Load the delegation cases, validating each draft against the live schema.
 
     The defence against fixture drift, and the reason it runs at import: a
     hand-authored draft that no longer matches `CoordinatorDraft` would
     otherwise let this suite pass while the real system failed.
     """
-    cases = json.loads((GOLDEN_DIR / "delegation_cases.json").read_text())["cases"]
+    cases: list[dict[str, Any]] = json.loads(
+        (GOLDEN_DIR / "delegation_cases.json").read_text()
+    )["cases"]
     for case in cases:
         CoordinatorDraft.model_validate(case["coordinator_draft"])
     return cases
@@ -89,9 +92,9 @@ class _Session:
         self.added: list[object] = []
         self.holds: dict[str, object] = {}
 
-    async def execute(self, statement: object, *_a: object, **_k: object) -> object:
+    async def execute(self, statement: Any, *_a: object, **_k: object) -> object:
         try:
-            params = list(statement.compile().params.values())  # type: ignore[attr-defined]
+            params = list(statement.compile().params.values())
         except Exception:  # noqa: BLE001 - fake session, best effort
             params = []
         key = params[0] if params else None
@@ -172,26 +175,26 @@ async def _stub_merge(
     )
 
 
-def _question_for(case: dict) -> str:
+def _question_for(case: dict[str, Any]) -> str:
     if case["kind"] == "preset":
         preset = next(p for p in CURATED_PRESETS if p.preset_id == case["preset_id"])
-        return preset.question
-    return case["question"]
+        return str(preset.question)
+    return str(case["question"])
 
 
-def _run_case(case: dict) -> dict:
+def _run_case(case: dict[str, Any]) -> dict[str, Any]:
     """Replay one golden case through the real pipeline, end to end."""
-    session = _Session()
+    session: Any = _Session()
     draft = CoordinatorDraft.model_validate(case["coordinator_draft"])
     agent = _RecordedCoordinator(draft)
     specialists = _RecordedSpecialists()
     question = _question_for(case)
     preset_id = case.get("preset_id")
 
-    async def go() -> dict:
+    async def go() -> dict[str, Any]:
         with patch.object(coordinator, "decide", agent):
             outcome = await service.begin_run(
-                session,  # type: ignore[arg-type]
+                session,
                 question=question,
                 preset_id=preset_id,
                 moderate=_always_allowed,
@@ -205,7 +208,7 @@ def _run_case(case: dict) -> dict:
         if outcome.ready and outcome.decision is not None:
             budget = RunBudget(used=1)
             async for event in service.confirm_dispatch(
-                session,  # type: ignore[arg-type]
+                session,
                 decision_id=outcome.decision_id,
                 decision=outcome.decision,
                 question=question,
@@ -233,7 +236,9 @@ async def _always_allowed(text: str, context: str) -> ModerationVerdict:
 
 @pytest.mark.parametrize("case", CASES, ids=[c["id"] for c in CASES])
 class TestEveryGoldenCase:
-    def test_selects_exactly_two_distinct_roster_specialists(self, case: dict) -> None:
+    def test_selects_exactly_two_distinct_roster_specialists(
+        self, case: dict[str, Any]
+    ) -> None:
         """Zero tolerance: 100% of runs, however the model behaved."""
         result = _run_case(case)
         chosen = result["outcome"].decision.chosen_specialists
@@ -242,7 +247,7 @@ class TestEveryGoldenCase:
         assert len(set(chosen)) == 2
         assert {item.value for item in chosen} <= ROSTER_IDS
 
-    def test_costs_exactly_one_coordinator_call(self, case: dict) -> None:
+    def test_costs_exactly_one_coordinator_call(self, case: dict[str, Any]) -> None:
         """Repair is deterministic, so a malformed decision costs nothing extra.
 
         This is the assertion the adversarial cases exist for: three of them
@@ -251,7 +256,7 @@ class TestEveryGoldenCase:
         result = _run_case(case)
         assert result["coordinator_calls"] == 1
 
-    def test_writes_two_distinct_briefs(self, case: dict) -> None:
+    def test_writes_two_distinct_briefs(self, case: dict[str, Any]) -> None:
         """Two near-identical briefs make the columns redundant.
 
         Distinctness is the property that always holds. The *score* falling
@@ -263,12 +268,14 @@ class TestEveryGoldenCase:
         assert len(briefs) == 2
         assert briefs[0].strip() != briefs[1].strip()
 
-    def test_issues_no_specialist_request_before_confirmation(self, case: dict) -> None:
+    def test_issues_no_specialist_request_before_confirmation(
+        self, case: dict[str, Any]
+    ) -> None:
         """The gate, as an integration assertion rather than a reading of the code."""
         result = _run_case(case)
         assert result["before_confirmation"] == []
 
-    def test_holds_the_run_to_its_call_budget(self, case: dict) -> None:
+    def test_holds_the_run_to_its_call_budget(self, case: dict[str, Any]) -> None:
         """Three visitor-facing calls, four provider requests, never more."""
         result = _run_case(case)
         budget = result["budget"]
@@ -278,7 +285,7 @@ class TestEveryGoldenCase:
         assert budget.ceiling == MAX_PROVIDER_REQUESTS
         assert VISITOR_FACING_CALL_COUNT == 3
 
-    def test_streams_the_expected_event_sequence(self, case: dict) -> None:
+    def test_streams_the_expected_event_sequence(self, case: dict[str, Any]) -> None:
         """A complete run: two statuses, two answers, the fan-out, the merge."""
         names = [event.name for event in _run_case(case)["events"]]
 
@@ -292,7 +299,7 @@ class TestEveryGoldenCase:
         ]
 
 
-def result_briefs(result: dict) -> list[str]:
+def result_briefs(result: dict[str, Any]) -> list[str]:
     """The two brief texts a replayed case produced."""
     return [brief.instruction for brief in result["outcome"].decision.briefs]
 
@@ -309,14 +316,14 @@ class TestBriefDistinctness:
     WELL_FORMED = [c for c in CASES if c["id"] != "adversarial-duplicate-brief"]
 
     @pytest.mark.parametrize("case", WELL_FORMED, ids=[c["id"] for c in WELL_FORMED])
-    def test_overlap_stays_below_the_threshold(self, case: dict) -> None:
+    def test_overlap_stays_below_the_threshold(self, case: dict[str, Any]) -> None:
         briefs = result_briefs(_run_case(case))
         assert validator.jaccard(*briefs) < validator.JACCARD_THRESHOLD
 
 
 class TestThePresetKey:
     @pytest.mark.parametrize("case", PRESET_CASES, ids=[c["id"] for c in PRESET_CASES])
-    def test_matches_the_human_labelled_pairing(self, case: dict) -> None:
+    def test_matches_the_human_labelled_pairing(self, case: dict[str, Any]) -> None:
         """Scores the recorded choice against the offline key.
 
         A fixture, so this measures the *pipeline* preserving the coordinator's
@@ -350,7 +357,9 @@ class TestThePresetKey:
         assert all(count >= 2 for count in counts.values()), counts
 
     @pytest.mark.parametrize("case", PRESET_CASES, ids=[c["id"] for c in PRESET_CASES])
-    def test_the_pairing_is_stable_across_repeated_runs(self, case: dict) -> None:
+    def test_the_pairing_is_stable_across_repeated_runs(
+        self, case: dict[str, Any]
+    ) -> None:
         """The same fixture must produce the same pairing every time.
 
         What this proves is that nothing in the pipeline is non-deterministic —
@@ -434,7 +443,9 @@ class TestTheModerationGate:
     ]
 
     @pytest.mark.parametrize("preset", CURATED_PRESETS, ids=lambda p: p.preset_id)
-    def test_no_curated_preset_is_refused_before_the_classifier(self, preset) -> None:
+    def test_no_curated_preset_is_refused_before_the_classifier(
+        self, preset: Any
+    ) -> None:
         # A preset caught here would break the demo's primary path, which is
         # why this gate blocks merge.
         assert not moderation._is_malformed(preset.question, moderation.MAX_TEXT_CHARS)
@@ -495,7 +506,7 @@ def _plant_contradiction(
     """
     left, right = list(pair)
     reversed_claim = "you should not move the reporting workload onto one"
-    edited = dict(pair)
+    edited: dict[Any, Any] = dict(pair)
     edited[left] = pair[left].replace(
         "you should move the reporting workload onto one", reversed_claim
     )
@@ -614,7 +625,7 @@ class TestTheEvalIsOffline:
         """The server half of the two-messages rule the frontend also pins."""
         assert service.Outcome.USAGE_LIMIT_REACHED.value == "usage_limit_reached"
         assert (
-            service.Outcome.USAGE_LIMIT_REACHED
+            service.Outcome.USAGE_LIMIT_REACHED  # type: ignore[comparison-overlap]  # distinctness is the assertion: two enum members given the same value would alias at runtime
             is not service.Outcome.SPECIALISTS_FAILED
         )
         assert len({item.value for item in service.Outcome}) == len(

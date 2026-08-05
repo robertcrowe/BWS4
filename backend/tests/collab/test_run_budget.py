@@ -56,7 +56,7 @@ class _Session:
         self.commits += 1
 
 
-def _begin(session: _Session, **kwargs: Any) -> service.RunStart:
+def _begin(session: Any, **kwargs: Any) -> service.RunStart:
     """Run `begin_run` with sensible defaults."""
     params: dict[str, Any] = {
         "run_id": "run-1",
@@ -64,7 +64,7 @@ def _begin(session: _Session, **kwargs: Any) -> service.RunStart:
         "weighting_id": "lowest_price",
     }
     params.update(kwargs)
-    return asyncio.run(service.begin_run(session, **params))  # type: ignore[arg-type]
+    return asyncio.run(service.begin_run(session, **params))
 
 
 class TestTheOrderingIsValidateGateHoldCompose:
@@ -79,7 +79,7 @@ class TestTheOrderingIsValidateGateHoldCompose:
             calls.append(f"hold:{kwargs.get('units')}")
             return object()
 
-        def _compose(*_a: object, **_k: object):
+        def _compose(*_a: object, **_k: object) -> Any:
             calls.append("compose")
             from backend.app.collab.rfq import compose_rfq as real
 
@@ -87,7 +87,7 @@ class TestTheOrderingIsValidateGateHoldCompose:
 
         with (
             patch.object(shared, "reserve_capability", _gate),
-            patch.object(service.allowance_holds, "reserve", _reserve),
+            patch("backend.app.collab.service.allowance_holds.reserve", _reserve),
             patch.object(service, "compose_rfq", _compose),
         ):
             result = _begin(_Session())
@@ -104,7 +104,7 @@ class TestTheOrderingIsValidateGateHoldCompose:
 
         with (
             patch.object(shared, "reserve_capability", gate),
-            patch.object(service.allowance_holds, "reserve", reserve),
+            patch("backend.app.collab.service.allowance_holds.reserve", reserve),
         ):
             result = _begin(_Session(), scenario_id="not_a_scenario")
 
@@ -123,7 +123,7 @@ class TestTheOrderingIsValidateGateHoldCompose:
 
         with (
             patch.object(shared, "reserve_capability", _gate),
-            patch.object(service.allowance_holds, "reserve", reserve),
+            patch("backend.app.collab.service.allowance_holds.reserve", reserve),
             patch.object(service, "compose_rfq", compose),
         ):
             result = _begin(_Session([None]))
@@ -149,7 +149,7 @@ class TestTheReservation:
 
         with (
             patch.object(shared, "reserve_capability", _gate),
-            patch.object(service.allowance_holds, "reserve", _reserve),
+            patch("backend.app.collab.service.allowance_holds.reserve", _reserve),
         ):
             result = _begin(_Session(), run_id="run-xyz")
 
@@ -221,7 +221,7 @@ class TestTheCapRefusalIsDistinguishable:
         """One the visitor fixes by choosing differently; the other they can
         only wait out."""
         assert (
-            service.Outcome.INVALID_REQUEST is not service.Outcome.USAGE_LIMIT_REACHED
+            service.Outcome.INVALID_REQUEST is not service.Outcome.USAGE_LIMIT_REACHED  # type: ignore[comparison-overlap]  # distinctness is the assertion: two enum members given the same value would alias at runtime
         )
 
 
@@ -267,7 +267,7 @@ class TestValidationRefusesBeforeAnythingIsSpent:
 
         with (
             patch.object(shared, "reserve_capability", _noop),
-            patch.object(service.allowance_holds, "reserve", _noop),
+            patch("backend.app.collab.service.allowance_holds.reserve", _noop),
         ):
             result = _begin(
                 _Session(),
@@ -293,7 +293,7 @@ class TestTheRefundPath:
             released.append(hold_key)
             return object()
 
-        with patch.object(service.allowance_holds, "refund", _refund):
+        with patch("backend.app.collab.service.allowance_holds.refund", _refund):
             done = asyncio.run(
                 service.abandon_run(_Session(), "run-1", reason="seller_failed")  # type: ignore[arg-type]
             )
@@ -306,9 +306,9 @@ class TestTheRefundPath:
         turn one failure into two and lose the partial result."""
 
         async def _refund(*_a: object, **_k: object) -> object:
-            raise service.allowance_holds.HoldNotFoundError("gone")
+            raise service.allowance_holds.HoldNotFoundError("gone")  # type: ignore[attr-defined]  # reaching the module's own import on purpose -- patch/identity at point of use
 
-        with patch.object(service.allowance_holds, "refund", _refund):
+        with patch("backend.app.collab.service.allowance_holds.refund", _refund):
             done = asyncio.run(
                 service.abandon_run(_Session(), "run-1", reason="x")  # type: ignore[arg-type]
             )
@@ -317,9 +317,9 @@ class TestTheRefundPath:
 
     def test_an_already_redeemed_hold_is_not_refunded_twice(self) -> None:
         async def _refund(*_a: object, **_k: object) -> object:
-            raise service.allowance_holds.HoldStateError("already redeemed")
+            raise service.allowance_holds.HoldStateError("already redeemed")  # type: ignore[attr-defined]  # reaching the module's own import on purpose -- patch/identity at point of use
 
-        with patch.object(service.allowance_holds, "refund", _refund):
+        with patch("backend.app.collab.service.allowance_holds.refund", _refund):
             done = asyncio.run(
                 service.abandon_run(_Session(), "run-1", reason="x")  # type: ignore[arg-type]
             )
@@ -327,14 +327,14 @@ class TestTheRefundPath:
         assert done is False
 
 
-def _never_called():
+def _never_called() -> Any:
     async def _fail(*_a: object, **_k: object) -> Any:
         raise AssertionError("should not have been reached")
 
     return _fail
 
 
-def _never_called_sync():
+def _never_called_sync() -> Any:
     def _fail(*_a: object, **_k: object) -> Any:
         raise AssertionError("should not have been reached")
 

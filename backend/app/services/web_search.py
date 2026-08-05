@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import httpx
+from pydantic import BaseModel
 
 from backend.app.core.config import get_settings
 
@@ -45,6 +46,65 @@ class ExaResult:
     #: see it, which reads as the demo answering from stale training data when
     #: it is in fact reporting a stale *page*.
     published_date: str | None = None
+
+
+class SearchToolResult(BaseModel):
+    """The search capability's result schema, declared here and only here.
+
+    `ExaResult` above is the *transport* shape -- what this module parses out of
+    Exa's JSON, with Exa's own field names (`summary`, `source`). This is the
+    shape every consumer should describe the capability with: the field names a
+    trace renders, a model reads, and a wire payload carries.
+
+    The two are separate on purpose rather than by accident. `ExaResult` is a
+    frozen dataclass that three shipped call sites construct and unpack; turning
+    it into a model would be a behavioural change to the tool-use example, which
+    this addition is explicitly not allowed to make. So the transport shape stays
+    exactly as it was and the published shape is added beside it.
+
+    **Known gap, recorded rather than done quietly.** The point of declaring this
+    once is that the ReAct trace and the tool-use example describe the same tool
+    identically, and today only the ReAct slice imports it -- the tool-use app
+    still carries two near-identical private copies (`tools/schemas.RankedResult`
+    and the one in `tools/service.py`). Migrating those is one edit each plus
+    their tests, which is real work inside a shipped app and belongs to a change
+    about that app, exactly like the three duplicate `prompt_loader` modules.
+    This is the destination when that happens.
+
+    Attributes:
+        title: The result's title, verbatim.
+        url: Where it came from.
+        snippet: The text Exa returned, verbatim. Never a model's paraphrase.
+        published_date: When the page was published, or None. Carried for the
+            reason `ExaResult` documents -- relevance is not recency, and a
+            stale *page* is otherwise indistinguishable from a stale *model*.
+    """
+
+    title: str
+    url: str
+    snippet: str
+    published_date: str | None = None
+
+    @classmethod
+    def from_exa(cls, result: ExaResult) -> SearchToolResult:
+        """Project one transport result into the published shape.
+
+        The single translation point between Exa's field names and this
+        project's, so a consumer never has to know that Exa calls a snippet a
+        `summary` and a URL a `source`.
+
+        Args:
+            result: One parsed result from `search()`.
+
+        Returns:
+            The same result under the capability's own field names.
+        """
+        return cls(
+            title=result.title,
+            url=result.source,
+            snippet=result.summary,
+            published_date=result.published_date,
+        )
 
 
 class ExaClientError(Exception):

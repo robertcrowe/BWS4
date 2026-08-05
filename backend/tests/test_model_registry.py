@@ -13,6 +13,10 @@ alone.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
+from typing import Any
+
 import os
 import time
 from types import SimpleNamespace
@@ -25,14 +29,14 @@ from backend.app.services.discover_models import TOOL_KNOWN_BAD, rank_cross_vend
 
 
 @pytest.fixture(autouse=True)
-def _clear_cooldowns():
+def _clear_cooldowns() -> Iterator[None]:
     model_registry.reset_cooldowns()
     yield
     model_registry.reset_cooldowns()
 
 
 @pytest.fixture(autouse=True)
-def _restore_groq_env():
+def _restore_groq_env() -> Iterator[None]:
     """ensure_provider_credentials writes to os.environ; don't leak it."""
     original = os.environ.get("GROQ_API_KEY")
     yield
@@ -42,7 +46,7 @@ def _restore_groq_env():
         os.environ["GROQ_API_KEY"] = original
 
 
-def _passing(model: str, note: str = "answered from tool results") -> dict:
+def _passing(model: str, note: str = "answered from tool results") -> dict[str, Any]:
     return {"model": model, "emits_call": True, "completes_loop": True, "note": note}
 
 
@@ -312,7 +316,7 @@ def test_the_known_bad_models_are_not_in_the_shipped_chain() -> None:
         assert slug not in model_registry.TOOL_MODEL_CHAIN
 
 
-def _fake_settings(groq_key: str | None):
+def _fake_settings(groq_key: str | None) -> SimpleNamespace:
     """A stand-in for Settings; pydantic fields can't be patched as properties."""
     return SimpleNamespace(
         openrouter_api_key="test-openrouter-key", groq_api_key=groq_key
@@ -501,7 +505,7 @@ class TestModelIdsThatArePrefixesOfEachOther:
     PAIR = ["openrouter/acme/model-1.0-flash", "openrouter/acme/model-1.0-flash-lite"]
 
     @pytest.fixture(autouse=True)
-    def _synthetic_chain(self):
+    def _synthetic_chain(self) -> Iterator[None]:
         with patch.object(model_registry, "_ALL_MODELS", list(self.PAIR)):
             yield
 

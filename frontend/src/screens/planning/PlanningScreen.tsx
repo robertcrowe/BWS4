@@ -1,5 +1,6 @@
 // Built with Spec4 AI - https://spec4.ai
 import { PlanningApp } from '../../apps/planning/PlanningApp'
+import { ReactCrossReference } from '../../apps/planning/ReactCrossReference'
 import { LayoutShell } from '../../components/LayoutShell'
 import { PatternSummary } from '../../components/PatternSummary'
 
@@ -31,7 +32,7 @@ export function PlanningScreen() {
             Scenario: One-day trip planner
           </span>
           <span className="rounded-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-1 font-mono text-xs text-gray-600 dark:text-gray-400">
-            Limits: 1 planner + up to 3 executor steps per run · 3 runs per day
+            Limits: 1 planner + up to 3 executor steps per run · 3 runs per hour
           </span>
         </div>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
@@ -45,6 +46,8 @@ export function PlanningScreen() {
           one-day itinerary.
         </p>
         <PatternSummary appId="planning_agent_example_app" />
+        {/* v7: the only change to this app — copy plus one navigation link. */}
+        <ReactCrossReference />
       </div>
 
       <div className="mt-6">

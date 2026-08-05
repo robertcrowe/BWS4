@@ -14,6 +14,8 @@ skip.
 
 from __future__ import annotations
 
+from typing import Any
+
 import asyncio
 from unittest.mock import AsyncMock, patch
 
@@ -42,7 +44,7 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _gate_allows_everything(allow_all_moderation):
+def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
     The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
@@ -97,7 +99,7 @@ class FakeSession:
         self.commits += 1
 
 
-def _client(session: FakeSession) -> TestClient:
+def _client(session: Any) -> TestClient:
     """A TestClient whose DB dependency is the supplied fake session."""
     app.dependency_overrides[get_db_session] = lambda: session
     return TestClient(app)
@@ -114,7 +116,7 @@ def _steps(*outcomes: object) -> AsyncMock:
     """
     scripted = list(outcomes)
 
-    async def _run(**kwargs: object) -> StepResult:
+    async def _run(**kwargs: object) -> StepResult[Any]:
         outcome = scripted.pop(0)
         if isinstance(outcome, Exception):
             raise outcome
@@ -123,8 +125,8 @@ def _steps(*outcomes: object) -> AsyncMock:
     return AsyncMock(side_effect=_run)
 
 
-def _ok(output: object, model: str) -> StepResult:
-    return StepResult(output=output, model=model)  # type: ignore[arg-type]
+def _ok(output: object, model: str) -> StepResult[Any]:
+    return StepResult(output=output, model=model)
 
 
 def test_a_successful_chain_returns_both_role_labeled_outputs() -> None:
@@ -134,7 +136,7 @@ def test_a_successful_chain_returns_both_role_labeled_outputs() -> None:
     it, and the critique demonstrably references content from the story rather
     than being generic commentary.
     """
-    session = FakeSession()
+    session: Any = FakeSession()
     steps = _steps(
         _ok(_DRAFT, "nvidia/nemotron-3-super-120b-a12b:free"),
         _ok(_CRITIQUE, "poolside/laguna-s-2.1:free"),
@@ -175,7 +177,7 @@ def test_the_second_call_receives_the_first_calls_output_as_its_input() -> None:
     which would make this a pair of independent calls, not a chain -- fails
     here.
     """
-    session = FakeSession()
+    session: Any = FakeSession()
     steps = _steps(_ok(_DRAFT, "writer-model"), _ok(_CRITIQUE, "critic-model"))
 
     with patch.object(service, "run_step", steps):
@@ -198,7 +200,7 @@ def test_a_second_call_failure_keeps_the_intermediate_output() -> None:
     critique failed would throw away the half the visitor actually watched
     happen.
     """
-    session = FakeSession()
+    session: Any = FakeSession()
     steps = _steps(
         _ok(_DRAFT, "writer-model"),
         AgentLaneError(ROLE_CRITIC, "the harsh_critic call could not be completed"),
@@ -228,7 +230,7 @@ def test_retry_critique_reruns_only_the_second_call() -> None:
     finally receives would not be a critique of the draft on their screen.
     """
     fresh = UsageLimit(capability="generation", used=0, cap=100, window_start=None)
-    session = FakeSession([fresh])
+    session: Any = FakeSession([fresh])
     steps = _steps(_ok(_CRITIQUE, "critic-model"))
     try:
         with patch.object(service, "run_step", steps):
@@ -253,13 +255,14 @@ def test_retry_critique_reruns_only_the_second_call() -> None:
     assert body["final_output"]["role"] == ROLE_CRITIC
 
     assert steps.await_count == 1, "only the critic call may run"
+    assert steps.await_args is not None
     assert steps.await_args.kwargs["role"] == ROLE_CRITIC
     assert fresh.used == 1, "a retry spends one unit, not two"
 
 
 def test_a_client_supplied_role_is_ignored_rather_than_echoed_back() -> None:
     """The server decides which persona ran; a posted role is not evidence."""
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(service, "run_step", _steps(_ok(_CRITIQUE, "critic-model"))):
             body = (
@@ -289,7 +292,7 @@ def test_an_exhausted_quota_blocks_the_whole_chain_before_any_call() -> None:
     what this pins: one unit short of the chain's cost is still a refusal.
     """
     one_short = UsageLimit(capability="generation", used=99, cap=100, window_start=None)
-    session = FakeSession([one_short])
+    session: Any = FakeSession([one_short])
     steps = _steps()
 
     with patch.object(service, "run_step", steps):
@@ -307,7 +310,7 @@ def test_an_exhausted_quota_blocks_the_whole_chain_before_any_call() -> None:
 def test_an_exhausted_quota_is_reported_as_503_with_no_partial_output() -> None:
     """The wire form of the same rule."""
     exhausted = UsageLimit(capability="generation", used=100, cap=100, window_start=None)
-    session = FakeSession([exhausted])
+    session: Any = FakeSession([exhausted])
     try:
         with patch.object(service, "run_step", _steps()):
             response = _client(session).post(
@@ -324,7 +327,7 @@ def test_an_exhausted_quota_is_reported_as_503_with_no_partial_output() -> None:
 
 def test_a_first_call_failure_is_an_error_not_an_empty_chain() -> None:
     """Nothing was generated, so there is nothing to show -- say so."""
-    session = FakeSession()
+    session: Any = FakeSession()
     steps = _steps(AgentLaneError(ROLE_WRITER, "every model failed"))
     try:
         with patch.object(service, "run_step", steps):
@@ -341,7 +344,7 @@ def test_a_first_call_failure_is_an_error_not_an_empty_chain() -> None:
 
 def test_a_blank_or_overlong_story_prompt_is_rejected_before_any_call() -> None:
     """The bound stops one paste spending a doubled token budget."""
-    session = FakeSession()
+    session: Any = FakeSession()
     steps = _steps()
     try:
         with patch.object(service, "run_step", steps):
@@ -371,7 +374,7 @@ def test_the_chain_is_metered_and_logged_but_stores_no_authored_text() -> None:
     both halves at once.
     """
     fresh = UsageLimit(capability="generation", used=0, cap=100, window_start=None)
-    session = FakeSession([fresh])
+    session: Any = FakeSession([fresh])
     steps = _steps(_ok(_DRAFT, "writer-model"), _ok(_CRITIQUE, "critic-model"))
 
     with patch.object(service, "run_step", steps):

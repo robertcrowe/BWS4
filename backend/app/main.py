@@ -13,6 +13,7 @@ from backend.app.api.health import router as health_router
 from backend.app.api.orchestrated import router as orchestrated_router
 from backend.app.api.planning import router as planning_router
 from backend.app.api.rag import router as rag_router
+from backend.app.api.react import router as react_router
 from backend.app.api.single_call import router as single_call_router
 from backend.app.api.tools import router as tools_router
 from backend.app.core.config import get_settings
@@ -73,3 +74,4 @@ app.include_router(chained_calls_router)
 app.include_router(planning_router)
 app.include_router(orchestrated_router)
 app.include_router(collab_router)
+app.include_router(react_router)

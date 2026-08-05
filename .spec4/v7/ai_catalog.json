@@ -1,0 +1,31 @@
+{
+  "ai_catalog": [
+    {
+      "name": "react_search_loop",
+      "scope": "feature",
+      "rough_description": "Takes a multi-hop question (preset or visitor-typed) and returns an interleaved trace of short reasoning statements, the web-search queries it chose to issue, the returned snippets it observed, and a terminal result \u2014 either an answer naming the observations it rested on, or, when the cycle budget runs out, a statement of what remained unresolved.",
+      "linked_existing_workflow": "",
+      "tier_recommendation": "planning_agent",
+      "tier_decision": "planning_agent",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "react_question_suitability_check",
+      "scope": "feature",
+      "rough_description": "Takes a visitor's free-form question and returns an assessment of whether answering it requires chaining two or more facts and whether any hop needs live information, so the visitor is told up front whether their question will actually exercise the loop or resolve in a single step.",
+      "linked_existing_workflow": "",
+      "tier_recommendation": "single_call",
+      "tier_decision": "single_call",
+      "tier_decision_rationale": ""
+    },
+    {
+      "name": "hop_source_annotation",
+      "scope": "feature",
+      "rough_description": "Takes a completed run trace and returns a per-hop label describing which facts the model recalled from its own knowledge versus which came from a search observation, with a brief note on why.",
+      "linked_existing_workflow": "",
+      "tier_recommendation": "single_call",
+      "tier_decision": "single_call",
+      "tier_decision_rationale": ""
+    }
+  ]
+}

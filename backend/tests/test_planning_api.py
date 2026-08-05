@@ -14,10 +14,12 @@ Models and Exa are mocked throughout, so no key and no database are needed.
 
 from __future__ import annotations
 
+from typing import Any, Literal
+
 import asyncio
 import json
 import time
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, AsyncIterator, Iterator, MutableMapping
 from unittest.mock import patch
 
 import pytest
@@ -47,7 +49,7 @@ async def _allow_moderation(_text: str, _context: str) -> ModerationVerdict:
 
 
 @pytest.fixture(autouse=True)
-def _gate_allows_everything(allow_all_moderation):
+def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
     The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
@@ -100,11 +102,13 @@ ITINERARY = Itinerary(
 )
 
 
-def _run_body(plan: Plan = PLAN) -> dict:
+def _run_body(plan: Plan = PLAN) -> dict[str, Any]:
     return {**GOAL, "plan": plan.model_dump()}
 
 
-def _step(index: int, status: str = "completed") -> StepResult:
+def _step(
+    index: int, status: Literal["completed", "failed"] = "completed"
+) -> StepResult:
     return StepResult(step_index=index, status=status, summary=f"Result {index}", sources=[])
 
 
@@ -124,7 +128,7 @@ class _Session:
         self.limits: dict[str, UsageLimit] = {}
         self._caps = caps or {}
 
-    async def execute(self, statement: object, *_a: object, **_k: object) -> _Result:
+    async def execute(self, statement: Any, *_a: object, **_k: object) -> _Result:
         try:
             capability = next(iter(statement.compile().params.values()))
         except Exception:  # noqa: BLE001 - fake session, best effort
@@ -152,7 +156,7 @@ class _Session:
         return limit.used if limit else 0
 
 
-def _override_session(session: _Session):
+def _override_session(session: Any) -> Any:
     """Install the fake session for `/plan`'s dependency."""
 
     async def _yield() -> AsyncGenerator[_Session, None]:
@@ -161,7 +165,7 @@ def _override_session(session: _Session):
     return _yield
 
 
-def _patch_run_session(session: _Session):
+def _patch_run_session(session: Any) -> Any:
     """Install the fake session for `/run`, which opens its own.
 
     `/run` deliberately does not use `Depends(get_db_session)` -- its response
@@ -171,9 +175,9 @@ def _patch_run_session(session: _Session):
     return patch.object(api, "async_session_factory", lambda: session)
 
 
-def _stream(body: dict) -> list[tuple[str, dict]]:
+def _stream(body: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     """POST a run and collect its events, parsing the SSE wire format directly."""
-    events: list[tuple[str, dict]] = []
+    events: list[tuple[str, dict[str, Any]]] = []
     pending: str | None = None
 
     with client.stream("POST", "/api/planning/run", json=body) as response:
@@ -190,17 +194,17 @@ def _stream(body: dict) -> list[tuple[str, dict]]:
     return events
 
 
-def _execution(*events: ExecutionEvent):
+def _execution(*events: ExecutionEvent) -> Any:
     """Build a fake `execute_plan` yielding the given events."""
 
-    async def fake(_session, *, goal, plan, calls_used=0):
+    async def fake(_session: Any, *, goal: Any, plan: Any, calls_used: Any=0) -> AsyncIterator[Any]:
         for event in events:
             yield event
 
     return fake
 
 
-def _completed_run():
+def _completed_run() -> Any:
     return _execution(
         ExecutionEvent(kind="step_result", step_result=_step(1)),
         ExecutionEvent(kind="step_result", step_result=_step(2)),
@@ -210,7 +214,7 @@ def _completed_run():
 
 class TestPlanEndpoint:
     def test_it_returns_the_validated_plan(self) -> None:
-        session = _Session()
+        session: Any = _Session()
         outcome = PlanOutcome(
             goal="goal",
             plan=PLAN,
@@ -238,7 +242,7 @@ class TestPlanEndpoint:
         `/plan` must reach the planner and nothing else. If this endpoint could
         execute a step, the visitor's review would be decorative.
         """
-        session = _Session()
+        session: Any = _Session()
         outcome = PlanOutcome(
             goal="goal", plan=PLAN, trimmed_note=None, replanned=False, model="m", calls_used=1
         )
@@ -255,7 +259,7 @@ class TestPlanEndpoint:
         executed.assert_not_called()
 
     def test_a_trimmed_plan_reports_what_was_dropped(self) -> None:
-        session = _Session()
+        session: Any = _Session()
         outcome = PlanOutcome(
             goal="goal",
             plan=PLAN,
@@ -287,7 +291,7 @@ class TestPlanEndpoint:
     ) -> None:
         # A spent cap resets at the top of the hour and an unreachable planner does not.
         # An operator told only "503" learns neither.
-        session = _Session()
+        session: Any = _Session()
         app.dependency_overrides[get_db_session] = _override_session(session)
         try:
             with patch.object(service, "create_plan", side_effect=error):
@@ -308,7 +312,7 @@ class TestPlanEndpoint:
 
 class TestRunStream:
     def test_it_streams_the_plan_then_each_step_then_the_itinerary(self) -> None:
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_run_session(session), patch.object(
             service, "execute_plan", _completed_run()
@@ -323,7 +327,7 @@ class TestRunStream:
         ]
 
     def test_step_results_arrive_in_plan_order(self) -> None:
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_run_session(session), patch.object(
             service, "execute_plan", _completed_run()
@@ -362,7 +366,7 @@ class TestRunStream:
                 ],
             }
         )
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_run_session(session), patch.object(
             service, "execute_plan", _completed_run()
@@ -400,7 +404,7 @@ class TestRunStream:
                 ],
             }
         )
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_run_session(session), patch.object(service, "execute_plan") as executed:
             events = _stream(_run_body(bad))
@@ -417,7 +421,7 @@ class TestRunStream:
         output, because a 5xx would push the client's error branch and discard
         it.
         """
-        session = _Session()
+        session: Any = _Session()
         halted = _execution(
             ExecutionEvent(kind="step_result", step_result=_step(1)),
             ExecutionEvent(
@@ -437,7 +441,7 @@ class TestRunStream:
     def test_quota_exhaustion_is_reported_without_a_model_call(self) -> None:
         # The orchestrator's gate refuses before any provider is reached, and
         # the stream says which of the two 503-shaped problems it was.
-        session = _Session()
+        session: Any = _Session()
         halted = _execution(
             ExecutionEvent(
                 kind="halted",
@@ -455,7 +459,7 @@ class TestRunStream:
     def test_a_failed_step_still_streams_as_a_step_result(self) -> None:
         # A research failure is shown honestly rather than hidden, and does not
         # end the run.
-        session = _Session()
+        session: Any = _Session()
         with_failure = _execution(
             ExecutionEvent(kind="step_result", step_result=_step(1, status="failed")),
             ExecutionEvent(kind="step_result", step_result=_step(2)),
@@ -471,10 +475,10 @@ class TestRunStream:
 
     def test_the_run_starts_the_ceiling_from_the_planner_call_not_the_client(self) -> None:
         """A client that could set the starting count could reset its own ceiling."""
-        session = _Session()
-        seen: dict = {}
+        session: Any = _Session()
+        seen: dict[str, Any] = {}
 
-        async def capture(_session, *, goal, plan, calls_used=0):
+        async def capture(_session: Any, *, goal: Any, plan: Any, calls_used: Any=0) -> AsyncIterator[Any]:
             seen["calls_used"] = calls_used
             yield ExecutionEvent(kind="itinerary", itinerary=ITINERARY)
 
@@ -486,10 +490,10 @@ class TestRunStream:
         assert seen["calls_used"] == api.PLANNER_CALL_COST
 
 
-def _spaced_execution():
+def _spaced_execution() -> Any:
     """A run whose events are separated in time, so flushing is measurable."""
 
-    async def fake(_session, *, goal, plan, calls_used=0):
+    async def fake(_session: Any, *, goal: Any, plan: Any, calls_used: Any=0) -> AsyncIterator[Any]:
         for event in (
             ExecutionEvent(kind="step_result", step_result=_step(1)),
             ExecutionEvent(kind="step_result", step_result=_step(2)),
@@ -501,7 +505,7 @@ def _spaced_execution():
     return fake
 
 
-def _drive_asgi(payload: dict) -> list[tuple[float, bytes]]:
+def _drive_asgi(payload: dict[str, Any]) -> list[tuple[float, bytes]]:
     """Call the ASGI app directly and timestamp every body chunk it sends."""
     body = json.dumps(payload).encode()
     chunks: list[tuple[float, bytes]] = []
@@ -526,7 +530,7 @@ def _drive_asgi(payload: dict) -> list[tuple[float, bytes]]:
         "server": ("testserver", 80),
     }
 
-    async def receive() -> dict:
+    async def receive() -> dict[str, Any]:
         nonlocal request_sent
         if not request_sent:
             request_sent = True
@@ -537,7 +541,7 @@ def _drive_asgi(payload: dict) -> list[tuple[float, bytes]]:
         await asyncio.Event().wait()
         raise AssertionError("unreachable")
 
-    async def send(message: dict) -> None:
+    async def send(message: MutableMapping[str, Any]) -> None:
         if message["type"] == "http.response.body" and message.get("body"):
             chunks.append((time.monotonic(), message["body"]))
 
@@ -563,7 +567,7 @@ class TestPersistenceAndDelivery:
 
         searched: list[str] = []
 
-        def behave(messages, info):
+        def behave(messages: Any, info: Any) -> ModelResponse:
             names = {tool.name for tool in info.function_tools}
             if "web_search" in names:
                 if not searched or len(searched) < 1:
@@ -579,17 +583,15 @@ class TestPersistenceAndDelivery:
                 ]
             )
 
-        async def fake_search(query: str):
+        async def fake_search(query: str) -> list[Any]:
             searched.append(query)
             return [ExaResult(title="T", summary="S", source="https://a.test/1")]
 
-        session = _Session()
+        session: Any = _Session()
 
         with (
             _patch_run_session(session),
-            patch.object(
-                agents.agent_runtime,
-                "build_fallback_model",
+            patch("backend.app.planning.agents.agent_runtime.build_fallback_model",
                 lambda chain=None, **_: FunctionModel(behave),
             ),
             patch.object(service, "search", fake_search),
@@ -610,7 +612,7 @@ class TestPersistenceAndDelivery:
         ASGI app directly is what makes the measurement real -- and this is the
         property the whole SSE design exists for.
         """
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_run_session(session), patch.object(
             service, "execute_plan", _spaced_execution()
@@ -639,11 +641,11 @@ class TestDisconnect:
         explicit `aclose()` -- verified by mutation, which is why this checks
         the moment cancellation is handled instead.
         """
-        session = _Session()
+        session: Any = _Session()
         produced: list[int] = []
         closed: list[str] = []
 
-        async def counting(_session, *, goal, plan, calls_used=0):
+        async def counting(_session: Any, *, goal: Any, plan: Any, calls_used: Any=0) -> AsyncIterator[Any]:
             try:
                 for index in (1, 2, 3):
                     produced.append(index)
@@ -675,14 +677,14 @@ class TestRetrySynthesis:
     return.
     """
 
-    def _body(self) -> dict:
+    def _body(self) -> dict[str, Any]:
         return {
             **_run_body(),
             "results": [_step(1).model_dump(), _step(2).model_dump()],
         }
 
     def test_it_recomposes_the_itinerary_without_rerunning_research(self) -> None:
-        session = _Session()
+        session: Any = _Session()
         app.dependency_overrides[get_db_session] = _override_session(session)
         try:
             with (
@@ -702,7 +704,7 @@ class TestRetrySynthesis:
     def test_it_passes_the_existing_step_results_through_unchanged(self) -> None:
         # Re-running the research would produce *different* findings, so the
         # itinerary that came back would not be the one those results support.
-        session = _Session()
+        session: Any = _Session()
         app.dependency_overrides[get_db_session] = _override_session(session)
         try:
             with patch.object(
@@ -725,7 +727,7 @@ class TestRetrySynthesis:
                 ],
             }
         )
-        session = _Session()
+        session: Any = _Session()
         app.dependency_overrides[get_db_session] = _override_session(session)
         try:
             with patch.object(service, "retry_synthesis") as composed:
@@ -748,7 +750,7 @@ class TestRetrySynthesis:
         ],
     )
     def test_failures_keep_their_codes(self, error: Exception, code: str) -> None:
-        session = _Session()
+        session: Any = _Session()
         app.dependency_overrides[get_db_session] = _override_session(session)
         try:
             with patch.object(service, "retry_synthesis", side_effect=error):

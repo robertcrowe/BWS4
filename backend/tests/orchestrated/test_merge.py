@@ -32,6 +32,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -121,14 +122,12 @@ class _Synth:
         self.calls = 0
         self.temperatures: list[float | None] = []
 
-    async def __call__(self, **kwargs: object) -> StepResult[MergedAnswer]:
+    async def __call__(self, **kwargs: Any) -> StepResult[MergedAnswer]:
         self.calls += 1
         settings = kwargs.get("model_settings")
-        self.temperatures.append(
-            settings.get("temperature") if settings else None  # type: ignore[union-attr]
-        )
+        self.temperatures.append(settings.get("temperature") if settings else None)
         budget = kwargs["budget"]
-        budget.spend()  # type: ignore[attr-defined]
+        budget.spend()
 
         item = self._queue.pop(0) if self._queue else self._queue[-1]
         if isinstance(item, Exception):
@@ -323,7 +322,10 @@ class TestTheVerbatimRunCheck:
         merged, telemetry = _run(synth)
 
         assert telemetry["verbatim_run_flagged"] is True
-        assert int(telemetry["verbatim_run_tokens"]) > validator.MAX_VERBATIM_RUN_TOKENS
+        assert (
+            int(str(telemetry["verbatim_run_tokens"]))
+            > validator.MAX_VERBATIM_RUN_TOKENS
+        )
         assert merged.text == copied  # still shown
 
     def test_a_synthesised_merge_is_not_flagged(self) -> None:
@@ -485,10 +487,10 @@ class TestFailureHandling:
         """
         prompts: list[str] = []
 
-        async def capture(**kwargs: object) -> StepResult[MergedAnswer]:
+        async def capture(**kwargs: Any) -> StepResult[MergedAnswer]:
             prompts.append(str(kwargs["user_prompt"]))
             budget = kwargs["budget"]
-            budget.spend()  # type: ignore[attr-defined]
+            budget.spend()
             return StepResult(output=_answer(), model="m", requests=1)
 
         async def go(results: list[SubagentResult]) -> None:
@@ -557,7 +559,7 @@ class TestTrimming:
         assert merged.sources_used == [SpecialistId.TECHNICAL, SpecialistId.FINANCIAL]
 
 
-def _load_golden() -> list[dict]:
+def _load_golden() -> list[dict[str, Any]]:
     """Load the golden cases, validating every fixture against the live schema.
 
     The whole defence against fixture drift, and the reason it runs at load
@@ -567,14 +569,14 @@ def _load_golden() -> list[dict]:
     cases = json.loads(GOLDEN.read_text())["cases"]
     for case in cases:
         MergedAnswer.model_validate(case["synthesis"])
-    return cases
+    return list(cases)
 
 
 GOLDEN_CASES = _load_golden()
 
 
 @pytest.mark.parametrize("case", GOLDEN_CASES, ids=[c["id"] for c in GOLDEN_CASES])
-def test_golden_merge_cases(case: dict) -> None:
+def test_golden_merge_cases(case: dict[str, Any]) -> None:
     """Run the deterministic fan-in checks over a hand-authored case.
 
     Assertions are tied to what the checks must *conclude*, never to fixture
@@ -598,7 +600,10 @@ def test_golden_merge_cases(case: dict) -> None:
     )
     assert telemetry["contradictions_dropped"] == expected["contradictions_dropped"]
     assert telemetry["verbatim_run_flagged"] is expected["verbatim_run_flagged"]
-    assert len(list(telemetry["banned_phrase_hits"])) == expected["banned_phrase_hits"]
+    # Telemetry values are heterogeneous, so the list() is what narrows this
+    # one for the length check.
+    banned_hits: list[Any] = list(telemetry["banned_phrase_hits"])  # type: ignore[call-overload]
+    assert len(banned_hits) == expected["banned_phrase_hits"]
     assert cleaned.disagreement_note.comparable is expected["comparable"]
 
 

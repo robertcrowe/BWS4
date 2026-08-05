@@ -71,7 +71,7 @@ class _Session:
         self.limits: dict[str, UsageLimit] = {}
         self._caps = caps or {}
 
-    async def execute(self, statement: object, *_a: object, **_k: object) -> _Result:
+    async def execute(self, statement: Any, *_a: object, **_k: object) -> _Result:
         try:
             capability = next(iter(statement.compile().params.values()))
         except Exception:  # noqa: BLE001 - fake session, best effort
@@ -100,27 +100,27 @@ class GoldenRun:
     """Everything one golden case produced, for the assertions to read."""
 
     def __init__(self) -> None:
-        self.outcome: service.PlanOutcome | None = None
+        self.outcome: Any = None
         self.events: list[service.ExecutionEvent] = []
         self.prompts: list[str] = []
         self.tool_returns: list[str] = []
         self.queries: list[str] = []
         self.model_calls = 0
-        self.session = _Session()
+        self.session: Any = _Session()
 
     @property
-    def step_results(self) -> list:
+    def step_results(self) -> list[Any]:
         return [event.step_result for event in self.events if event.kind == "step_result"]
 
     @property
-    def itinerary(self):
+    def itinerary(self) -> Any:
         for event in self.events:
             if event.kind == "itinerary":
                 return event.itinerary
         return None
 
     @property
-    def halted(self):
+    def halted(self) -> Any:
         for event in self.events:
             if event.kind == "halted":
                 return event
@@ -201,7 +201,7 @@ def _pending_query(run: GoldenRun, case: dict[str, Any]) -> str:
     return research[position].search_query or ""
 
 
-def _search_for(case: dict[str, Any], run: GoldenRun):
+def _search_for(case: dict[str, Any], run: GoldenRun) -> Any:
     """Serve recorded Exa results for a query, or the case's default."""
 
     async def fake_search(query: str) -> list[ExaResult]:
@@ -232,17 +232,17 @@ def run_case(case: dict[str, Any], *, caps: dict[str, int] | None = None) -> Gol
         ):
             run.events.append(event)
 
-    original_block = agents.sanitize.untrusted_block
+    original_block = agents.sanitize.untrusted_block  # type: ignore[attr-defined]  # reaching the module's own import on purpose -- patch/identity at point of use
 
     def recording_block(label: str, content: str) -> str:
-        wrapped = original_block(label, content)
+        wrapped: str = original_block(label, content)
         run.tool_returns.append(wrapped)
         return wrapped
 
     with (
-        patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: model),
+        patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: model),
         patch.object(service, "search", _search_for(case, run)),
-        patch.object(agents.sanitize, "untrusted_block", recording_block),
+        patch("backend.app.planning.agents.sanitize.untrusted_block", recording_block),
     ):
         asyncio.run(drive())
 
@@ -453,7 +453,7 @@ def test_planning_completes_before_any_step_executes(case: dict[str, Any]) -> No
             run.events.append(event)
 
     with (
-        patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: model),
+        patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: model),
         patch.object(service, "search", _search_for(case, run)),
     ):
         asyncio.run(drive())
@@ -478,8 +478,7 @@ def test_a_spent_planning_budget_refuses_the_run_before_any_model_call() -> None
     run.session = _Session(caps={shared.CAPABILITY_PLANNING: 0})
     model = _model_for(case, run)
 
-    with patch.object(
-        agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: model
+    with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: model
     ):
         with pytest.raises(service.UsageLimitReachedError):
             asyncio.run(

@@ -19,6 +19,8 @@ neither a model nor a database.
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
@@ -34,10 +36,11 @@ client = TestClient(app)
 EXPECTED_IDS = {"technical", "financial", "historical", "practical"}
 
 
-def _roster() -> dict:
+def _roster() -> dict[str, Any]:
     response = client.get("/api/orchestrated/roster")
     assert response.status_code == 200
-    return response.json()
+    payload: dict[str, Any] = response.json()
+    return payload
 
 
 class TestTheRosterEndpoint:

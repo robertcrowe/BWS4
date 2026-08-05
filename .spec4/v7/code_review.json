@@ -1,0 +1,717 @@
+{
+  "code_review": {
+    "schema_version": 1,
+    "is_software_project": true,
+    "project_type": "full-stack web application \u2014 React/Vite SPA gallery + FastAPI REST/SSE backend showcasing eight AI application patterns",
+    "existing_self_description": {
+      "text": "Built with Spec4 (BWS4) is a living showcase of common AI application patterns, presented as a collection of small, self-contained example apps behind a single landing page. Each example demonstrates one pattern end-to-end: how it's built, what it depends on, and how it behaves, so that visitors unfamiliar with the underlying technique can understand it by seeing it work rather than by reading about it abstractly.",
+      "source": "README.md"
+    },
+    "architecture": {
+      "summary": "Vertical-slice modular monolith: each example app owns a backend slice package (schemas/service/validator/versioned Markdown prompts) exposed through a deliberately thin FastAPI router, and all slices draw on one shared framework layer for model calls, embeddings, web search, storage, moderation and usage gating. The React SPA mirrors the same partitioning with per-example lazy-loaded route chunks.",
+      "pattern": "vertical-slice modular monolith over a shared service layer",
+      "inferred_from": "backend/app/main.py"
+    },
+    "languages": [
+      {
+        "name": "Python",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "TypeScript",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "CSS",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "Markdown (prompt templates and RAG dataset used as data)",
+        "inferred_from": "backend/app/rag/prompts/answer_v1.md"
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "FastAPI",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "Uvicorn",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "SQLAlchemy",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "Alembic",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "PydanticAI",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "LiteLLM",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "Pydantic",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pydantic-settings",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sse-starlette",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "structlog",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "React",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "React Router",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "TanStack Query",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "Tailwind CSS",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "Vite",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "Plotly.js",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "Sentry",
+        "source": "pyproject.toml"
+      }
+    ],
+    "protocols_implemented": [
+      {
+        "name": "A2A (Agent2Agent Protocol) \u2014 data model and interaction pattern only, no network transport",
+        "location": "backend/app/collab/protocol.py",
+        "source": "backend/app/api/collab.py"
+      }
+    ],
+    "runtime_versions": {
+      "python": ">=3.12",
+      "node": "20+",
+      "_source": "pyproject.toml / README.md"
+    },
+    "build_system": {
+      "tool": "uv (Python, root pyproject.toml) + npm/Vite (frontend/package.json)",
+      "manifest": "pyproject.toml"
+    },
+    "dependencies": [
+      {
+        "name": "alembic",
+        "purpose": "Database migrations",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "asyncpg",
+        "purpose": "Async PostgreSQL driver",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "fastapi",
+        "purpose": "REST API framework with auto-generated OpenAPI",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "httpx",
+        "purpose": "HTTP client for provider/API calls",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "litellm",
+        "purpose": "Primary model lane routing to OpenRouter and Groq",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "numpy",
+        "purpose": "Vector/array math for embeddings",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pgvector",
+        "purpose": "Postgres vector column type and distance operators",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pydantic",
+        "purpose": "Request/response schemas and validation",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pydantic-ai",
+        "purpose": "Second model lane with framework-bound typed output",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pydantic-settings",
+        "purpose": "Environment-backed Settings object",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "scikit-learn",
+        "purpose": "PCA projection of embeddings to 2D",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sentence-transformers",
+        "purpose": "In-process all-MiniLM-L6-v2 embeddings",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sentry-sdk",
+        "purpose": "Backend error tracking and LLM-call spans",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sqlalchemy",
+        "purpose": "Async data access including pgvector cosine queries",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sse-starlette",
+        "purpose": "Server-Sent Events responses for streaming runs",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "structlog",
+        "purpose": "Structured logging",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "tenacity",
+        "purpose": "Retry logic around external calls",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "torch",
+        "purpose": "Local inference runtime for sentence-transformers",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "uvicorn",
+        "purpose": "ASGI server",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "mypy",
+        "purpose": "Static type checking (dev group)",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pytest",
+        "purpose": "Backend test runner (dev group)",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "ruff",
+        "purpose": "Python linter/formatter (dev group)",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "@microsoft/fetch-event-source",
+        "purpose": "Browser SSE client for streaming run endpoints",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "@sentry/react",
+        "purpose": "Frontend error tracking and browser tracing",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "@tanstack/react-query",
+        "purpose": "Server state with retries disabled on quota-spending calls",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "plotly.js",
+        "purpose": "Scatter plot for the embeddings example",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react",
+        "purpose": "UI library",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react-dom",
+        "purpose": "React DOM renderer",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react-markdown",
+        "purpose": "Rendering model output and dataset Markdown",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react-plotly.js",
+        "purpose": "React wrapper for Plotly",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "react-router",
+        "purpose": "Client-side routing with lazy per-example chunks",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "oxlint",
+        "purpose": "Rust-based JS/TS linter (dev)",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "vitest",
+        "purpose": "Frontend test runner (dev)",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "jsdom",
+        "purpose": "DOM environment for vitest (dev)",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "@testing-library/react",
+        "purpose": "Component testing utilities (dev)",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "tailwindcss",
+        "purpose": "Utility-first styling with class-based dark mode (dev)",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "postcss",
+        "purpose": "CSS pipeline for Tailwind (dev)",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "autoprefixer",
+        "purpose": "CSS vendor prefixing (dev)",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "vite",
+        "purpose": "Frontend build tool and dev server (dev)",
+        "source": "frontend/package.json"
+      },
+      {
+        "name": "typescript",
+        "purpose": "Type checking and build via tsc -b (dev)",
+        "source": "frontend/package.json"
+      }
+    ],
+    "commands": {
+      "build": "npm --prefix frontend run build",
+      "test": "uv run pytest",
+      "lint": "uv run ruff check .",
+      "typecheck": "uv run mypy backend",
+      "run": "uv run uvicorn backend.app.main:app",
+      "dev": "npm --prefix frontend run dev"
+    },
+    "entrypoints": {
+      "main": "backend/app/main.py",
+      "wsgi_app": "backend.app.main:app",
+      "dev_server": "npm --prefix frontend run dev",
+      "ui_root": "frontend/src/main.tsx"
+    },
+    "directory_map": [
+      {
+        "path": "backend/app/main.py",
+        "role": "FastAPI app, CORS, Sentry init, lifespan embeddings warm-up, router registration"
+      },
+      {
+        "path": "backend/app/api/",
+        "role": "thin HTTP routers, one per example app plus health"
+      },
+      {
+        "path": "backend/app/services/",
+        "role": "shared framework layer: model registry and fallback chain, generation, PydanticAI agent runtime, embedding, Exa web search, storage, moderation, text gate, allowance holds, message bus"
+      },
+      {
+        "path": "backend/app/core/",
+        "role": "pydantic-settings config, structlog setup, Sentry observability"
+      },
+      {
+        "path": "backend/app/db/",
+        "role": "SQLAlchemy base, models, async session factory"
+      },
+      {
+        "path": "backend/app/db/migrations/versions/",
+        "role": "12 Alembic revisions (pgvector, HNSW index, usage limits, moderation log, collab runs)"
+      },
+      {
+        "path": "backend/app/rag/",
+        "role": "chunking, retriever, citation audit, answer composition, prompt loader"
+      },
+      {
+        "path": "backend/app/rag/dataset/",
+        "role": "10 curated Markdown reference documents indexed for RAG"
+      },
+      {
+        "path": "backend/app/collab/",
+        "role": "multi-agent negotiation: A2A protocol types, opacity-enforcing bus, sequencer, scoring, explanations, validators, telemetry"
+      },
+      {
+        "path": "backend/app/orchestrated/",
+        "role": "coordinator, specialist roster, concurrent runtime, merge, validator"
+      },
+      {
+        "path": "backend/app/planning/",
+        "role": "planner/research/synthesis agents, budget, sanitize, validator"
+      },
+      {
+        "path": "backend/app/chained_calls/",
+        "role": "two-call writer to critic pipeline with quote-overlap check"
+      },
+      {
+        "path": "backend/app/single_call/",
+        "role": "simple and structured single-call presets and schemas"
+      },
+      {
+        "path": "backend/app/embeddings/",
+        "role": "preset texts, PCA placement, projection service"
+      },
+      {
+        "path": "backend/tests/",
+        "role": "pytest suite (pyproject testpaths)"
+      },
+      {
+        "path": "frontend/src/",
+        "role": "React SPA: main.tsx, App.tsx, router with per-example lazy chunks"
+      },
+      {
+        "path": "render.yaml",
+        "role": "Render Blueprint for the api web service and static site"
+      }
+    ],
+    "persistence": {
+      "databases": [
+        {
+          "engine": "PostgreSQL",
+          "role": "primary relational store and pgvector vector index (Neon serverless)",
+          "source": "README.md"
+        }
+      ],
+      "orm": {
+        "name": "SQLAlchemy",
+        "source": "pyproject.toml"
+      },
+      "migration_tool": {
+        "name": "Alembic",
+        "source": "pyproject.toml"
+      },
+      "migrations_path": "backend/app/db/migrations/"
+    },
+    "env_vars": [
+      {
+        "name": "DATABASE_URL",
+        "purpose": "Neon Postgres connection string used by asyncpg/SQLAlchemy and Alembic",
+        "required": true,
+        "inferred_from": "backend/alembic.ini"
+      },
+      {
+        "name": "OPENROUTER_API_KEY",
+        "purpose": "OpenRouter provider credential for the shared model registry",
+        "required": true,
+        "source": "README.md"
+      },
+      {
+        "name": "GROQ_API_KEY",
+        "purpose": "Groq provider credential for the LiteLLM and PydanticAI lanes",
+        "required": true,
+        "source": "README.md"
+      },
+      {
+        "name": "EXA_API_KEY",
+        "purpose": "Exa web-search API used by the tool-use example",
+        "required": true,
+        "source": "README.md"
+      },
+      {
+        "name": "CORS_ORIGIN",
+        "purpose": "Single allowed browser origin for the API, never a wildcard",
+        "required": true,
+        "inferred_from": "backend/app/main.py"
+      },
+      {
+        "name": "SENTRY_DSN",
+        "purpose": "Backend error tracking; configure_sentry no-ops when unset",
+        "required": false,
+        "source": "backend/app/main.py"
+      },
+      {
+        "name": "VITE_SENTRY_DSN",
+        "purpose": "Frontend error tracking; Sentry is never initialized when unset",
+        "required": false,
+        "source": "frontend/src/main.tsx"
+      }
+    ],
+    "deployment": {
+      "paas": {
+        "platform": "Render",
+        "config_path": "render.yaml",
+        "source": "render.yaml"
+      }
+    },
+    "api_surface": [
+      {
+        "protocol": "http",
+        "path_or_method": "GET /api/collab/identity-cards",
+        "handler": "backend.app.api.collab router",
+        "summary": "Serves three A2A-shaped agent cards from module constants with camelCase alias serialisation; no model, DB or quota use",
+        "source": "backend/app/api/collab.py"
+      },
+      {
+        "protocol": "http",
+        "path_or_method": "POST /api/collab/run",
+        "handler": "backend.app.collab.service.stream_run",
+        "summary": "SSE stream of the negotiation, one event per stage, 15s keep-alive pings, DB session opened inside the generator",
+        "source": "backend/app/api/collab.py"
+      },
+      {
+        "protocol": "http",
+        "path_or_method": "POST chained-calls run",
+        "handler": "backend.app.chained_calls.service",
+        "summary": "Runs the two-call writer/critic chain; a failed second call returns 200 with status 'critique_failed' rather than an error",
+        "source": "backend/app/api/chained_calls.py"
+      },
+      {
+        "protocol": "http",
+        "path_or_method": "GET chained-calls plan",
+        "handler": "_PLAN constant in backend/app/api/chained_calls.py",
+        "summary": "Describes the chain's steps and roles before it runs, built from the pipeline's own constants",
+        "source": "backend/app/api/chained_calls.py"
+      },
+      {
+        "protocol": "http",
+        "path_or_method": "GET /health",
+        "handler": "backend.app.api.health router",
+        "summary": "Liveness endpoint that must stay up independent of example-app failures",
+        "source": "backend/app/main.py"
+      }
+    ],
+    "auth": {
+      "model": "none",
+      "source": "README.md"
+    },
+    "ai_capabilities": [
+      {
+        "name": "litellm",
+        "kind": "llm_api",
+        "description": "Primary model lane: every example app's generation call goes through one registry that walks an ordered chain of free-tier OpenRouter/Groq models on failure and benches withdrawn slugs",
+        "location": "backend/app/services/model_registry.py",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pydantic-ai",
+        "kind": "agent_framework",
+        "description": "Second model lane used where an app wants framework-bound, validated typed output instead of parsing JSON out of prose; reads slugs from the same registry and passes the same usage gate",
+        "location": "backend/app/services/agent_runtime.py",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sentence-transformers",
+        "kind": "embedding",
+        "description": "In-process all-MiniLM-L6-v2 embeddings powering the embeddings example's 24 presets and all RAG chunk/query embedding; deliberately uncapped since it spends no third-party quota",
+        "location": "backend/app/services/embedding.py",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "torch",
+        "kind": "ml_model",
+        "description": "Local inference runtime backing sentence-transformers, loaded at boot in the FastAPI lifespan",
+        "location": "backend/app/main.py",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pgvector",
+        "kind": "vector_store",
+        "description": "dataset_embeddings table with an HNSW index queried by cosine distance through SQLAlchemy for RAG retrieval",
+        "location": "backend/app/rag/retriever.py",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "BWS4 RAG pipeline",
+        "kind": "rag",
+        "description": "Hand-rolled sentence-aligned overlapping chunking, title-prepended passage embedding, retrieval, grounded answer generation, and a citation audit that verifies cited passages were actually retrieved",
+        "location": "backend/app/rag/",
+        "source": "README.md"
+      },
+      {
+        "name": "scikit-learn",
+        "kind": "ml_model",
+        "description": "PCA fitted once at startup over the curated preset embeddings and thereafter only applied, so existing plot points never move when a visitor adds text",
+        "location": "backend/app/embeddings/placement.py",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "Exa",
+        "kind": "other",
+        "description": "Live web-search API exposed as a shared framework capability and invoked by the tool-use example's function-calling loop",
+        "location": "backend/app/services/web_search.py",
+        "source": "README.md"
+      },
+      {
+        "name": "BWS4 collab negotiation runtime",
+        "kind": "agent_framework",
+        "description": "Buyer agent negotiates one procurement round against two rival sellers over a fixed 8 model calls, with opacity enforced structurally by assembling each turn only from messages addressed to that agent",
+        "location": "backend/app/collab/",
+        "source": "README.md"
+      },
+      {
+        "name": "BWS4 orchestrated subagents runtime",
+        "kind": "agent_framework",
+        "description": "Coordinator selects two of four fixed specialists, writes each a distinct brief, runs both concurrently and merges their answers",
+        "location": "backend/app/orchestrated/",
+        "source": "README.md"
+      },
+      {
+        "name": "BWS4 planning agent",
+        "kind": "agent_framework",
+        "description": "Planner call decomposes a trip-day goal into an approvable plan; execution is a separate API call so the human-in-the-loop checkpoint cannot be defaulted away",
+        "location": "backend/app/planning/",
+        "source": "README.md"
+      },
+      {
+        "name": "sentry-sdk",
+        "kind": "other",
+        "description": "Performance spans around LLM calls plus error tracking on both tiers, no-oping cleanly when no DSN is configured",
+        "location": "backend/app/core/observability.py",
+        "source": "pyproject.toml"
+      }
+    ],
+    "ui_summary": {
+      "has_ui": true,
+      "kind": "spa",
+      "framework": "React 19 + React Router 8",
+      "styling": "Tailwind CSS 3 with class-based light/dark strategy, PostCSS + autoprefixer; theme preference persisted in browser localStorage",
+      "routing": "RouterProvider from react-router fed by the router exported from frontend/src/routes, with per-example lazy-loaded chunks",
+      "entry_files": [
+        "frontend/src/main.tsx",
+        "frontend/src/App.tsx"
+      ]
+    },
+    "coding_style": {
+      "linter": {
+        "value": "ruff (Python), oxlint (frontend)",
+        "source": "pyproject.toml"
+      },
+      "type_checker": {
+        "value": "mypy strict (scoped: pre-v6 routers exempt)",
+        "source": "pyproject.toml"
+      },
+      "indentation": {
+        "value": "4 spaces (Python), 2 spaces (TypeScript)",
+        "inferred_from": "backend/app/main.py"
+      },
+      "quotes": {
+        "value": "double (Python), single (TypeScript)",
+        "inferred_from": "frontend/src/main.tsx"
+      },
+      "line_length": {
+        "value": 88,
+        "source": "pyproject.toml"
+      },
+      "naming_conventions": {
+        "functions": {
+          "value": "snake_case",
+          "inferred_from": "backend/app/main.py"
+        },
+        "classes": {
+          "value": "PascalCase",
+          "inferred_from": "backend/app/api/collab.py"
+        }
+      }
+    },
+    "notes": {
+      "test_coverage": {
+        "has_tests": true,
+        "framework": "pytest (backend), vitest + @testing-library/react + jsdom (frontend)",
+        "coverage_summary": "Backend tests live under backend/tests/ (pyproject testpaths) and frontend tests run via vitest; the tests directory listing was truncated so per-module coverage could not be determined. One documented assertion: the collab identity-cards endpoint's test asserts A2A camelCase alias serialisation rather than trusting configuration.",
+        "inferred_from": "pyproject.toml"
+      },
+      "ci_cd": {
+        "present": false,
+        "type": null,
+        "path": null
+      },
+      "incomplete_or_dead_code": [
+        "uv run ruff check . does not lint most of the backend: [tool.ruff] extend-exclude exempts main.py, eight of nine API routers, and the chained_calls, core, db, embeddings, planning and rag packages plus most of services/ \u2014 the manifest states ruff reports 366 findings and would reformat 57 files across those paths, so a green lint run is not evidence the touched code is clean.",
+        "mypy strict coverage is scoped the same way: pre-v6 routers inherit an exemption, so a new or edited file must be added to the gate explicitly or it is silently unchecked.",
+        "The structured single-call mode has a known provider gap: 2 of the 8 free models in the chain do not honour a JSON Schema directive, so non-conforming raw output is reported as a failure by design.",
+        "frontend/package.json declares the full plotly.js package while README states only the ~1 MB plotly-basic build ships, so the slimming depends on an import path/alias that is not expressed in the manifest and can regress silently into a ~4.7 MB bundle."
+      ],
+      "change_risks": [
+        {
+          "area": "free-tier model fallback chains in backend/app/services/model_registry.py",
+          "risk": "README states the per-capability chains rot as providers retire free slugs, so both the tool-calling and text-generation chains go stale over time",
+          "mitigation_hint": "refresh slugs with backend/app/services/discover_models.py and probe_capabilities.py and edit only model_registry.py; never hard-code a slug in a slice, since both the LiteLLM and PydanticAI lanes read this one registry"
+        },
+        {
+          "area": "streaming run endpoints (collab, planning, orchestrated)",
+          "risk": "the SSE response outlives the request handler, so a Depends(get_db_session) session is closed while the generator is still writing",
+          "mitigation_hint": "open the session inside the async generator with async_session_factory, following backend/app/api/collab.py; do not add the DB dependency to a streaming route"
+        },
+        {
+          "area": "FastAPI lifespan warm-up in backend/app/main.py",
+          "risk": "ensure_built() failures are swallowed by a bare except Exception (noqa BLE001) so a broken embeddings projection shows up only as a slow first request, and anything added to lifespan compounds an already large torch + sentence-transformers cold start",
+          "mitigation_hint": "keep warm-up best-effort but assert on the embeddings_projection_warmup_failed log event in tests, and avoid adding new blocking work to lifespan"
+        },
+        {
+          "area": "chained-calls error contract",
+          "risk": "a failed second call returns HTTP 200 with status 'critique_failed' so clients must branch on the body; converting it to 4xx/5xx would push the client error branch and discard call 1's output",
+          "mitigation_hint": "preserve the 200-with-status contract and keep CHAIN_LENGTH/ROLE_* imported from the pipeline so the advertised plan and executed roles cannot drift"
+        },
+        {
+          "area": "hand-maintained ruff/mypy exclusion inventories in pyproject.toml",
+          "risk": "the exclusion lists are per-file by design; a new file added inside an already-excluded package is silently ungated, and un-excluding a legacy path surfaces a large batch of findings at once",
+          "mitigation_hint": "add each new file to the gate explicitly and clean up one excluded path at a time by deleting its single line, as the manifest comments instruct"
+        }
+      ],
+      "security_observations": [
+        "Unauthenticated public API by design; abuse control is per-UTC-hour usage caps enforced before any provider call, plus moderation.py, text_gate.py, allowance_holds.py and an untrusted.py boundary for visitor-supplied text",
+        "CORS restricted to exactly one configured origin (settings.cors_origin), never '*' (backend/app/main.py)",
+        "Secrets are declared sync: false in render.yaml and entered in the Render dashboard rather than committed",
+        "Agent opacity in the collab example is enforced structurally \u2014 a seller's turn is assembled only from messages addressed to it, so a rival's price is unreachable even under prompt attack, and the message log lets a visitor verify no seller-to-seller traffic",
+        "Browser localStorage stores theme preference only and is explicitly not a source of truth"
+      ],
+      "other_notes": [
+        "Frontend tests: `npm --prefix frontend run test` (vitest run)",
+        "Frontend lint: `npm --prefix frontend run lint` (oxlint)",
+        "Frontend production preview: `npm --prefix frontend run preview`",
+        "Database migrations: `uv run alembic upgrade head` (config at backend/alembic.ini)",
+        "RAG index build script: `backend/app/rag/index_dataset.py`",
+        "Model-chain maintenance scripts: `backend/app/services/discover_models.py` and `backend/app/services/probe_capabilities.py`",
+        "Backend reload dev mode: `uv run uvicorn backend.app.main:app --reload`",
+        "Production start command lives in render.yaml's startCommand, which was truncated in the sampled excerpt",
+        "render.yaml defines two targets: bws4-api (type: web, runtime: python, plan: starter, region: oregon, rootDir: .) and a CDN-served Render Static Site for the web client; starter rather than free is chosen because the api pays a large cold start loading torch and sentence-transformers then fitting PCA in lifespan",
+        "No Dockerfile, docker-compose, Kubernetes manifests or Terraform anywhere in the tree",
+        "`.python-version` and `.env.example` present at repo root; a single root `.env` configures both the backend and the frontend",
+        "CLA.md, CONTRIBUTING.md, CLAUDE.md and LICENSE are present but their contents were not sampled, so no commands were drawn from them",
+        "Prompts are file-based and versioned as Markdown (prompts/*_v1.md, rag/prompts/answer_v2.md) with dedicated loaders in three packages plus services/prompt_context.py",
+        "Every source file opens with the provenance comment `# Built with Spec4 AI - https://spec4.ai` (or `//` in TypeScript)",
+        "render.yaml cites .spec4/v0/stack.json as the origin of the deployment shape, indicating the repo is maintained through the Spec4 workflow across revisions v0 through v6",
+        "The A2A trust boundary is described candidly in-product as staged for teaching, since all three agents ship under one owner; the collab run costs a fixed 8 model calls (6 negotiation + 2 post-award explanation)",
+        "TypeScript uses project references: frontend/tsconfig.json points to tsconfig.app.json and tsconfig.node.json"
+      ]
+    }
+  }
+}

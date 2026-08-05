@@ -171,7 +171,7 @@ class TestFanOut:
 
         assert result.branches[0].status == "timed_out"
         assert result.branches[1].status == "completed"
-        assert result.branches[0].status != "failed"
+        assert result.branches[0].status != "failed"  # type: ignore[comparison-overlap]  # distinctness is the assertion: two enum members given the same value would alias at runtime
 
     def test_a_timeout_on_one_branch_does_not_bound_the_other(self) -> None:
         # The timeout is per branch, so a slow one cannot consume the other's

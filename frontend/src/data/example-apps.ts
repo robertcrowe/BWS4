@@ -123,4 +123,15 @@ export const exampleApps: ExampleApp[] = [
     status: 'live',
     route: '/collab',
   },
+  {
+    id: 'react_loop_example_app',
+    name: 'ReAct-Loop Example App',
+    description:
+      'Watch an interleaved reason–act–observe loop answer a multi-hop question one cycle at a time — no plan up front — in deliberate contrast with the plan-first Planning Agent example.',
+    patternTag: 'ReAct Loop',
+    patternSummary:
+      'ReAct interleaves reasoning and acting: the agent emits a short thought, takes exactly one action — issue a search, or declare it can now answer — reads the observation that action returned, and only then thinks again with that observation in hand. Nothing is planned ahead, which is the whole distinction from the Planning Agent example one tier over: plan-first commits to every step before a single observation exists, while ReAct commits one step at a time and can change its mind on the strength of what it just read. It is also more than the Tool-Use example’s single decision about whether to search, because the loop makes that decision again on every cycle. That is what makes multi-hop questions tractable at all — the second query cannot be written until the first result has been read — and it is also the pattern’s cost: an agent free to choose its next step is free to wander, so the budget is a fixed ceiling rather than a guideline, and a run that reaches it ends candidly as unresolved rather than as an answer.',
+    status: 'live',
+    route: '/react',
+  },
 ]

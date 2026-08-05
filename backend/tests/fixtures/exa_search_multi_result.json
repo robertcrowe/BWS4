@@ -1,0 +1,28 @@
+{
+  "_recorded": "Exa POST https://api.exa.ai/search, shape as of 2026-08. Trimmed to the fields backend/app/services/web_search.py reads; no key, no request id.",
+  "_query": "country that most recently joined the United Nations",
+  "status_code": 200,
+  "body": {
+    "requestId": "recorded-fixture-multi",
+    "results": [
+      {
+        "title": "Member States | United Nations",
+        "url": "https://www.un.org/en/about-us/member-states",
+        "publishedDate": "2025-11-02",
+        "summary": "The United Nations has 193 Member States. The most recent State to be admitted to membership joined following a General Assembly vote on the recommendation of the Security Council."
+      },
+      {
+        "title": "List of members of the United Nations by admission date",
+        "url": "https://example.org/un-admission-dates",
+        "publishedDate": "2026-01-14",
+        "summary": "Admission dates are listed in chronological order, with the newest members appearing at the end of the table alongside the resolution number that admitted them."
+      },
+      {
+        "title": "How a country joins the UN",
+        "url": "https://example.org/how-a-country-joins",
+        "publishedDate": null,
+        "summary": "Admission requires a recommendation from the Security Council followed by a two-thirds majority of the General Assembly."
+      }
+    ]
+  }
+}

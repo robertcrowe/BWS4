@@ -21,6 +21,8 @@ Three things are asserted per endpoint:
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -104,7 +106,7 @@ def _install(verdict: ModerationVerdict) -> _Gate:
 #:
 #: Adding a free-text route means adding a line here. That is the point: the
 #: parametrised tests below then fail until it is gated.
-GATED_ENDPOINTS: list[tuple[str, str, dict, str]] = [
+GATED_ENDPOINTS: list[tuple[str, str, dict[str, Any], str]] = [
     (
         "rag",
         "/api/rag/ask",
@@ -147,7 +149,7 @@ IDS = [entry[0] for entry in GATED_ENDPOINTS]
 
 
 @pytest.fixture(autouse=True)
-def _clean_overrides():
+def _clean_overrides() -> Iterator[None]:
     yield
     app.dependency_overrides.clear()
 
@@ -155,7 +157,7 @@ def _clean_overrides():
 @pytest.mark.parametrize(("name", "path", "body", "service"), GATED_ENDPOINTS, ids=IDS)
 class TestEveryFreeTextEndpoint:
     def test_refuses_blocked_text_without_reaching_its_service(
-        self, name: str, path: str, body: dict, service: str
+        self, name: str, path: str, body: dict[str, Any], service: str
     ) -> None:
         gate = _install(BLOCKED)
 
@@ -173,7 +175,7 @@ class TestEveryFreeTextEndpoint:
         assert "something a visitor typed" in gate.seen[0]
 
     def test_reports_an_unreachable_gate_as_its_own_problem(
-        self, name: str, path: str, body: dict, service: str
+        self, name: str, path: str, body: dict[str, Any], service: str
     ) -> None:
         """503, not 422: the visitor cannot fix this by rewording."""
         _install(UNAVAILABLE)
@@ -186,7 +188,7 @@ class TestEveryFreeTextEndpoint:
         assert response.json()["code"] == "moderation_unavailable"
 
     def test_shows_the_visitor_the_gate_s_own_message(
-        self, name: str, path: str, body: dict, service: str
+        self, name: str, path: str, body: dict[str, Any], service: str
     ) -> None:
         _install(BLOCKED)
 
@@ -271,7 +273,7 @@ class TestTheGateRunsBeforeAnythingIsSpent:
     def test_a_blocked_question_reserves_no_usage(self) -> None:
         """The gate costs no model allowance of its own, so running it first
         means a refused request never touches a quota."""
-        session = _Session()
+        session: Any = _Session()
         gate = _install(BLOCKED)
 
         async def _session_override() -> object:

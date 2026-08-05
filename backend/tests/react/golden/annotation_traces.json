@@ -1,0 +1,934 @@
+{
+  "_what_this_is": "Labelled fixture traces for hop_source_annotation. Each carries a persisted-shape cycle trace, the annotations a model returned for it, and one hand-assigned source label per cycle.",
+  "_how_it_was_built": "The traces are authored in the shape `service.persist_run` writes, and the `model_output` blocks are authored model behaviour -- including behaviour that is deliberately wrong, which is the point. What the set measures is `apply_cross_checks`: whether the deterministic re-derivation lands on the human label given what the model proposed. That is a property of the code and holds whatever a model does. It is NOT a measurement of how often a live model labels correctly; only the opt-in live smoke run touches a real chain.",
+  "_labels_are_human": "`labels` is the source each cycle's hop should end up carrying after the cross-checks. Adversarial cases label the *corrected* value, not the model's claim -- so a check that simply believed the model would fail them.",
+  "_coverage": "All five presets are represented across t1, t2, t6, t7 and the free-form cases; both endings appear; and the adversarial classes the specification names are each present: over-crediting (observation and mixed), index drift, forward citation, resolution language on an exhausted run, and an unreachable search.",
+  "traces": [
+    {
+      "id": "t1_p1_fully_observed",
+      "question_origin": "p1",
+      "class": "preset_fully_observed",
+      "ending": "final_answer",
+      "cycles": [
+        {
+          "cycle": 1,
+          "thought": "I need the newest UN member state first.",
+          "action": {
+            "kind": "search",
+            "query": "country that most recently joined the United Nations"
+          },
+          "observation": {
+            "index": 1,
+            "query": "country that most recently joined the United Nations",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "Member States | United Nations",
+                "url": "https://www.un.org/en/about-us/member-states",
+                "snippet": "South Sudan became the 193rd Member State of the United Nations, admitted in July 2011.",
+                "published_date": "2025-11-02",
+                "truncated": false
+              },
+              {
+                "idx": 2,
+                "title": "List of members by admission date",
+                "url": "https://example.org/un-admission-dates",
+                "snippet": "The newest entry in the table is South Sudan, admitted under resolution 65/308.",
+                "published_date": "2026-01-14",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 2,
+          "thought": "South Sudan is the newest member. Now its highest mountain.",
+          "action": {
+            "kind": "search",
+            "query": "highest mountain in South Sudan elevation"
+          },
+          "observation": {
+            "index": 2,
+            "query": "highest mountain in South Sudan elevation",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "Kinyeti",
+                "url": "https://example.org/kinyeti",
+                "snippet": "Kinyeti is the highest mountain in South Sudan, rising to 3,187 metres in the Imatong range.",
+                "published_date": "2025-06-01",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 3,
+          "thought": "Both facts are established; I can answer.",
+          "action": {
+            "kind": "answer",
+            "query": null
+          },
+          "observation": null
+        }
+      ],
+      "model_output": [
+        {
+          "cycle_index": 1,
+          "fact": "the most recent UN member state",
+          "source": "observation",
+          "supporting_cycle": 1,
+          "note": "Snippet 1 of cycle 1 names South Sudan as the 193rd member."
+        },
+        {
+          "cycle_index": 2,
+          "fact": "the height of that country's highest mountain",
+          "source": "observation",
+          "supporting_cycle": 2,
+          "note": "Cycle 2's snippet gives Kinyeti at 3,187 metres."
+        }
+      ],
+      "labels": {
+        "1": "observation",
+        "2": "observation"
+      },
+      "expect": {
+        "all_hops_observed": true,
+        "dropped": 0,
+        "downgraded": 0
+      },
+      "rationale": "The canonical fully-observed run the presets 1-3 product criterion rests on."
+    },
+    {
+      "id": "t2_p4_first_hop_recalled",
+      "question_origin": "p4",
+      "class": "preset_familiar",
+      "ending": "final_answer",
+      "cycles": [
+        {
+          "cycle": 1,
+          "thought": "I already know the paper's first author is Ashish Vaswani, but I should check where they work now.",
+          "action": {
+            "kind": "search",
+            "query": "Ashish Vaswani current affiliation"
+          },
+          "observation": {
+            "index": 1,
+            "query": "Ashish Vaswani current affiliation",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "Company leadership",
+                "url": "https://example.org/leadership",
+                "snippet": "The research lab lists its co-founder among the authors of the 2017 transformer paper.",
+                "published_date": "2026-02-02",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 2,
+          "thought": "That covers the second hop.",
+          "action": {
+            "kind": "answer",
+            "query": null
+          },
+          "observation": null
+        }
+      ],
+      "model_output": [
+        {
+          "cycle_index": 1,
+          "fact": "who the paper's first author is",
+          "source": "model_knowledge",
+          "supporting_cycle": null,
+          "note": "Stated from the model's own knowledge; no snippet in this trace names them."
+        },
+        {
+          "cycle_index": 2,
+          "fact": "that person's current employer",
+          "source": "observation",
+          "supporting_cycle": 1,
+          "note": "Cycle 1's snippet describes the lab's leadership."
+        }
+      ],
+      "labels": {
+        "1": "model_knowledge",
+        "2": "observation"
+      },
+      "expect": {
+        "all_hops_observed": false,
+        "dropped": 0,
+        "downgraded": 0
+      },
+      "rationale": "The documented presets 4-5 behaviour: a famous fact stated from memory while the search is spent where observation is genuinely needed. Correct ReAct behaviour, and the panel has to say so rather than hide it."
+    },
+    {
+      "id": "t3_over_crediting",
+      "question_origin": "custom",
+      "class": "adversarial_over_crediting",
+      "ending": "final_answer",
+      "cycles": [
+        {
+          "cycle": 1,
+          "thought": "Let me look up the studio.",
+          "action": {
+            "kind": "search",
+            "query": "animation studio founded 1985"
+          },
+          "observation": {
+            "index": 1,
+            "query": "animation studio founded 1985",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "Studio history",
+                "url": "https://example.org/studio",
+                "snippet": "The studio was founded in 1985 by three collaborators.",
+                "published_date": "2024-01-01",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 2,
+          "thought": "I can answer now.",
+          "action": {
+            "kind": "answer",
+            "query": null
+          },
+          "observation": null
+        }
+      ],
+      "model_output": [
+        {
+          "cycle_index": 1,
+          "fact": "which studio it was",
+          "source": "observation",
+          "supporting_cycle": 1,
+          "note": "Cycle 1's snippet names the founding year."
+        },
+        {
+          "cycle_index": 2,
+          "fact": "the director's birthplace",
+          "source": "observation",
+          "supporting_cycle": 2,
+          "note": "Cycle 2 supplied it."
+        }
+      ],
+      "labels": {
+        "1": "observation",
+        "2": "model_knowledge"
+      },
+      "expect": {
+        "all_hops_observed": false,
+        "downgraded_min": 1
+      },
+      "rationale": "The capability's highest-likelihood failure. Hop 2 cites cycle 2, which issued no search and returned no snippets, so the grounding claim has nothing behind it and must be downgraded to model_knowledge rather than believed."
+    },
+    {
+      "id": "t4_index_drift",
+      "question_origin": "custom",
+      "class": "adversarial_index_drift",
+      "ending": "final_answer",
+      "cycles": [
+        {
+          "cycle": 1,
+          "thought": "First the river.",
+          "action": {
+            "kind": "search",
+            "query": "longest river in South America"
+          },
+          "observation": {
+            "index": 1,
+            "query": "longest river in South America",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "Amazon",
+                "url": "https://example.org/amazon",
+                "snippet": "The Amazon is the longest river in South America at about 6,400 km.",
+                "published_date": "2025-03-03",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 2,
+          "thought": "Enough to answer.",
+          "action": {
+            "kind": "answer",
+            "query": null
+          },
+          "observation": null
+        }
+      ],
+      "model_output": [
+        {
+          "cycle_index": 1,
+          "fact": "which river it is",
+          "source": "observation",
+          "supporting_cycle": 1,
+          "note": "Cycle 1's snippet names it."
+        },
+        {
+          "cycle_index": 7,
+          "fact": "a hop from some other run",
+          "source": "observation",
+          "supporting_cycle": 7,
+          "note": "Cycle 7 supplied it."
+        }
+      ],
+      "labels": {
+        "1": "observation"
+      },
+      "expect": {
+        "dropped_min": 1
+      },
+      "rationale": "A badge on a hop the run never ran is worse than no badge, so an out-of-range index is discarded rather than repaired onto a neighbouring cycle."
+    },
+    {
+      "id": "t5_budget_exhausted",
+      "question_origin": "custom",
+      "class": "budget_exhausted",
+      "ending": "budget_exhausted",
+      "cycles": [
+        {
+          "cycle": 1,
+          "thought": "Let me try the forecast.",
+          "action": {
+            "kind": "search",
+            "query": "tin price forecast next March"
+          },
+          "observation": {
+            "index": 1,
+            "query": "tin price forecast next March",
+            "results": [],
+            "is_empty": true,
+            "status": "empty",
+            "detail": null,
+            "truncated": false
+          }
+        },
+        {
+          "cycle": 2,
+          "thought": "Nothing came back; try analysts.",
+          "action": {
+            "kind": "search",
+            "query": "commodity analysts tin outlook"
+          },
+          "observation": {
+            "index": 2,
+            "query": "commodity analysts tin outlook",
+            "results": [],
+            "is_empty": true,
+            "status": "empty",
+            "detail": null,
+            "truncated": false
+          }
+        }
+      ],
+      "model_output": [
+        {
+          "cycle_index": 1,
+          "fact": "the current tin price",
+          "source": "model_knowledge",
+          "supporting_cycle": null,
+          "note": "The search returned nothing, so no snippet carries it."
+        },
+        {
+          "cycle_index": 2,
+          "fact": "next March's price",
+          "source": "model_knowledge",
+          "supporting_cycle": null,
+          "note": "This run resolved the question and concluded the answer."
+        }
+      ],
+      "labels": {
+        "1": "model_knowledge"
+      },
+      "expect": {
+        "dropped_min": 1,
+        "all_hops_observed": false
+      },
+      "rationale": "The panel that exists to be honest about provenance is the worst place to imply an unfinished run finished, so the second annotation's resolution language costs it the badge. The first survives: an empty observation genuinely leaves the hop unsourced."
+    },
+    {
+      "id": "t6_search_unavailable",
+      "question_origin": "p3",
+      "class": "degradation_search_unavailable",
+      "ending": "budget_exhausted",
+      "cycles": [
+        {
+          "cycle": 1,
+          "thought": "Let me find the current employer.",
+          "action": {
+            "kind": "search",
+            "query": "researcher current employer"
+          },
+          "observation": {
+            "index": 1,
+            "query": "researcher current employer",
+            "results": [],
+            "is_empty": true,
+            "status": "unavailable",
+            "detail": "The search service could not be reached for this cycle.",
+            "truncated": false
+          }
+        }
+      ],
+      "model_output": [
+        {
+          "cycle_index": 1,
+          "fact": "the researcher's employer",
+          "source": "observation",
+          "supporting_cycle": 1,
+          "note": "Cycle 1's search supplied it."
+        }
+      ],
+      "labels": {
+        "1": "model_knowledge"
+      },
+      "expect": {
+        "downgraded_min": 1,
+        "all_hops_observed": false
+      },
+      "rationale": "An unreachable provider is not evidence about the world. A cycle whose search failed returned no snippets, so a grounding claim against it is downgraded exactly as an empty one would be."
+    },
+    {
+      "id": "t7_mixed_source",
+      "question_origin": "p5",
+      "class": "preset_familiar",
+      "ending": "final_answer",
+      "cycles": [
+        {
+          "cycle": 1,
+          "thought": "I believe I know the director, but let me verify.",
+          "action": {
+            "kind": "search",
+            "query": "director of Spirited Away birthplace"
+          },
+          "observation": {
+            "index": 1,
+            "query": "director of Spirited Away birthplace",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "Director profile",
+                "url": "https://example.org/director",
+                "snippet": "The director was born in Bunkyo, Tokyo, in 1941.",
+                "published_date": "2025-09-09",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 2,
+          "thought": "Verified; I can answer.",
+          "action": {
+            "kind": "answer",
+            "query": null
+          },
+          "observation": null
+        }
+      ],
+      "model_output": [
+        {
+          "cycle_index": 1,
+          "fact": "who directed the film",
+          "source": "mixed",
+          "supporting_cycle": 1,
+          "note": "Known already, and cycle 1's snippet confirms it."
+        },
+        {
+          "cycle_index": 2,
+          "fact": "that person's birthplace",
+          "source": "observation",
+          "supporting_cycle": 1,
+          "note": "Cycle 1's snippet gives Bunkyo, Tokyo."
+        }
+      ],
+      "labels": {
+        "1": "mixed",
+        "2": "observation"
+      },
+      "expect": {
+        "all_hops_observed": true,
+        "downgraded": 0
+      },
+      "rationale": "`mixed` is a grounding claim too and is held to the same evidence. Here the cited cycle really searched and really returned snippets, so it survives -- the check must not downgrade a well-supported mixed label just because it is not a pure observation."
+    },
+    {
+      "id": "t8_mixed_over_credited",
+      "question_origin": "custom",
+      "class": "adversarial_over_crediting",
+      "ending": "final_answer",
+      "cycles": [
+        {
+          "cycle": 1,
+          "thought": "Look up the club.",
+          "action": {
+            "kind": "search",
+            "query": "club that won the most recent league title"
+          },
+          "observation": {
+            "index": 1,
+            "query": "club that won the most recent league title",
+            "results": [],
+            "is_empty": true,
+            "status": "empty",
+            "detail": null,
+            "truncated": false
+          }
+        },
+        {
+          "cycle": 2,
+          "thought": "I will answer from what I know.",
+          "action": {
+            "kind": "answer",
+            "query": null
+          },
+          "observation": null
+        }
+      ],
+      "model_output": [
+        {
+          "cycle_index": 1,
+          "fact": "which club won",
+          "source": "mixed",
+          "supporting_cycle": 1,
+          "note": "Partly recalled, partly from cycle 1."
+        }
+      ],
+      "labels": {
+        "1": "model_knowledge"
+      },
+      "expect": {
+        "downgraded_min": 1
+      },
+      "rationale": "Downgrading only `observation` would leave the obvious way around the check: a model that learned `observation` is verified would simply say `mixed` instead."
+    },
+    {
+      "id": "t9_forward_citation",
+      "question_origin": "custom",
+      "class": "adversarial_forward_citation",
+      "ending": "final_answer",
+      "cycles": [
+        {
+          "cycle": 1,
+          "thought": "Start with the company.",
+          "action": {
+            "kind": "search",
+            "query": "company that makes the console"
+          },
+          "observation": {
+            "index": 1,
+            "query": "company that makes the console",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "Company",
+                "url": "https://example.org/company",
+                "snippet": "The console is made by a Kyoto-based company founded in 1889.",
+                "published_date": "2025-01-01",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 2,
+          "thought": "Now its chief executive.",
+          "action": {
+            "kind": "search",
+            "query": "that company's chief executive age"
+          },
+          "observation": {
+            "index": 2,
+            "query": "that company's chief executive age",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "Leadership",
+                "url": "https://example.org/ceo",
+                "snippet": "The chief executive was born in 1972.",
+                "published_date": "2026-03-03",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 3,
+          "thought": "Both hops covered.",
+          "action": {
+            "kind": "answer",
+            "query": null
+          },
+          "observation": null
+        }
+      ],
+      "model_output": [
+        {
+          "cycle_index": 1,
+          "fact": "which company makes it",
+          "source": "observation",
+          "supporting_cycle": 2,
+          "note": "Cycle 2's snippet supplied it."
+        },
+        {
+          "cycle_index": 2,
+          "fact": "the chief executive's age",
+          "source": "observation",
+          "supporting_cycle": 2,
+          "note": "Cycle 2's snippet gives the birth year."
+        }
+      ],
+      "labels": {
+        "1": "model_knowledge",
+        "2": "observation"
+      },
+      "expect": {
+        "downgraded_min": 1
+      },
+      "rationale": "Hop 1 cites a cycle that ran *after* it. A later observation cannot be what a model knew when it wrote an earlier hop, so the claim is downgraded even though cycle 2 really did search and really did return snippets."
+    },
+    {
+      "id": "t10_partial_coverage",
+      "question_origin": "custom",
+      "class": "coverage",
+      "ending": "final_answer",
+      "cycles": [
+        {
+          "cycle": 1,
+          "thought": "First hop.",
+          "action": {
+            "kind": "search",
+            "query": "first hop query"
+          },
+          "observation": {
+            "index": 1,
+            "query": "first hop query",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "A",
+                "url": "https://example.org/a",
+                "snippet": "A snippet carrying the first fact.",
+                "published_date": "2025-05-05",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 2,
+          "thought": "Second hop.",
+          "action": {
+            "kind": "search",
+            "query": "second hop query"
+          },
+          "observation": {
+            "index": 2,
+            "query": "second hop query",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "B",
+                "url": "https://example.org/b",
+                "snippet": "A snippet carrying the second fact.",
+                "published_date": "2025-05-06",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 3,
+          "thought": "Third hop.",
+          "action": {
+            "kind": "search",
+            "query": "third hop query"
+          },
+          "observation": {
+            "index": 3,
+            "query": "third hop query",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "C",
+                "url": "https://example.org/c",
+                "snippet": "A snippet carrying the third fact.",
+                "published_date": "2025-05-07",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 4,
+          "thought": "Done.",
+          "action": {
+            "kind": "answer",
+            "query": null
+          },
+          "observation": null
+        }
+      ],
+      "model_output": [
+        {
+          "cycle_index": 1,
+          "fact": "the first fact",
+          "source": "observation",
+          "supporting_cycle": 1,
+          "note": "Cycle 1's snippet carries it."
+        }
+      ],
+      "labels": {
+        "1": "observation"
+      },
+      "expect": {
+        "all_hops_observed": false
+      },
+      "rationale": "Found by a live run, not by review. Every *annotation* here is well grounded, and an earlier version of the flag therefore read true -- while two of the three searching cycles had no annotation at all. Grounding one of three hops says nothing about the other two, so the flag now requires coverage as well as grounding."
+    },
+    {
+      "id": "t11_p2_fully_observed",
+      "question_origin": "p2",
+      "class": "preset_fully_observed",
+      "ending": "final_answer",
+      "cycles": [
+        {
+          "cycle": 1,
+          "thought": "First the most recent laureate.",
+          "action": {
+            "kind": "search",
+            "query": "most recent Nobel Literature laureate"
+          },
+          "observation": {
+            "index": 1,
+            "query": "most recent Nobel Literature laureate",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "Prize announcement",
+                "url": "https://example.org/nobel",
+                "snippet": "The most recent laureate in Literature was announced in October.",
+                "published_date": "2025-10-10",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 2,
+          "thought": "Now the country they were born in.",
+          "action": {
+            "kind": "search",
+            "query": "that laureate's country of birth"
+          },
+          "observation": {
+            "index": 2,
+            "query": "that laureate's country of birth",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "Biography",
+                "url": "https://example.org/bio",
+                "snippet": "The writer was born in Budapest and has lived there since.",
+                "published_date": "2025-10-12",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 3,
+          "thought": "Both hops came from the searches.",
+          "action": {
+            "kind": "answer",
+            "query": null
+          },
+          "observation": null
+        }
+      ],
+      "model_output": [
+        {
+          "cycle_index": 1,
+          "fact": "who the most recent laureate is",
+          "source": "observation",
+          "supporting_cycle": 1,
+          "note": "Cycle 1's snippet carries the announcement."
+        },
+        {
+          "cycle_index": 2,
+          "fact": "their country of birth",
+          "source": "observation",
+          "supporting_cycle": 2,
+          "note": "Cycle 2's snippet names the city."
+        }
+      ],
+      "labels": {
+        "1": "observation",
+        "2": "observation"
+      },
+      "expect": {
+        "all_hops_observed": true,
+        "dropped": 0,
+        "downgraded": 0
+      },
+      "rationale": "The second of the three presets whose product criterion needs a fully observed run on record."
+    },
+    {
+      "id": "t12_p3_fully_observed",
+      "question_origin": "p3",
+      "class": "preset_fully_observed",
+      "ending": "final_answer",
+      "cycles": [
+        {
+          "cycle": 1,
+          "thought": "First, which laboratory the researcher moved to.",
+          "action": {
+            "kind": "search",
+            "query": "researcher new laboratory announcement"
+          },
+          "observation": {
+            "index": 1,
+            "query": "researcher new laboratory announcement",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "Move announced",
+                "url": "https://example.org/move",
+                "snippet": "The researcher announced a move to a Zurich-based laboratory this spring.",
+                "published_date": "2026-04-01",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 2,
+          "thought": "Now when that laboratory was founded.",
+          "action": {
+            "kind": "search",
+            "query": "Zurich laboratory founding year"
+          },
+          "observation": {
+            "index": 2,
+            "query": "Zurich laboratory founding year",
+            "status": "ok",
+            "is_empty": false,
+            "detail": null,
+            "truncated": false,
+            "results": [
+              {
+                "idx": 1,
+                "title": "About the lab",
+                "url": "https://example.org/lab-about",
+                "snippet": "The laboratory was established in 2019 and employs about two hundred people.",
+                "published_date": "2026-02-20",
+                "truncated": false
+              }
+            ]
+          }
+        },
+        {
+          "cycle": 3,
+          "thought": "Both hops came from the observations.",
+          "action": {
+            "kind": "answer",
+            "query": null
+          },
+          "observation": null
+        }
+      ],
+      "model_output": [
+        {
+          "cycle_index": 1,
+          "fact": "which laboratory the researcher joined",
+          "source": "observation",
+          "supporting_cycle": 1,
+          "note": "Cycle 1's snippet names the move."
+        },
+        {
+          "cycle_index": 2,
+          "fact": "when that laboratory was founded",
+          "source": "observation",
+          "supporting_cycle": 2,
+          "note": "Cycle 2's snippet gives the year."
+        }
+      ],
+      "labels": {
+        "1": "observation",
+        "2": "observation"
+      },
+      "expect": {
+        "all_hops_observed": true,
+        "dropped": 0,
+        "downgraded": 0
+      },
+      "rationale": "The third preset whose product criterion requires a fully observed run on record; without it the promise made in the selector would rest on nothing."
+    }
+  ]
+}

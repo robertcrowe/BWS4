@@ -1,4 +1,6 @@
 # Built with Spec4 AI - https://spec4.ai
+
+from typing import Any
 import asyncio
 import math
 
@@ -49,7 +51,7 @@ def _cosine_distance(a: list[float], b: list[float]) -> float:
 
 def test_index_dataset_writes_one_dataset_embedding_and_representation_row_per_passage() -> None:
     expected_count = _expected_passage_count()
-    session = _FakeAsyncSession()
+    session: Any = _FakeAsyncSession()
 
     written_count = asyncio.run(index_dataset(session))
 

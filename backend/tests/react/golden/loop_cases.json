@@ -1,0 +1,156 @@
+{
+  "_what_this_is": "Golden cases for the ReAct loop, driven through the real stream_run with only the model lane and Exa's HTTP transport replaced.",
+  "_how_it_was_built": "Constructed from the shipped preset catalogue and Phase 2's three recorded Exa fixtures, NOT captured from a live provider. Recording fifteen live runs would cost real quota and the recordings would rot as free slugs are retired, which is this phase's own named risk. Each case's `script` is an authored model behaviour for a question of that class; what the grid pins is what the LOOP does with that behaviour -- event ordering, the ceilings, the terminal-card decision, the duplicate guard, the allowance lifecycle. Those are properties of the code and hold whatever a model does. What this file cannot establish is how often a real model behaves like the script; the opt-in live smoke marker covers that, and nothing here should be read as a measurement of model quality.",
+  "_labelling": "`expected.ending` is the human label for each case: the terminal card a run of that shape must reach. Disputed or non-obvious labels carry a `rationale`.",
+  "_exa_fixtures": "Served in order, the last repeating. exa_search_multi_result.json = three results; exa_search_empty.json = a well-formed 200 with none; exa_search_error.json = a 503 the wrapper maps to an error.",
+  "cases": [
+    {
+      "id": "p1_two_hop_answer",
+      "question_origin": "p1",
+      "class": "preset_multi_hop",
+      "script": [
+        { "kind": "search", "query": "country that most recently joined the United Nations" },
+        { "kind": "search", "query": "highest mountain in South Sudan and its elevation" },
+        { "kind": "answer", "grounded_on": [1, 2] }
+      ],
+      "exa_fixtures": ["exa_search_multi_result.json"],
+      "expected": { "ending": "final_answer", "searches_used": 2 },
+      "rationale": "The canonical shape: hop two's query could not have been written before hop one's observation was read."
+    },
+    {
+      "id": "p2_early_answer_refund",
+      "question_origin": "p2",
+      "class": "preset_multi_hop",
+      "script": [
+        { "kind": "search", "query": "most recent Nobel Literature laureate" },
+        { "kind": "answer", "grounded_on": [1] }
+      ],
+      "exa_fixtures": ["exa_search_multi_result.json"],
+      "expected": { "ending": "final_answer", "searches_used": 1 },
+      "rationale": "The shortest legitimate run. Carries the refund assertion: one search plus the deciding cycle plus the compose plus the annotation is nowhere near ten, and the remainder must come back."
+    },
+    {
+      "id": "p3_empty_then_answer",
+      "question_origin": "p3",
+      "class": "preset_multi_hop",
+      "script": [
+        { "kind": "search", "query": "researcher current employer announcement" },
+        { "kind": "search", "query": "which laboratory that researcher joined" },
+        { "kind": "answer", "grounded_on": [2] }
+      ],
+      "exa_fixtures": ["exa_search_empty.json", "exa_search_multi_result.json"],
+      "expected": { "ending": "final_answer", "empty_observations": 1 },
+      "rationale": "An empty result is the web's answer, not a failure. It must appear as an explicit observation the model reacts to rather than a dropped cycle -- the run still answers, from the cycle that did return something."
+    },
+    {
+      "id": "p4_search_unavailable",
+      "question_origin": "p4",
+      "class": "preset_familiar",
+      "script": [
+        { "kind": "search", "query": "first author of the Attention Is All You Need paper" },
+        { "kind": "search", "query": "that author's current affiliation" }
+      ],
+      "exa_fixtures": ["exa_search_error.json"],
+      "expected": { "ending": "budget_exhausted" },
+      "rationale": "Two consecutive unreachable searches end the run candidly. Labelled budget_exhausted rather than an error status because the visitor keeps the partial trace -- and the card must name the outage rather than implying the web had nothing."
+    },
+    {
+      "id": "p5_search_ceiling",
+      "question_origin": "p5",
+      "class": "preset_familiar",
+      "script": [
+        { "kind": "search", "query": "highest mountain in South Sudan" },
+        { "kind": "search", "query": "who won the 2026 Eurovision song contest" },
+        { "kind": "search", "query": "average rainfall in Manaus Brazil" },
+        { "kind": "search", "query": "when was the Chrysler Building completed" },
+        { "kind": "search", "query": "current price of tin per tonne" },
+        { "kind": "search", "query": "population of Reykjavik Iceland" },
+        { "kind": "search", "query": "who wrote the opera Turandot" },
+        { "kind": "search", "query": "depth of the Mariana Trench in metres" },
+        { "kind": "search", "query": "capital city of Burkina Faso" }
+      ],
+      "exa_fixtures": ["exa_search_multi_result.json"],
+      "expected": { "ending": "budget_exhausted", "searches_used": 8 },
+      "rationale": "A loop that never decides to answer is stopped by the ceiling, not by anything it chose. The nine queries are semantically unrelated on purpose: near-variants of one query are refused by the duplicate guard first, which ends the run early and measures the guard rather than the ceiling."
+    },
+    {
+      "id": "custom_single_hop",
+      "question_origin": "custom",
+      "question": "Who directed the film Alien?",
+      "class": "adversarial_single_hop",
+      "script": [
+        { "kind": "search", "query": "director of the film Alien 1979" },
+        { "kind": "answer", "grounded_on": [1] }
+      ],
+      "exa_fixtures": ["exa_search_multi_result.json"],
+      "expected": { "ending": "final_answer", "searches_used": 1 },
+      "rationale": "A one-cycle search-then-answer run is a legitimate honest outcome, which the capability says explicitly. The failure would be forcing a second hop to make the demonstration look richer."
+    },
+    {
+      "id": "custom_unanswerable",
+      "question_origin": "custom",
+      "question": "What will the closing price of tin be in March next year?",
+      "class": "adversarial_unanswerable",
+      "script": [
+        { "kind": "search", "query": "tin price forecast next March" },
+        { "kind": "search", "query": "commodity analysts tin outlook long range" },
+        { "kind": "search", "query": "historical seasonality of tin prices in spring" }
+      ],
+      "exa_fixtures": ["exa_search_empty.json"],
+      "expected": { "ending": "budget_exhausted", "answer_absent": true },
+      "rationale": "Nothing on the web answers a question about the future. The run must end naming what stayed unresolved rather than composing a confident guess -- a fabricated answer here is the single worst outcome the app can produce."
+    },
+    {
+      "id": "custom_ambiguous",
+      "question_origin": "custom",
+      "question": "How tall is the tallest building there?",
+      "class": "adversarial_ambiguous",
+      "script": [
+        { "kind": "search", "query": "tallest building height record" },
+        { "kind": "answer", "grounded_on": [1] }
+      ],
+      "exa_fixtures": ["exa_search_multi_result.json"],
+      "expected": { "ending": "final_answer" },
+      "rationale": "Disputed label. An ambiguous question could honestly end either way, and both were argued: budget_exhausted would show the loop refusing to guess, but the loop has no clarifying-question action, so the run's only options are to search on an assumed reading or to spend the budget circling. Labelled final_answer because the trace shows the query the model chose, which makes the assumption it made visible -- that is the app's actual honesty mechanism here."
+    },
+    {
+      "id": "custom_memory_answerable",
+      "question_origin": "custom",
+      "question": "What is the capital city of France?",
+      "class": "adversarial_memory_answerable",
+      "script": [
+        { "kind": "search", "query": "capital city of France" },
+        { "kind": "answer", "grounded_on": [1] }
+      ],
+      "exa_fixtures": ["exa_search_multi_result.json"],
+      "expected": { "ending": "final_answer", "searches_used": 1 },
+      "rationale": "The model knows this without searching, and cycle 1 makes it search anyway -- the answer branch is not offered until an observation exists. Deliberate: a trace with no observation in it teaches nothing, and one wasted search is the price of the guarantee."
+    },
+    {
+      "id": "custom_circling",
+      "question_origin": "custom",
+      "question": "Which nation was admitted to the United Nations most recently?",
+      "class": "adversarial_circling",
+      "script": [
+        { "kind": "search", "query": "most recent country to join the United Nations" },
+        { "kind": "search", "query": "most recent nation to join the United Nations" }
+      ],
+      "exa_fixtures": ["exa_search_multi_result.json"],
+      "expected": { "ending": "budget_exhausted", "duplicates_blocked_min": 1 },
+      "rationale": "A synonym swap scores 0.976 against the earlier query and is refused before it reaches Exa, so a wandering loop cannot spend its search budget re-asking one thing. A blocked query costs a cycle, never a search."
+    },
+    {
+      "id": "custom_malformed_step",
+      "question_origin": "custom",
+      "question": "Who leads the agency that runs the deep space network?",
+      "class": "degradation_malformed_step",
+      "script": [
+        { "kind": "search", "query": "agency operating the deep space network" },
+        { "kind": "lane_error" }
+      ],
+      "exa_fixtures": ["exa_search_multi_result.json"],
+      "expected": { "ending": "budget_exhausted" },
+      "rationale": "A model returning an unusable step twice -- once, then again with the validation error appended -- ends the run with the partial trace intact. Not an error event: the visitor keeps the cycle that worked."
+    }
+  ]
+}

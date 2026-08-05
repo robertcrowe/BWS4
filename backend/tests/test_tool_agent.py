@@ -12,6 +12,10 @@ drives a different model behaviour and asserts the loop follows it.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
+from typing import Any
+
 import asyncio
 import json
 from unittest.mock import AsyncMock, patch
@@ -46,7 +50,7 @@ class _FakeToolCall:
 
 
 class _FakeMessage:
-    def __init__(self, content: str | None = None, tool_calls: list | None = None) -> None:
+    def __init__(self, content: str | None = None, tool_calls: list[Any] | None = None) -> None:
         self.content = content
         self.tool_calls = tool_calls
 
@@ -89,7 +93,7 @@ def _results(*titles: str) -> list[ExaResult]:
 
 
 @pytest.fixture(autouse=True)
-def _clear_cooldowns():
+def _clear_cooldowns() -> Iterator[None]:
     """Cooldown state is process-local and must not leak between tests."""
     model_registry.reset_cooldowns()
     yield

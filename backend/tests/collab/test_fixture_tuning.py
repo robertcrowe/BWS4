@@ -18,6 +18,8 @@ and no model is given them.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from backend.app.collab.scenarios import (
@@ -33,7 +35,7 @@ from backend.app.collab.scoring import rank_bids, winner
 SCENARIO_IDS = [s.id for s in SCENARIOS]
 
 
-def _scenario(scenario_id: str):
+def _scenario(scenario_id: str) -> Any:
     return next(s for s in SCENARIOS if s.id == scenario_id)
 
 
@@ -70,7 +72,7 @@ class TestEveryScenarioHasAWinnerFlippingPair:
         assert by_price != by_warranty
 
 
-def _weighting(weighting_id: str):
+def _weighting(weighting_id: str) -> Any:
     return next(w for w in PRIORITY_WEIGHTINGS if w.id == weighting_id)
 
 
@@ -145,7 +147,7 @@ class TestTheBidsRespectTheSealedConstraints:
 class TestTheWeightingsThemselves:
     @pytest.mark.parametrize("weighting", PRIORITY_WEIGHTINGS, ids=lambda w: w.id)
     def test_every_preset_covers_all_four_axes_and_sums_to_one_hundred(
-        self, weighting
+        self, weighting: Any
     ) -> None:
         assert set(weighting.weights) == set(AxisId)
         assert sum(weighting.weights.values()) == WEIGHT_TOTAL

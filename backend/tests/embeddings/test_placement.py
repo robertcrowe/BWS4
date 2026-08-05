@@ -9,6 +9,9 @@ representation, and a fake vector would assert nothing about it.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from typing import Any
+
 from pathlib import Path
 from unittest.mock import patch
 
@@ -22,7 +25,7 @@ from backend.app.main import app
 
 
 @pytest.fixture(autouse=True)
-def _gate_allows_everything(allow_all_moderation):
+def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
     The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
@@ -36,7 +39,7 @@ pytestmark = pytest.mark.usefixtures("_warm_cache")
 
 
 @pytest.fixture(scope="module")
-def _warm_cache():
+def _warm_cache() -> Iterator[None]:
     """Build the projection once for the whole module.
 
     Placement reads the Phase 2 cache; building it per test would pay the
@@ -46,7 +49,7 @@ def _warm_cache():
     yield
 
 
-def _fake_embedder(dimensions: int = 384):
+def _fake_embedder(dimensions: int = 384) -> Any:
     """Return a deterministic stand-in for the embedding model.
 
     Deterministic rather than random so a test asserting stability is
@@ -194,7 +197,7 @@ def test_placement_does_not_log_the_visitor_text_verbatim() -> None:
     """
     secret = "my private thoughts about sourdough"
 
-    with patch.object(placement.logger, "info") as mocked_info:
+    with patch("backend.app.embeddings.placement.logger.info") as mocked_info:
         placement.place_custom_text(secret, embed=_fake_embedder())
 
     logged = repr(mocked_info.call_args)
@@ -252,7 +255,9 @@ def test_placement_neighbors_are_measured_in_the_unprojected_space() -> None:
 
     presets = service.get_preset_embeddings()
     examples = service.get_preset_examples()
-    vector = np.array(placement.embed_text("a small kitten"))
+    # `placement.embed_text` is the module's own import, reached on purpose.
+    embedded: list[float] = placement.embed_text("a small kitten")  # type: ignore[attr-defined]
+    vector = np.array(embedded, dtype=float)
 
     for neighbor in result.nearest_neighbors:
         index = next(i for i, e in enumerate(examples) if e.label == neighbor.text)

@@ -201,8 +201,19 @@ describe('the collaboration entry in the shared app directory', () => {
     expect(entry?.route).toBe('/collab')
   })
 
-  it('is last, as the highest pattern tier', () => {
-    expect(exampleApps.at(-1)?.id).toBe('multi_agent_collaboration_example_app')
+  it('is appended after the orchestrated app it is the contrast to', () => {
+    // This asserted `at(-1) === collab` until v7 appended the ReAct Loop app,
+    // which is the same stale-assertion shape the planning suite hit: "is
+    // last" is broken by the *next* app added, every time, and it was never
+    // this app's invariant. What is permanent is the ordering that makes the
+    // catalogue readable — collaboration is introduced as the peer-to-peer
+    // counterpart to orchestrated subagents, so it must come after it. "Is
+    // last" now lives with whichever app currently is, in `react-loop.test.tsx`.
+    const ids = exampleApps.map((app) => app.id)
+
+    expect(ids.indexOf('multi_agent_collaboration_example_app')).toBeGreaterThan(
+      ids.indexOf('orchestrated_subagents_example_app'),
+    )
   })
 
   it('appears in both the landing catalogue and the persistent nav, from the one source', async () => {

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -21,6 +22,7 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base
@@ -403,3 +405,84 @@ class PeerMessage(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+
+class ReactRun(Base):
+    """One ReAct loop run, written once at run end and read back whole.
+
+    Maps to the stack spec's `react_runs` collection. The cycles, the terminal
+    card, the hop annotations and the per-cycle timings are JSONB because
+    reading a whole trace by `run_id` is the only read pattern the feature has
+    -- nothing queries inside a cycle.
+
+    **The eval metrics are top-level integer and text columns, deliberately not
+    buried in that JSONB**, for the same reason `negotiation_runs` keeps its
+    call counts outside: the capability asks for the ending distribution to be
+    watched and a rise in budget-exhausted endings investigated, and that is a
+    `GROUP BY` rather than a scan-and-parse.
+
+    `question_origin` is a preset id or the literal `'custom'` -- never the
+    question. A free-form question is visitor-written text, and the project's
+    standing rule is that telemetry carries a question's *identity*, not its
+    words.
+    """
+
+    __tablename__ = "react_runs"
+    __table_args__ = (
+        # A run ends in exactly one of the two states the feature promises.
+        # NULL is permitted only because the column exists before a run
+        # terminates; what is refused is a third ending no card can render.
+        CheckConstraint(
+            "ending IS NULL OR ending IN ('final_answer', 'budget_exhausted')",
+            name="ck_react_runs_ending",
+        ),
+        Index("ix_react_runs_created_at", "created_at"),
+        Index("ix_react_runs_origin_ending", "question_origin", "ending"),
+    )
+
+    #: The run_id the retrieval route takes, and the key the run's allowance
+    #: hold is reserved under, so a run and its reservation are joinable.
+    id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    #: A preset id ('p1'..'p5') or the literal 'custom'.
+    question_origin: Mapped[str] = mapped_column(String(32))
+    searches_used: Mapped[int] = mapped_column(Integer, default=0)
+    cycle_budget: Mapped[int] = mapped_column(Integer)
+    #: 'final_answer' or 'budget_exhausted'. Null until the run terminates.
+    ending: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    #: How many candidate queries the near-duplicate guard refused (Phase 2).
+    duplicate_queries_blocked: Mapped[int] = mapped_column(Integer, default=0)
+    #: How many searches returned nothing. An empty result is an explicit
+    #: observation here, not a hole in the trace, so it is counted.
+    empty_observations: Mapped[int] = mapped_column(Integer, default=0)
+
+    #: The advisory suitability verdict, populated only for custom questions
+    #: from Phase 5. Null on every preset run -- read alongside
+    #: `question_origin`, which distinguishes "no verdict was reached" from
+    #: "no verdict was needed".
+    suitability_chained_facts: Mapped[bool | None] = mapped_column(
+        Boolean, nullable=True
+    )
+    suitability_needs_live_info: Mapped[bool | None] = mapped_column(
+        Boolean, nullable=True
+    )
+    suitability_estimated_hops: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    suitability_confidence: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    #: Populated in Phase 6 by the post-run hop-source annotation call.
+    annotation_outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+    #: The ordered cycles: thought, action kind, the exact query issued, and
+    #: the observation snippets or the explicit empty-result flag.
+    cycle_trace: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSONB, nullable=True
+    )
+    #: The final-answer card or the budget-exhausted card. Exactly one.
+    terminal_card: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    hop_annotations: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    cycle_timings: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)

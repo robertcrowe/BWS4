@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 
@@ -81,7 +82,7 @@ def _hold(
 
 class TestReserve:
     def test_it_creates_a_reserved_hold(self) -> None:
-        session = _Session(queued=[_Result(scalar=None)])
+        session: Any = _Session(queued=[_Result(scalar=None)])
 
         hold = asyncio.run(
             reserve(
@@ -101,7 +102,7 @@ class TestReserve:
     def test_it_stamps_the_hold_with_the_current_usage_window(self) -> None:
         # A hold does not outlive the window it was taken in: once the gate has
         # rolled over there is nothing left to redeem.
-        session = _Session(queued=[_Result(scalar=None)])
+        session: Any = _Session(queued=[_Result(scalar=None)])
 
         hold = asyncio.run(
             reserve(
@@ -113,7 +114,7 @@ class TestReserve:
             )
         )
 
-        assert hold.window_start == allowance_holds.utc_window()
+        assert hold.window_start == allowance_holds.utc_window()  # type: ignore[attr-defined]  # reaching the module's own import on purpose -- patch/identity at point of use
 
     def test_a_duplicate_key_is_refused_rather_than_overwritten(self) -> None:
         """The primary key is the run's own id, which is what makes a retry safe.
@@ -121,7 +122,7 @@ class TestReserve:
         Overwriting would silently release the first reservation's claim while
         appearing to succeed.
         """
-        session = _Session(queued=[_Result(scalar=_hold())])
+        session: Any = _Session(queued=[_Result(scalar=_hold())])
 
         with pytest.raises(HoldStateError):
             asyncio.run(
@@ -138,7 +139,7 @@ class TestReserve:
 class TestTransitions:
     def test_a_reserved_hold_can_be_redeemed(self) -> None:
         hold = _hold()
-        session = _Session(queued=[_Result(scalar=hold)])
+        session: Any = _Session(queued=[_Result(scalar=hold)])
 
         asyncio.run(redeem(session, "run-1"))
 
@@ -147,7 +148,7 @@ class TestTransitions:
 
     def test_a_reserved_hold_can_be_refunded(self) -> None:
         hold = _hold()
-        session = _Session(queued=[_Result(scalar=hold)])
+        session: Any = _Session(queued=[_Result(scalar=hold)])
 
         asyncio.run(refund(session, "run-1"))
 
@@ -156,14 +157,14 @@ class TestTransitions:
     @pytest.mark.parametrize("terminal", [STATE_REDEEMED, STATE_REFUNDED])
     def test_a_terminal_hold_cannot_be_redeemed_again(self, terminal: str) -> None:
         """Not idempotent, deliberately: each release frees budget once."""
-        session = _Session(queued=[_Result(scalar=_hold(terminal))])
+        session: Any = _Session(queued=[_Result(scalar=_hold(terminal))])
 
         with pytest.raises(HoldStateError):
             asyncio.run(redeem(session, "run-1"))
 
     @pytest.mark.parametrize("terminal", [STATE_REDEEMED, STATE_REFUNDED])
     def test_a_terminal_hold_cannot_be_refunded_again(self, terminal: str) -> None:
-        session = _Session(queued=[_Result(scalar=_hold(terminal))])
+        session: Any = _Session(queued=[_Result(scalar=_hold(terminal))])
 
         with pytest.raises(HoldStateError):
             asyncio.run(refund(session, "run-1"))
@@ -171,7 +172,7 @@ class TestTransitions:
     def test_an_unknown_key_is_a_different_error_from_a_bad_state(self) -> None:
         # "never reserved" and "already redeemed" are different bugs in the
         # caller, and one exception type would hide which.
-        session = _Session(queued=[_Result(scalar=None)])
+        session: Any = _Session(queued=[_Result(scalar=None)])
 
         with pytest.raises(HoldNotFoundError):
             asyncio.run(redeem(session, "missing"))
@@ -181,7 +182,7 @@ class TestExpiry:
     def test_a_fifteen_minute_old_reserved_hold_is_refunded(self) -> None:
         """A tab closed mid-run must not hold budget for the rest of the window."""
         stale = _hold(age=HOLD_EXPIRY + timedelta(seconds=1))
-        session = _Session(queued=[_Result(rows=[stale])])
+        session: Any = _Session(queued=[_Result(rows=[stale])])
 
         refunded = asyncio.run(expire_stale_holds(session))
 
@@ -195,7 +196,7 @@ class TestExpiry:
     def test_nothing_stale_means_nothing_written(self) -> None:
         # No commit when there is nothing to change, so a sweep on a quiet
         # showcase is free.
-        session = _Session(queued=[_Result(rows=[])])
+        session: Any = _Session(queued=[_Result(rows=[])])
 
         refunded = asyncio.run(expire_stale_holds(session))
 

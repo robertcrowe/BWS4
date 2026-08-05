@@ -15,6 +15,7 @@ use, and the malformed cases assert that it was never constructed at all.
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 from unittest.mock import patch
 
 import httpx
@@ -84,14 +85,14 @@ class _FakeClient:
     def __init__(
         self,
         *,
-        body: dict | None = None,
+        body: dict[str, Any] | None = None,
         raises: Exception | None = None,
         status: int = 200,
     ) -> None:
         self._body = body
         self._raises = raises
         self._status = status
-        self.calls: list[dict] = []
+        self.calls: list[dict[str, Any]] = []
 
     async def __aenter__(self) -> _FakeClient:
         return self
@@ -110,11 +111,13 @@ class _FakeClient:
         )
 
 
-def _patch_client(client: _FakeClient):
-    return patch.object(moderation.httpx, "AsyncClient", lambda **_kw: client)
+def _patch_client(client: _FakeClient) -> Any:
+    return patch(
+        "backend.app.services.moderation.httpx.AsyncClient", lambda **_kw: client
+    )
 
 
-def _patch_key(value: str | None = "test-openai-key"):
+def _patch_key(value: str | None = "test-openai-key") -> Any:
     """Force the configured key without touching the real settings cache."""
 
     class _Settings:
@@ -124,7 +127,7 @@ def _patch_key(value: str | None = "test-openai-key"):
     return patch.object(moderation, "get_settings", lambda: _Settings())
 
 
-def _run(coro):
+def _run(coro: Any) -> Any:
     return asyncio.run(coro)
 
 
@@ -251,7 +254,7 @@ class TestFailClosed:
         Collapsing them would either charge a visitor a run for an outage, or
         describe their question as unsafe when nothing examined it.
         """
-        assert ModerationCategory.UNAVAILABLE != ModerationCategory.UNSAFE
+        assert ModerationCategory.UNAVAILABLE != ModerationCategory.UNSAFE  # type: ignore[comparison-overlap]  # distinctness is the assertion: two enum members given the same value would alias at runtime
 
 
 class TestEndpointMapping:
@@ -286,7 +289,7 @@ class TestEndpointMapping:
     def test_the_highest_scoring_flagged_category_is_the_one_recorded(self) -> None:
         # Two categories are flagged; the log should carry the dominant one
         # rather than whichever the dict happened to yield first.
-        session = _Session()
+        session: Any = _Session()
         client = _FakeClient(body=FLAGGED_RESPONSE)
 
         with _patch_key(), _patch_client(client):
@@ -304,7 +307,7 @@ class TestTelemetry:
         Asserted over every string attribute rather than the known ones, so a
         column added later without thought is caught here.
         """
-        session = _Session()
+        session: Any = _Session()
         client = _FakeClient(body=CLEAN_RESPONSE)
 
         with _patch_key(), _patch_client(client):
@@ -335,7 +338,7 @@ class TestTelemetry:
     def test_a_fail_closed_verdict_is_recorded_as_such(self) -> None:
         # Without this flag an outage and a clean run are indistinguishable in
         # the log.
-        session = _Session()
+        session: Any = _Session()
         client = _FakeClient(raises=httpx.ConnectError("no route"))
 
         with _patch_key(), _patch_client(client):
@@ -346,7 +349,7 @@ class TestTelemetry:
         assert row.blocked is True
 
     def test_a_clean_run_is_not_recorded_as_failed_closed(self) -> None:
-        session = _Session()
+        session: Any = _Session()
         client = _FakeClient(body=CLEAN_RESPONSE)
 
         with _patch_key(), _patch_client(client):

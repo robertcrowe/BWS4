@@ -46,7 +46,7 @@ class _Session:
         self.commits += 1
 
 
-def _collect(session: _Session, **kwargs: Any) -> list[Any]:
+def _collect(session: Any, **kwargs: Any) -> list[Any]:
     params: dict[str, Any] = {
         "run_id": "run-1",
         "scenario_id": "refurbished_laptops_school",
@@ -55,7 +55,7 @@ def _collect(session: _Session, **kwargs: Any) -> list[Any]:
     params.update(kwargs)
 
     async def _go() -> list[Any]:
-        return [event async for event in service.stream_run(session, **params)]  # type: ignore[arg-type]
+        return [event async for event in service.stream_run(session, **params)]
 
     return asyncio.run(_go())
 

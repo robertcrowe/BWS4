@@ -10,6 +10,8 @@ assert nothing about them.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import math
 from itertools import combinations
 
@@ -23,7 +25,7 @@ from backend.app.services.embedding import EMBEDDING_DIMENSIONS, embed_text
 
 
 @pytest.fixture(autouse=True)
-def _clean_cache():
+def _clean_cache() -> Iterator[None]:
     """Give every test a process-local cache it fully controls.
 
     The cache is module-level state; without this a test that resets it
@@ -192,7 +194,7 @@ def test_projection_uses_the_same_shared_embedding_service_as_the_rag_pipeline()
     function object the RAG pipeline calls, which is the only way to be sure
     no second SentenceTransformer was instantiated alongside it.
     """
-    assert service.embed_text is shared_embedding.embed_text
+    assert service.embed_text is shared_embedding.embed_text  # type: ignore[attr-defined]  # reaching the module's own import on purpose -- patch/identity at point of use
 
 
 def test_projection_embeddings_match_the_shared_model_vector_exactly() -> None:

@@ -18,6 +18,8 @@ order) and asyncio.run() rather than pytest-asyncio.
 
 from __future__ import annotations
 
+from typing import Any
+
 import asyncio
 from datetime import datetime, timedelta, timezone
 
@@ -60,7 +62,7 @@ class _FakeSession:
         self.commit_count += 1
 
 
-def _reserve(session: _FakeSession, capability: str = "search") -> None:
+def _reserve(session: Any, capability: str = "search") -> None:
     asyncio.run(shared.reserve_capability(session, capability, app_name="Test App"))
 
 
@@ -68,7 +70,7 @@ def test_a_capability_exhausted_last_hour_serves_again_this_hour() -> None:
     """The whole point: the previous hour's total must not bar this visitor."""
     previous = shared.utc_window() - timedelta(hours=1)
     exhausted = UsageLimit(capability="search", used=30, cap=30, window_start=previous)
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=exhausted)])
+    session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=exhausted)])
 
     _reserve(session)
 
@@ -79,7 +81,7 @@ def test_a_capability_exhausted_last_hour_serves_again_this_hour() -> None:
 def test_an_exhausted_capability_still_rejects_within_the_same_hour() -> None:
     now = shared.utc_window()
     exhausted = UsageLimit(capability="search", used=30, cap=30, window_start=now)
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=exhausted)])
+    session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=exhausted)])
 
     with pytest.raises(shared.ServiceUnavailableError):
         _reserve(session)
@@ -91,7 +93,7 @@ def test_a_partially_used_window_is_not_reset_mid_hour() -> None:
     limit = UsageLimit(
         capability="generation", used=7, cap=100, window_start=shared.utc_window()
     )
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=limit)])
+    session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=limit)])
 
     _reserve(session, "generation")
 
@@ -102,7 +104,7 @@ def test_a_stale_window_resets_even_when_far_in_the_past() -> None:
     """A service idle for months must not come back still exhausted."""
     long_ago = shared.utc_window() - timedelta(days=400)
     limit = UsageLimit(capability="generation", used=100, cap=100, window_start=long_ago)
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=limit)])
+    session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=limit)])
 
     _reserve(session, "generation")
 
@@ -111,7 +113,7 @@ def test_a_stale_window_resets_even_when_far_in_the_past() -> None:
 
 
 def test_a_new_row_starts_this_hours_window() -> None:
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=None)])
+    session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=None)])
 
     _reserve(session)
 
@@ -129,7 +131,7 @@ def test_a_missing_window_fails_closed_rather_than_clearing_the_counter() -> Non
     """
     limit = UsageLimit(capability="search", used=30, cap=30)
     assert limit.window_start is None
-    session = _FakeSession(queued_results=[_FakeExecuteResult(scalar=limit)])
+    session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=limit)])
 
     with pytest.raises(shared.ServiceUnavailableError):
         _reserve(session)
@@ -167,7 +169,7 @@ def test_two_reservations_in_the_same_hour_share_one_window() -> None:
     limit = UsageLimit(
         capability="generation", used=0, cap=100, window_start=shared.utc_window()
     )
-    session = _FakeSession(
+    session: Any = _FakeSession(
         queued_results=[
             _FakeExecuteResult(scalar=limit),
             _FakeExecuteResult(scalar=limit),

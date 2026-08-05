@@ -11,6 +11,8 @@ covered by a route that also returns real data.
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi.testclient import TestClient
 
 from backend.app.embeddings.presets import PRESET_TEXT_EXAMPLES
@@ -19,7 +21,7 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _gate_allows_everything(allow_all_moderation):
+def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
     The gate is not this file's subject, and with no `OPENAI_API_KEY` in the

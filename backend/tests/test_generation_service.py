@@ -9,6 +9,8 @@ models are dead.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -18,7 +20,7 @@ from backend.app.services import generation, model_registry
 
 
 @pytest.fixture(autouse=True)
-def _clear_cooldowns():
+def _clear_cooldowns() -> Iterator[None]:
     model_registry.reset_cooldowns()
     yield
     model_registry.reset_cooldowns()

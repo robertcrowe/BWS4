@@ -17,6 +17,7 @@ Three properties, each of which a plausible change would break silently:
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 from backend.app.services import text_gate
 from backend.app.services.moderation import ModerationCategory, ModerationVerdict
@@ -48,7 +49,7 @@ class _Moderator:
         return self.verdict
 
 
-def _check(text: str, verdict: ModerationVerdict = ALLOWED) -> tuple:
+def _check(text: str, verdict: ModerationVerdict = ALLOWED) -> tuple[Any, ...]:
     moderator = _Moderator(verdict)
 
     async def go() -> text_gate.GateOutcome:

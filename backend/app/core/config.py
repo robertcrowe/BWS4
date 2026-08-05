@@ -123,6 +123,59 @@ class Settings(BaseSettings):
     #: a number that is rarely reached, which is the wrong dial to turn.
     planning_hourly_limit: int = 3
 
+    #: Search cycles the ReAct loop may run before it must stop.
+    #:
+    #: **Fixed, not visitor-settable, and there is no 3..6 clamp.** The design
+    #: mock offers a cycle-budget select; that wording is superseded by the
+    #: stack spec's `react_run_call_budget` decision. A run's worst case is
+    #: 8 search-cycle calls + 1 final-answer call + 1 post-run hop-annotation
+    #: call, and the whole worst case is what `allowance_holds` reserves before
+    #: the first cycle -- so the number has to be a code invariant rather than
+    #: something the request body carries, or a caller could reserve one budget
+    #: and spend another.
+    #:
+    #: A setting rather than a module constant because it is the dial an
+    #: operator on a tighter account turns first for this app: it is the
+    #: gallery's most expensive example per run, and lowering it lowers both
+    #: the hold and the worst-case search spend. Lowering it makes the
+    #: budget-exhausted ending more common, which the app presents candidly.
+    react_cycle_budget: int = 8
+
+    #: Cosine similarity at or above which a candidate query counts as a
+    #: near-duplicate of one the loop has already issued, and is refused
+    #: before it reaches Exa. Consumed from Phase 2; declared here because it
+    #: belongs with the budget it protects.
+    #:
+    #: The guard embeds candidates with the in-process shared model, so it
+    #: spends local CPU and nobody's third-party quota -- which is what lets it
+    #: check every candidate. 0.95 is deliberately high: refusing a *distinct*
+    #: query costs the loop a hop it cannot recover, while letting one
+    #: near-duplicate through costs one search out of eight.
+    react_duplicate_similarity_threshold: float = 0.95
+
+
+    #: Hard ceiling on the suitability check, end to end.
+    #:
+    #: The check is an *advisory* that must never delay Start, so this is a
+    #: latency budget rather than a correctness one: past it the run proceeds
+    #: with the neutral "unknown" state and nothing is blocked. Six seconds
+    #: covers a chain walk past one or two benched free-tier slugs, which is the
+    #: realistic slow case; longer and the visitor is waiting on a hint.
+    react_suitability_timeout_seconds: float = 6.0
+
+    #: Suitability checks one browser session may spend.
+    #:
+    #: The check costs a model call, and a visitor gets two runs -- so an
+    #: uncapped check would let typing spend more of the shared allowance than
+    #: running. Beyond this the neutral state is served with no call at all.
+    react_suitability_checks_per_session: int = 5
+
+    #: How long a verdict stays cached, keyed by the normalised question's hash.
+    #:
+    #: A question's structure does not change, so a long TTL is safe and is what
+    #: makes re-submitting the same text free.
+    react_suitability_cache_ttl_hours: int = 24
+
 
 @lru_cache
 def get_settings() -> Settings:

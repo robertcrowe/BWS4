@@ -18,7 +18,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore[import-untyped]  # stubs not installed; dev-only import
 
 from backend.app.core.config import Settings
 

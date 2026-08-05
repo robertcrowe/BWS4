@@ -1,15 +1,17 @@
 # Built with Spec4 AI - https://spec4.ai
 """Sentry initialization must be opt-in and never break a DSN-less run."""
 
+from typing import Any
+
 from unittest.mock import patch
 
 from backend.app.core.config import Settings
 from backend.app.core.observability import TRACES_SAMPLE_RATE, configure_sentry
 
 
-def _settings(**overrides) -> Settings:
+def _settings(**overrides: Any) -> Settings:
     """Build Settings with explicit values so a developer's .env can't leak in."""
-    base = {
+    base: dict[str, Any] = {
         "database_url": "postgresql+asyncpg://test:test@localhost/test",
         "cors_origin": "http://localhost:5173",
         "openrouter_api_key": "test-openrouter-key",
@@ -79,7 +81,7 @@ def test_report_abort_sends_no_visitor_text() -> None:
 
     from backend.app.core import observability
 
-    with patch.object(observability.sentry_sdk, "capture_message") as capture:
+    with patch("backend.app.core.observability.sentry_sdk.capture_message") as capture:
         observability.report_abort(
             "synthesis_failed", decision_id="run-1", error_type="AgentLaneError"
         )
@@ -104,7 +106,7 @@ def test_the_abort_prefix_does_not_name_one_app_when_two_call_it() -> None:
 
     from backend.app.core import observability
 
-    with patch.object(observability.sentry_sdk, "capture_message") as capture:
+    with patch("backend.app.core.observability.sentry_sdk.capture_message") as capture:
         observability.report_abort("collab_leak_detected", run_id="r1")
 
     assert capture.call_args[0][0] == "run_abort:collab_leak_detected"
@@ -118,7 +120,7 @@ def test_model_health_is_reported_under_its_own_prefix() -> None:
 
     from backend.app.core import observability
 
-    with patch.object(observability.sentry_sdk, "capture_message") as capture:
+    with patch("backend.app.core.observability.sentry_sdk.capture_message") as capture:
         observability.report_model_health("models_benched", models="groq/x")
 
     (message,) = capture.call_args[0]

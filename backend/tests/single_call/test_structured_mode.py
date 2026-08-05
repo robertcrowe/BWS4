@@ -15,6 +15,8 @@ of the shipped chain, not a hypothetical.
 
 from __future__ import annotations
 
+from typing import Any
+
 import asyncio
 import json
 from unittest.mock import patch
@@ -41,7 +43,7 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _gate_allows_everything(allow_all_moderation):
+def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
     The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
@@ -78,7 +80,7 @@ class FakeSession:
         self.commits += 1
 
 
-def _client(session: FakeSession) -> TestClient:
+def _client(session: Any) -> TestClient:
     app.dependency_overrides[get_db_session] = lambda: session
     return TestClient(app)
 
@@ -153,7 +155,7 @@ def test_the_named_intents_from_the_specification_are_all_present() -> None:
 
 def test_a_preset_driven_structured_call_returns_conforming_json() -> None:
     """The phase's core structured assertion, driven by a real preset."""
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(
             service, "generate_text", return_value=_served(CONFORMING_CLASSIFICATION)
@@ -188,7 +190,7 @@ def test_a_structured_call_sends_the_provider_native_schema_directive() -> None:
     should happen at the API/decoding level "rather than via prompt instruction
     alone", so the response_format directive must actually be on the call.
     """
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(
             service, "generate_text", return_value=_served(CONFORMING_CLASSIFICATION)
@@ -212,7 +214,7 @@ def test_a_structured_call_sends_the_provider_native_schema_directive() -> None:
 
 def test_the_response_carries_the_request_that_produced_it() -> None:
     """Outputs require the submitted request and response shown together."""
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(
             service, "generate_text", return_value=_served(CONFORMING_CLASSIFICATION)
@@ -240,7 +242,7 @@ def test_the_response_carries_the_request_that_produced_it() -> None:
 
 
 def test_free_text_structured_requests_use_the_default_demo_schema() -> None:
-    session = FakeSession()
+    session: Any = FakeSession()
     payload = json.dumps({"response": "Kubernetes autoscales pods.", "topics": ["devops"]})
     try:
         with patch.object(service, "generate_text", return_value=_served(payload)):
@@ -261,7 +263,7 @@ def test_free_text_structured_requests_use_the_default_demo_schema() -> None:
 
 def test_a_schema_fetched_from_the_presets_endpoint_can_be_posted_back() -> None:
     """The round trip the `response_schema` input is actually for."""
-    session = FakeSession()
+    session: Any = FakeSession()
     summary = json.dumps({"summary": "Webb sees infrared.", "key_points": ["6.5m mirror"]})
     try:
         with patch.object(service, "generate_text", return_value=_served(summary)):
@@ -291,7 +293,7 @@ def test_an_unrecognised_schema_is_rejected_not_swapped_for_the_default() -> Non
     response would be reported as conforming, and the claim would be true of
     the wrong schema.
     """
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(service, "generate_text") as generate:
             response = _client(session).post(
@@ -323,7 +325,7 @@ def test_a_non_conforming_response_is_flagged_with_its_raw_output() -> None:
     json_schema directive.
     """
     drifted = json.dumps({"classification": "bug", "priority": "high"})
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(service, "generate_text", return_value=_served(drifted)) as generate:
             response = _client(session).post(
@@ -350,7 +352,7 @@ def test_a_non_json_response_is_flagged_distinctly_from_a_shape_mismatch() -> No
 
     Different problems with different fixes, so they must not read alike.
     """
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(
             service, "generate_text", return_value=_served("Sure! Here's the classification:")
@@ -373,7 +375,7 @@ def test_a_non_json_response_is_flagged_distinctly_from_a_shape_mismatch() -> No
 
 def test_a_json_array_is_rejected_rather_than_crashing() -> None:
     """Valid JSON that isn't an object at all."""
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(service, "generate_text", return_value=_served('["bug", "high"]')):
             body = (
@@ -393,7 +395,7 @@ def test_a_json_array_is_rejected_rather_than_crashing() -> None:
 
 def test_an_out_of_enum_value_is_caught_even_though_the_shape_is_right() -> None:
     """All three keys present, one value outside the schema's enum."""
-    session = FakeSession()
+    session: Any = FakeSession()
     wrong_enum = json.dumps(
         {"category": "urgent-thing", "urgency": "high", "reasoning": "because"}
     )
@@ -416,7 +418,7 @@ def test_an_out_of_enum_value_is_caught_even_though_the_shape_is_right() -> None
 
 def test_extra_properties_are_caught_even_when_every_required_field_is_present() -> None:
     """This is what extra="forbid" buys, and why the schema test above pins it."""
-    session = FakeSession()
+    session: Any = FakeSession()
     padded = json.dumps(
         {
             "category": "bug",
@@ -450,7 +452,7 @@ def test_extra_properties_are_caught_even_when_every_required_field_is_present()
 def test_a_structured_call_writes_a_generation_row_and_a_log_entry() -> None:
     """Per-call persistence, tagged with the app and the mode."""
     limit = UsageLimit(capability="generation", used=0, cap=100, window_start=None)
-    session = FakeSession([limit])
+    session: Any = FakeSession([limit])
 
     with patch.object(service, "generate_text", return_value=_served(CONFORMING_CLASSIFICATION)):
         result = asyncio.run(
@@ -480,7 +482,7 @@ def test_a_failed_validation_is_still_recorded_as_a_generation() -> None:
     investigating schema failures needs to find.
     """
     limit = UsageLimit(capability="generation", used=0, cap=100, window_start=None)
-    session = FakeSession([limit])
+    session: Any = FakeSession([limit])
 
     with patch.object(service, "generate_text", return_value=_served("not json at all")):
         result = asyncio.run(
@@ -505,12 +507,12 @@ def test_the_recorded_mode_distinguishes_plain_from_structured() -> None:
     separates them, which is the whole reason migration 0008 adds it.
     """
     plain_limit = UsageLimit(capability="generation", used=0, cap=100, window_start=None)
-    plain_session = FakeSession([plain_limit])
+    plain_session: Any = FakeSession([plain_limit])
     with patch.object(service, "generate_text", return_value=_served("prose")):
         asyncio.run(service.run_plain_call(plain_session, prompt_text="hello"))
 
     structured_limit = UsageLimit(capability="generation", used=0, cap=100, window_start=None)
-    structured_session = FakeSession([structured_limit])
+    structured_session: Any = FakeSession([structured_limit])
     with patch.object(service, "generate_text", return_value=_served(CONFORMING_CLASSIFICATION)):
         asyncio.run(
             run_structured_call(
@@ -520,11 +522,11 @@ def test_the_recorded_mode_distinguishes_plain_from_structured() -> None:
             )
         )
 
-    def mode_of(session: FakeSession) -> str:
+    def mode_of(session: Any) -> str:
         row = next(
             r for r in session.added if type(r).__name__ == "LanguageGenerationRequest"
         )
-        return row.mode
+        return str(row.mode)
 
     assert mode_of(plain_session) == shared.MODE_PLAIN
     assert mode_of(structured_session) == shared.MODE_STRUCTURED
@@ -532,7 +534,7 @@ def test_the_recorded_mode_distinguishes_plain_from_structured() -> None:
 
 def test_a_preset_can_also_be_run_in_plain_mode() -> None:
     """Mode and prompt source are independent choices."""
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(service, "generate_text", return_value=_served("A summary.")) as gen:
             body = (

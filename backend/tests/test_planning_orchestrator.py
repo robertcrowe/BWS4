@@ -19,6 +19,7 @@ measurement rather than a restatement of the code.
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -83,7 +84,7 @@ class _Session:
         self._caps = caps or {}
         self._pending: str | None = None
 
-    async def execute(self, statement: object, *_args: object, **_kwargs: object) -> _Result:
+    async def execute(self, statement: Any, *_args: object, **_kwargs: object) -> _Result:
         # The only select this code issues is usage_limits by capability, so the
         # capability is recovered from the compiled parameters rather than by
         # parsing SQL.
@@ -120,7 +121,7 @@ class _Session:
         return [row.summary for row in self.added if isinstance(row, ServiceLogEntry)]
 
 
-def _plan_model(*payloads: dict) -> FunctionModel:
+def _plan_model(*payloads: dict[str, Any]) -> FunctionModel:
     """A model that returns each plan payload in turn."""
     queue = list(payloads)
 
@@ -130,13 +131,15 @@ def _plan_model(*payloads: dict) -> FunctionModel:
     return FunctionModel(behave)
 
 
-def _execution_model(*, searches: bool = True, itinerary: dict | None = None) -> FunctionModel:
+def _execution_model(
+    *, searches: bool = True, itinerary: dict[str, Any] | None = None
+) -> FunctionModel:
     """A model that searches once per research step, then composes an itinerary.
 
     Distinguishes the two step kinds by whether a `web_search` tool was offered
     on this request, which is what actually differs between them.
     """
-    state = {"searched": False}
+    state: dict[str, bool] = {"searched": False}
 
     def behave(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         tool_names = {tool.name for tool in info.function_tools}
@@ -154,12 +157,14 @@ def _execution_model(*, searches: bool = True, itinerary: dict | None = None) ->
     return FunctionModel(behave)
 
 
-def _patch_model(model):
-    return patch.object(agents.agent_runtime, "build_fallback_model", lambda chain=None, **_: model)
+def _patch_model(model: FunctionModel) -> Any:
+    return patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: model)
 
 
-def _patch_search(results=RESULTS, error: Exception | None = None):
-    async def fake_search(query: str):
+def _patch_search(
+    results: list[ExaResult] = RESULTS, error: Exception | None = None
+) -> Any:
+    async def fake_search(query: str) -> list[ExaResult]:
         if error:
             raise error
         return results
@@ -167,8 +172,8 @@ def _patch_search(results=RESULTS, error: Exception | None = None):
     return patch.object(service, "search", fake_search)
 
 
-def _collect(session, plan: Plan, *, calls_used: int = 0) -> list:
-    async def run():
+def _collect(session: Any, plan: Plan, *, calls_used: int = 0) -> list[Any]:
+    async def run() -> list[Any]:
         return [
             event
             async for event in service.execute_plan(
@@ -200,14 +205,14 @@ class TestTheAllowanceAccountsForTheRetry:
     """
 
     def test_the_orchestrator_asks_for_an_allowance_it_can_afford_twice(self) -> None:
-        seen: list[dict] = []
+        seen: list[dict[str, Any]] = []
         real = CallBudget.allowance
 
-        def recording(self, step_limit, **kwargs):
+        def recording(self: CallBudget, step_limit: int, **kwargs: Any) -> int:
             seen.append(kwargs)
             return real(self, step_limit, **kwargs)
 
-        session = _Session()
+        session: Any = _Session()
         with (
             _patch_model(_execution_model()),
             _patch_search(),
@@ -298,7 +303,7 @@ class TestCallBudget:
 
 class TestPlanning:
     def test_a_good_plan_is_returned_with_the_calls_it_cost(self) -> None:
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_plan_model(GOOD_PLAN)):
             outcome = asyncio.run(
@@ -315,7 +320,7 @@ class TestPlanning:
         `create_plan` must spend exactly one model call and run no searches --
         the plan is for the visitor to review *before* anything happens.
         """
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_plan_model(GOOD_PLAN)), _patch_search():
             asyncio.run(service.create_plan(session, city="Lisbon", interests="art"))
@@ -325,7 +330,7 @@ class TestPlanning:
         assert not [row for row in session.added if isinstance(row, SearchQuery)]
 
     def test_an_invalid_plan_triggers_exactly_one_replan(self) -> None:
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_plan_model(BAD_PLAN, GOOD_PLAN)):
             outcome = asyncio.run(service.create_plan(session, city="Lisbon", interests="art"))
@@ -336,7 +341,7 @@ class TestPlanning:
     def test_two_bad_plans_hard_fail_without_a_third_attempt(self) -> None:
         # The runaway this tier is most prone to: a validator/model loop that
         # never converges. Exactly one retry, then stop.
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_plan_model(BAD_PLAN, BAD_PLAN)):
             with pytest.raises(service.PlanUnavailableError):
@@ -353,7 +358,7 @@ class TestPlanning:
             ]
             + [{"index": 5, "kind": "synthesis", "description": "s", "search_query": None}],
         }
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_plan_model(oversized)):
             outcome = asyncio.run(service.create_plan(session, city="Lisbon", interests="art"))
@@ -363,7 +368,7 @@ class TestPlanning:
         assert len(outcome.plan.steps) == 3
 
     def test_a_blank_city_is_rejected_before_any_model_call(self) -> None:
-        session = _Session()
+        session: Any = _Session()
 
         with pytest.raises(service.InvalidGoalError):
             asyncio.run(service.create_plan(session, city="   ", interests="art"))
@@ -373,7 +378,7 @@ class TestPlanning:
     def test_a_spent_generation_cap_is_reported_as_its_own_error(self) -> None:
         # Distinct from an unreachable model: this one resets at the top of the hour and
         # retrying cannot help.
-        session = _Session(caps={shared.CAPABILITY_GENERATION: 0})
+        session: Any = _Session(caps={shared.CAPABILITY_GENERATION: 0})
 
         with _patch_model(_plan_model(GOOD_PLAN)):
             with pytest.raises(service.UsageLimitReachedError):
@@ -382,7 +387,7 @@ class TestPlanning:
 
 class TestExecution:
     def test_steps_run_in_order_and_the_itinerary_comes_last(self) -> None:
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_execution_model()), _patch_search():
             events = _collect(session, _plan_object())
@@ -397,16 +402,16 @@ class TestExecution:
         genuinely incremental run from one that computed everything and then
         replayed the results in order.
         """
-        session = _Session()
+        session: Any = _Session()
         searches: list[str] = []
 
-        async def counting_search(query: str):
+        async def counting_search(query: str) -> list[ExaResult]:
             searches.append(query)
             return RESULTS
 
         observed: list[int] = []
 
-        async def run():
+        async def run() -> None:
             async for event in service.execute_plan(
                 session, goal="goal", plan=_plan_object()
             ):
@@ -424,7 +429,7 @@ class TestExecution:
         The step is marked failed, the following step still runs, and the
         itinerary is still composed -- from what did succeed.
         """
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_execution_model()), _patch_search(
             error=RuntimeError("exa exploded")
@@ -437,7 +442,7 @@ class TestExecution:
     def test_a_search_the_tool_could_not_run_marks_the_step_failed(self) -> None:
         from backend.app.services.web_search import ExaClientError
 
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_execution_model()), _patch_search(error=ExaClientError("down")):
             events = _collect(session, _plan_object())
@@ -451,7 +456,7 @@ class TestExecution:
         An empty result set means the web had little to say, which is a finding.
         Marking it failed would tell the visitor the machinery broke.
         """
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_execution_model()), _patch_search(results=[]):
             events = _collect(session, _plan_object())
@@ -461,7 +466,7 @@ class TestExecution:
         assert all("no usable results" in result.summary for result in results)
 
     def test_sources_on_a_step_result_are_what_the_tool_returned(self) -> None:
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_execution_model()), _patch_search():
             events = _collect(session, _plan_object())
@@ -470,7 +475,7 @@ class TestExecution:
         assert [source.url for source in first.sources] == ["https://a.test/1"]
 
     def test_each_model_authored_search_is_metered_and_persisted(self) -> None:
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_execution_model()), _patch_search():
             _collect(session, _plan_object())
@@ -488,7 +493,7 @@ class TestTheGateAndTheCeiling:
         read the results and answer). Two research steps plus the synthesis step
         is five requests, so a run that reserved per *step* would show three.
         """
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_execution_model()), _patch_search():
             events = _collect(session, _plan_object())
@@ -499,7 +504,7 @@ class TestTheGateAndTheCeiling:
     def test_a_fully_spent_budget_halts_rather_than_calling_anything(self) -> None:
         # Nothing left for even the synthesis call, so the run ends at the
         # ceiling with whatever it has.
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_execution_model()), _patch_search():
             events = _collect(session, _plan_object(), calls_used=MAX_MODEL_CALLS)
@@ -516,7 +521,7 @@ class TestTheGateAndTheCeiling:
         is the capability's gap-acknowledgement behaviour rather than a
         different failure.
         """
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_execution_model()), _patch_search():
             events = _collect(session, _plan_object(), calls_used=MAX_MODEL_CALLS - 3)
@@ -533,7 +538,7 @@ class TestTheGateAndTheCeiling:
         Starting it would spend the call the synthesis step is being held for,
         to learn something the budget arithmetic already knew.
         """
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_execution_model()), _patch_search():
             events = _collect(session, _plan_object(), calls_used=MAX_MODEL_CALLS - 2)
@@ -555,7 +560,7 @@ class TestTheGateAndTheCeiling:
     def test_the_ceiling_refuses_the_call_without_spending_quota_on_it(self) -> None:
         # charge() runs before reserve_capability(), so a refused call costs
         # nothing. The counter and the cap must not disagree about what happened.
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_execution_model()), _patch_search():
             _collect(session, _plan_object(), calls_used=MAX_MODEL_CALLS)
@@ -563,7 +568,7 @@ class TestTheGateAndTheCeiling:
         assert session.generation_used() == 0
 
     def test_a_spent_generation_cap_mid_run_halts_with_its_own_code(self) -> None:
-        session = _Session(caps={shared.CAPABILITY_GENERATION: 0})
+        session: Any = _Session(caps={shared.CAPABILITY_GENERATION: 0})
 
         with _patch_model(_execution_model()), _patch_search():
             events = _collect(session, _plan_object())
@@ -582,7 +587,7 @@ class TestSynthesisFailure:
                 )
             raise RuntimeError("synthesis model is down")
 
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(FunctionModel(behave)), _patch_search():
             events = _collect(session, _plan_object())
@@ -592,7 +597,7 @@ class TestSynthesisFailure:
         assert "retrying runs only the final step" in events[-1].notice
 
     def test_retrying_synthesis_alone_reruns_nothing_else(self) -> None:
-        session = _Session()
+        session: Any = _Session()
         results = [StepResult(step_index=1, status="completed", summary="Found a food hall.")]
 
         with _patch_model(_execution_model()), _patch_search():
@@ -616,7 +621,7 @@ class TestPersistence:
         the itinerary, so this app must never call it -- the same rule the
         chained-calls app follows.
         """
-        session = _Session()
+        session: Any = _Session()
 
         # Both halves of a run, each with the model that half actually uses:
         # the planner emits a Plan, the executor searches and emits an Itinerary.
@@ -635,7 +640,7 @@ class TestPersistence:
 
     def test_the_run_is_still_logged_and_metered(self) -> None:
         # Unlogged is not unmetered, and unpersisted is not unobserved.
-        session = _Session()
+        session: Any = _Session()
 
         with _patch_model(_execution_model()), _patch_search():
             _collect(session, _plan_object())

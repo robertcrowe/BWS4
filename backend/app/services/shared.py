@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +27,8 @@ from backend.app.db.models import (
     UsageLimit,
 )
 from backend.app.services import embedding, generation, storage
+
+logger = structlog.get_logger()
 
 CAPABILITY_GENERATION = "generation"
 CAPABILITY_REPRESENTATION = "representation"
@@ -204,6 +207,61 @@ async def reserve_capability(
 
     limit.used += units
     await session.commit()
+
+
+async def release_capability(
+    session: AsyncSession, capability: str, *, app_name: str, units: int
+) -> int:
+    """Give back units a caller reserved up front and did not spend.
+
+    **The partial-release path this project has wanted since v5.** Apps that
+    reserve a whole run's worst case before the first call -- orchestrated,
+    collaboration, and now the ReAct loop -- otherwise charge the shared hourly
+    gate the ceiling for every run, including the common case of a run that
+    answers early. `allowance_holds.refund` releases the *promise*; this
+    releases the *spend*, and without it the two disagree.
+
+    Floors at zero and never raises. It is called from teardown paths, where an
+    exception would turn "the run finished and gave budget back" into a second
+    failure on top of whatever ended the run.
+
+    Args:
+        session: An async SQLAlchemy session.
+        capability: The capability to credit back.
+        app_name: The app releasing the units, for symmetry with the rest of
+            this module.
+        units: How many to return. Zero or negative is a no-op.
+
+    Returns:
+        How many units were actually returned, which is less than `units` only
+        when the window rolled over underneath the run -- in which case the
+        reservation belonged to an hour that has already been zeroed and there
+        is nothing to give back.
+    """
+    del app_name  # not yet used to partition usage, kept for interface symmetry
+    if units <= 0:
+        return 0
+
+    window = utc_window()
+    result = await session.execute(select(UsageLimit).where(UsageLimit.capability == capability))
+    limit = result.scalar_one_or_none()
+    if limit is None:
+        return 0
+
+    if limit.window_start is not None and limit.window_start < window:
+        # The hour turned over while the run was in flight. The counter this
+        # reservation belonged to has already been zeroed, so crediting it back
+        # now would hand the new hour free budget the old one paid for.
+        return 0
+
+    returned = min(units, limit.used)
+    limit.used -= returned
+    await session.commit()
+
+    logger.info(
+        "capability_released", capability=capability, units=returned, requested=units
+    )
+    return returned
 
 
 async def log_invocation(

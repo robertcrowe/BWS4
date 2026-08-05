@@ -10,6 +10,7 @@ and a seller that knew the ceiling would price straight to it.
 from __future__ import annotations
 
 import inspect
+from typing import Any
 
 import pytest
 
@@ -25,11 +26,11 @@ SCENARIO_IDS = [s.id for s in SCENARIOS]
 WEIGHTING_IDS = [w.id for w in PRIORITY_WEIGHTINGS]
 
 
-def _scenario(scenario_id: str):
+def _scenario(scenario_id: str) -> Any:
     return next(s for s in SCENARIOS if s.id == scenario_id)
 
 
-def _weighting(weighting_id: str):
+def _weighting(weighting_id: str) -> Any:
     return next(w for w in PRIORITY_WEIGHTINGS if w.id == weighting_id)
 
 

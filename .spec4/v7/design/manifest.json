@@ -1,0 +1,1896 @@
+{
+  "entities": [
+    {
+      "name": "ExampleApp",
+      "fields": [
+        "name",
+        "pattern_label",
+        "summary",
+        "target_screen",
+        "status"
+      ]
+    },
+    {
+      "name": "EducationalOverview",
+      "fields": [
+        "pattern_name",
+        "explanation",
+        "quota_rationale",
+        "cross_reference"
+      ]
+    },
+    {
+      "name": "Document",
+      "fields": [
+        "title",
+        "source",
+        "text"
+      ]
+    },
+    {
+      "name": "Passage",
+      "fields": [
+        "document_title",
+        "excerpt",
+        "relevance_score",
+        "source"
+      ]
+    },
+    {
+      "name": "Question",
+      "fields": [
+        "text",
+        "origin"
+      ]
+    },
+    {
+      "name": "Answer",
+      "fields": [
+        "text",
+        "confidence",
+        "cited_passages"
+      ]
+    },
+    {
+      "name": "SearchQuery",
+      "fields": [
+        "query_text",
+        "issued_by"
+      ]
+    },
+    {
+      "name": "SearchResult",
+      "fields": [
+        "title",
+        "snippet",
+        "source"
+      ]
+    },
+    {
+      "name": "UsageAllowance",
+      "fields": [
+        "capability_label",
+        "used",
+        "cap"
+      ]
+    },
+    {
+      "name": "RunAllowance",
+      "fields": [
+        "app_name",
+        "runs_used",
+        "runs_cap"
+      ]
+    },
+    {
+      "name": "ServiceLogEntry",
+      "fields": [
+        "time",
+        "app",
+        "capability",
+        "summary"
+      ]
+    },
+    {
+      "name": "StoredRecord",
+      "fields": [
+        "key",
+        "value",
+        "written_by"
+      ]
+    },
+    {
+      "name": "TextExample",
+      "fields": [
+        "text",
+        "category",
+        "is_custom"
+      ]
+    },
+    {
+      "name": "PlotPoint",
+      "fields": [
+        "text",
+        "category",
+        "x",
+        "y",
+        "neighbors"
+      ]
+    },
+    {
+      "name": "Prompt",
+      "fields": [
+        "text",
+        "preset_id",
+        "intent"
+      ]
+    },
+    {
+      "name": "ResponseShape",
+      "fields": [
+        "schema_fields",
+        "conformance",
+        "missing_fields"
+      ]
+    },
+    {
+      "name": "ChainStage",
+      "fields": [
+        "role",
+        "input",
+        "output",
+        "status"
+      ]
+    },
+    {
+      "name": "Goal",
+      "fields": [
+        "city",
+        "interests"
+      ]
+    },
+    {
+      "name": "Plan",
+      "fields": [
+        "steps",
+        "trimmed"
+      ]
+    },
+    {
+      "name": "PlanStep",
+      "fields": [
+        "number",
+        "kind",
+        "label",
+        "purpose",
+        "query",
+        "status",
+        "result"
+      ]
+    },
+    {
+      "name": "Itinerary",
+      "fields": [
+        "city",
+        "morning",
+        "afternoon",
+        "evening",
+        "gaps"
+      ]
+    },
+    {
+      "name": "Specialist",
+      "fields": [
+        "id",
+        "name",
+        "scope",
+        "colour"
+      ]
+    },
+    {
+      "name": "OrchestrationDecision",
+      "fields": [
+        "chosen_ids",
+        "rationale",
+        "weak_fit",
+        "moderation_verdict"
+      ]
+    },
+    {
+      "name": "SubagentBrief",
+      "fields": [
+        "specialist_id",
+        "brief_text"
+      ]
+    },
+    {
+      "name": "SubagentAnswer",
+      "fields": [
+        "specialist_id",
+        "answer_text",
+        "status"
+      ]
+    },
+    {
+      "name": "FinalResponse",
+      "fields": [
+        "merged_text",
+        "comparison_notes",
+        "missing_contributions"
+      ]
+    },
+    {
+      "name": "Scenario",
+      "fields": [
+        "id",
+        "label",
+        "goods",
+        "baseline",
+        "terms"
+      ]
+    },
+    {
+      "name": "PriorityWeighting",
+      "fields": [
+        "id",
+        "label",
+        "description"
+      ]
+    },
+    {
+      "name": "AgentIdentity",
+      "fields": [
+        "name",
+        "role",
+        "provider",
+        "skills",
+        "capabilities",
+        "tools"
+      ]
+    },
+    {
+      "name": "RequestForQuotation",
+      "fields": [
+        "goods",
+        "baseline",
+        "priorities"
+      ]
+    },
+    {
+      "name": "Bid",
+      "fields": [
+        "seller",
+        "stage",
+        "terms",
+        "note",
+        "conceded_terms"
+      ]
+    },
+    {
+      "name": "CounterOffer",
+      "fields": [
+        "recipient",
+        "ask_text"
+      ]
+    },
+    {
+      "name": "Award",
+      "fields": [
+        "winner",
+        "rationale",
+        "sensitivity_note"
+      ]
+    },
+    {
+      "name": "PrivatePosition",
+      "fields": [
+        "party",
+        "axis",
+        "hidden_value",
+        "why"
+      ]
+    },
+    {
+      "name": "MessageExchange",
+      "fields": [
+        "seq",
+        "time",
+        "sender",
+        "recipient",
+        "stage",
+        "summary",
+        "work_item"
+      ]
+    },
+    {
+      "name": "TraceCycle",
+      "fields": [
+        "index",
+        "thought",
+        "action_kind",
+        "query",
+        "observation",
+        "status"
+      ]
+    },
+    {
+      "name": "Thought",
+      "fields": [
+        "cycle_index",
+        "text"
+      ]
+    },
+    {
+      "name": "Action",
+      "fields": [
+        "cycle_index",
+        "kind",
+        "query_text"
+      ]
+    },
+    {
+      "name": "Observation",
+      "fields": [
+        "cycle_index",
+        "snippets",
+        "is_empty"
+      ]
+    },
+    {
+      "name": "FinalAnswer",
+      "fields": [
+        "text",
+        "observations_used",
+        "ending"
+      ]
+    },
+    {
+      "name": "SuitabilityVerdict",
+      "fields": [
+        "chained_facts",
+        "needs_live_info",
+        "category",
+        "confidence",
+        "sentence"
+      ]
+    },
+    {
+      "name": "HopAnnotation",
+      "fields": [
+        "hop_index",
+        "fact",
+        "source_kind",
+        "cycle_index",
+        "note"
+      ]
+    }
+  ],
+  "screens": [
+    {
+      "id": "screen-landing",
+      "audience": "Developers evaluating Spec4 / learners arriving at the gallery",
+      "purpose": "Explain what BWS4 is, state its Spec4 provenance, and present the roster of example apps ordered simplest-first.",
+      "surfaces": [
+        "project_intro",
+        "example_app_roster"
+      ]
+    },
+    {
+      "id": "screen-rag",
+      "audience": "Developers learning the RAG pattern",
+      "purpose": "Show retrieval-augmented generation with retrieved passages visible alongside the grounded answer.",
+      "surfaces": [
+        "rag_overview",
+        "rag_dataset_browser",
+        "rag_question_form",
+        "rag_answer_result"
+      ]
+    },
+    {
+      "id": "screen-tooluse",
+      "audience": "Developers learning tool use / function calling",
+      "purpose": "Show an agent deciding to call a shared web search tool mid-response and synthesising from the returned snippets.",
+      "surfaces": [
+        "tooluse_overview",
+        "tooluse_query_form",
+        "tooluse_result_trace"
+      ]
+    },
+    {
+      "id": "screen-singlecall",
+      "audience": "Developers learning the baseline single-call pattern",
+      "purpose": "Show one prompt in / one response out in both plain and schema-conforming modes.",
+      "surfaces": [
+        "singlecall_overview",
+        "singlecall_prompt_form",
+        "singlecall_result"
+      ]
+    },
+    {
+      "id": "screen-chained",
+      "audience": "Developers learning the chained-calls pattern",
+      "purpose": "Show two sequential model calls where the second consumes the first's output, with both stages visible.",
+      "surfaces": [
+        "chained_overview",
+        "chained_prompt_form",
+        "chained_stage_results"
+      ]
+    },
+    {
+      "id": "screen-planning",
+      "audience": "Developers learning the plan-first planning-agent pattern",
+      "purpose": "Show a planner call decomposing a goal into a reviewable plan, then executor calls running it after explicit go-ahead; contrast plan-first with the interleaved ReAct loop.",
+      "surfaces": [
+        "planning_overview",
+        "planning_goal_form",
+        "planning_plan_review",
+        "planning_execution_trace"
+      ]
+    },
+    {
+      "id": "screen-react",
+      "audience": "Developers learning the interleaved reason-act-observe pattern",
+      "purpose": "Show a live ReAct trace where each next step follows the previous observation, contrasted explicitly with the plan-first Planning Agent example, ending in either a final answer or an honest budget-exhausted card.",
+      "surfaces": [
+        "react_overview",
+        "react_question_form",
+        "react_suitability_check",
+        "react_trace_stream",
+        "react_hop_annotations"
+      ]
+    },
+    {
+      "id": "screen-orchestrated",
+      "audience": "Developers learning orchestrated subagents (fan-out / fan-in)",
+      "purpose": "Show a coordinator choosing exactly two of four specialists, briefing each, running them concurrently, and merging their answers.",
+      "surfaces": [
+        "orch_overview",
+        "orch_roster",
+        "orch_question_form",
+        "orch_delegation_decision",
+        "orch_parallel_execution",
+        "orch_merged_answer"
+      ]
+    },
+    {
+      "id": "screen-collab",
+      "audience": "Developers learning peer-to-peer multi-agent collaboration",
+      "purpose": "Show one buyer agent negotiating a single procurement round against two rival sellers with code-enforced message opacity, ending in an award and a reveal.",
+      "surfaces": [
+        "collab_overview",
+        "collab_agent_cards",
+        "collab_scenario_form",
+        "collab_negotiation_tracks",
+        "collab_message_log",
+        "collab_award",
+        "collab_reveal"
+      ]
+    },
+    {
+      "id": "screen-embeddings",
+      "audience": "Developers learning text embeddings",
+      "purpose": "Show curated texts clustering by meaning in a fixed 2D projection and let visitors place their own text on the same plot.",
+      "surfaces": [
+        "embeddings_overview",
+        "embeddings_plot",
+        "embeddings_custom_form",
+        "embeddings_placement_result"
+      ]
+    },
+    {
+      "id": "screen-console",
+      "audience": "Spec4 team / maintainers",
+      "purpose": "Exercise the shared framework capabilities directly, watch usage allowances move, and inspect the cross-app request log.",
+      "surfaces": [
+        "console_request_tester",
+        "console_usage_limits",
+        "console_request_log"
+      ]
+    }
+  ],
+  "surfaces": [
+    {
+      "name": "project_intro",
+      "kind": "non_ai",
+      "screen": "screen-landing",
+      "implements_features": [
+        "Landing_Page"
+      ],
+      "inputs": [],
+      "output": "Plain-language statement of BWS4's purpose, its Spec4 provenance, and pattern badges.",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "EducationalOverview"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "landing_page"
+      ]
+    },
+    {
+      "name": "example_app_roster",
+      "kind": "non_ai",
+      "screen": "screen-landing",
+      "implements_features": [
+        "Landing_Page"
+      ],
+      "inputs": [
+        "roster card selection"
+      ],
+      "output": "Browsable list of example app cards (name, pattern label, one-line summary), ordered simplest-first with the ReAct Loop card last; selecting one opens that example.",
+      "states": [
+        "populated",
+        "disabled/coming-soon"
+      ],
+      "reads": [
+        "ExampleApp"
+      ],
+      "writes": [],
+      "depends_on": [
+        "project_intro"
+      ],
+      "implements_feature_ids": [
+        "landing_page"
+      ]
+    },
+    {
+      "name": "rag_overview",
+      "kind": "non_ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "RAG_Example_App"
+      ],
+      "inputs": [],
+      "output": "Short educational overview of the retrieval-augmented generation pattern.",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "EducationalOverview"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "rag_dataset_browser",
+      "kind": "non_ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "RAG_Example_App"
+      ],
+      "inputs": [
+        "document expand/collapse"
+      ],
+      "output": "Expandable list of the five reference documents with source and full text.",
+      "states": [
+        "collapsed",
+        "expanded"
+      ],
+      "reads": [
+        "Document"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "rag_question_form",
+      "kind": "ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "rag_example_app"
+      ],
+      "inputs": [
+        "question text field",
+        "preset question chips",
+        "Ask button"
+      ],
+      "output": "Submits the question and hands off to the answer surface.",
+      "states": [
+        "idle",
+        "submitting",
+        "disabled"
+      ],
+      "reads": [
+        "Question",
+        "Document"
+      ],
+      "writes": [
+        "Question"
+      ],
+      "depends_on": [
+        "rag_dataset_browser"
+      ],
+      "affordance": "show retrieval then generation progress while it runs",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "rag_example_app",
+      "catalog_surface_id": "rag_example_app",
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "rag_answer_result",
+      "kind": "ai",
+      "screen": "screen-rag",
+      "implements_features": [
+        "rag_example_app"
+      ],
+      "inputs": [],
+      "output": "Grounded answer with inline citations plus the retrieved passages and their match scores.",
+      "states": [
+        "idle",
+        "retrieving",
+        "generating",
+        "answered",
+        "low-relevance warning",
+        "quota-exhausted error"
+      ],
+      "reads": [
+        "Passage",
+        "Answer"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "rag_question_form"
+      ],
+      "affordance": "staged progress lines with spinners",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "rag_example_app",
+      "catalog_surface_id": "rag_example_app",
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "tooluse_overview",
+      "kind": "non_ai",
+      "screen": "screen-tooluse",
+      "implements_features": [
+        "Tool_Use_Integration"
+      ],
+      "inputs": [],
+      "output": "Short educational overview of tool use / function calling.",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "EducationalOverview"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "tool_use_integration"
+      ]
+    },
+    {
+      "name": "tooluse_query_form",
+      "kind": "non_ai",
+      "screen": "screen-tooluse",
+      "implements_features": [
+        "Tool_Use_Integration"
+      ],
+      "inputs": [
+        "query text field",
+        "preset query chips",
+        "Run agent button"
+      ],
+      "output": "Submitted query passed to the search tool trace.",
+      "states": [
+        "idle",
+        "submitting",
+        "disabled"
+      ],
+      "reads": [
+        "SearchQuery"
+      ],
+      "writes": [
+        "SearchQuery"
+      ],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "tool_use_integration"
+      ]
+    },
+    {
+      "name": "tooluse_result_trace",
+      "kind": "non_ai",
+      "screen": "screen-tooluse",
+      "implements_features": [
+        "Tool_Use_Integration"
+      ],
+      "inputs": [],
+      "output": "Three-step trace (parse, call search tool, synthesize) plus ranked search snippets with sources and a synthesized answer.",
+      "states": [
+        "idle",
+        "step-running",
+        "complete",
+        "tool-quota-exhausted error"
+      ],
+      "reads": [
+        "SearchResult",
+        "Answer",
+        "UsageAllowance"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "tooluse_query_form"
+      ],
+      "implements_feature_ids": [
+        "tool_use_integration"
+      ]
+    },
+    {
+      "name": "singlecall_overview",
+      "kind": "non_ai",
+      "screen": "screen-singlecall",
+      "implements_features": [
+        "Single_Call_Example_App"
+      ],
+      "inputs": [],
+      "output": "Short educational overview of the single-call pattern and when it suits a problem.",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "EducationalOverview"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "single_call_example_app"
+      ]
+    },
+    {
+      "name": "singlecall_prompt_form",
+      "kind": "ai",
+      "screen": "screen-singlecall",
+      "implements_features": [
+        "Single_Call_Example_App"
+      ],
+      "inputs": [
+        "preset prompt chips",
+        "prompt textarea",
+        "response mode toggle",
+        "Run single call button"
+      ],
+      "output": "One submitted prompt plus chosen response mode.",
+      "states": [
+        "idle",
+        "validation error",
+        "submitting",
+        "disabled"
+      ],
+      "reads": [
+        "Prompt",
+        "ResponseShape"
+      ],
+      "writes": [
+        "Prompt"
+      ],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "single_call_example_app"
+      ]
+    },
+    {
+      "name": "singlecall_result",
+      "kind": "ai",
+      "screen": "screen-singlecall",
+      "implements_features": [
+        "single_call_example_app"
+      ],
+      "inputs": [],
+      "output": "Plain-text response, or in structured mode the request with its schema alongside the returned object and a conformance verdict.",
+      "states": [
+        "idle",
+        "loading",
+        "plain response",
+        "structured conforming",
+        "structured schema mismatch",
+        "quota-exhausted error"
+      ],
+      "reads": [
+        "Prompt",
+        "ResponseShape",
+        "Answer"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "singlecall_prompt_form"
+      ],
+      "affordance": "single progress line while the one call runs",
+      "invocation": {
+        "trigger": "User enters or selects a preset prompt, chooses a response mode (plain or structured), and submits the form.",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "single_call_generation",
+      "catalog_surface_id": "single_call_generation",
+      "implements_feature_ids": [
+        "single_call_example_app"
+      ]
+    },
+    {
+      "name": "chained_overview",
+      "kind": "non_ai",
+      "screen": "screen-chained",
+      "implements_features": [
+        "Chained_Calls_Example_App"
+      ],
+      "inputs": [],
+      "output": "Educational overview of chained calls plus the plainly-stated two-call quota rationale.",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "EducationalOverview"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "chained_calls_example_app"
+      ]
+    },
+    {
+      "name": "chained_prompt_form",
+      "kind": "ai",
+      "screen": "screen-chained",
+      "implements_features": [
+        "Chained_Calls_Example_App"
+      ],
+      "inputs": [
+        "story prompt text field",
+        "preset prompt chips",
+        "Run chain button"
+      ],
+      "output": "Submitted story prompt plus a two-step role rail showing each stage's declared role.",
+      "states": [
+        "idle",
+        "step 1 active",
+        "step 2 active",
+        "disabled"
+      ],
+      "reads": [
+        "ChainStage"
+      ],
+      "writes": [
+        "ChainStage"
+      ],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "chained_calls_example_app"
+      ]
+    },
+    {
+      "name": "chained_stage_results",
+      "kind": "ai",
+      "screen": "screen-chained",
+      "implements_features": [
+        "Chained_Calls_Example_App"
+      ],
+      "inputs": [
+        "Retry step 2 button"
+      ],
+      "output": "Intermediate writer draft and final critic critique, both labelled with their stage role.",
+      "states": [
+        "idle",
+        "call 1 running",
+        "call 2 running",
+        "complete",
+        "step 2 failed with retry",
+        "mid-chain quota halt"
+      ],
+      "reads": [
+        "ChainStage"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "chained_prompt_form"
+      ],
+      "affordance": "show multi-step progress/status while it runs",
+      "invocation": {
+        "trigger": "User submits a free-form story prompt in the Chained-Calls example app",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "chained_role_play_generation",
+      "catalog_surface_id": "chained_role_play_generation",
+      "implements_feature_ids": [
+        "chained_calls_example_app"
+      ]
+    },
+    {
+      "name": "planning_overview",
+      "kind": "non_ai",
+      "screen": "screen-planning",
+      "implements_features": [
+        "Planning_Agent_Example_App"
+      ],
+      "inputs": [
+        "cross-reference link to the ReAct Loop example"
+      ],
+      "output": "Educational overview of the plan-first planning-agent pattern, the quota rationale, and an explicit contrast with the interleaved reason-act-observe ReAct Loop example with a link to it.",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "EducationalOverview"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "planning_agent_example_app"
+      ]
+    },
+    {
+      "name": "planning_goal_form",
+      "kind": "ai",
+      "screen": "screen-planning",
+      "implements_features": [
+        "Planning_Agent_Example_App"
+      ],
+      "inputs": [
+        "city text field",
+        "interests text field",
+        "preset chips",
+        "Generate plan button",
+        "runs-remaining indicator"
+      ],
+      "output": "Submitted goal (city + interests) plus visible remaining-runs count.",
+      "states": [
+        "idle",
+        "validation error",
+        "planning",
+        "runs exhausted"
+      ],
+      "reads": [
+        "Goal",
+        "RunAllowance"
+      ],
+      "writes": [
+        "Goal",
+        "RunAllowance"
+      ],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "planning_agent_example_app"
+      ]
+    },
+    {
+      "name": "planning_plan_review",
+      "kind": "ai",
+      "screen": "screen-planning",
+      "implements_features": [
+        "planning_agent_example_app"
+      ],
+      "inputs": [
+        "Execute plan confirmation button"
+      ],
+      "output": "The proposed plan of discrete steps with kind and purpose, awaiting explicit go-ahead; trimmed-plan warning when the planner over-produced.",
+      "states": [
+        "idle",
+        "planner running",
+        "plan displayed",
+        "plan trimmed warning",
+        "quota refused"
+      ],
+      "reads": [
+        "Plan",
+        "PlanStep"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "planning_goal_form"
+      ],
+      "affordance": "require explicit confirmation before the action commits",
+      "invocation": {
+        "trigger": "Two-phase: (1) user submits city + interests in the example app UI, which invokes the planner call and returns the displayed plan; (2) user's explicit advance signal triggers sequential execution of the planned steps.",
+        "mode": "asynchronous"
+      },
+      "catalog_surface": "trip_day_planning_agent",
+      "catalog_surface_id": "trip_day_planning_agent",
+      "implements_feature_ids": [
+        "planning_agent_example_app"
+      ]
+    },
+    {
+      "name": "planning_execution_trace",
+      "kind": "ai",
+      "screen": "screen-planning",
+      "implements_features": [
+        "planning_agent_example_app"
+      ],
+      "inputs": [],
+      "output": "Per-step status and result appearing one by one, ending in the one-day itinerary with morning / afternoon / evening sections and any honest research gap noted.",
+      "states": [
+        "awaiting go-ahead",
+        "step running",
+        "step failed",
+        "itinerary complete",
+        "synthesis quota halt"
+      ],
+      "reads": [
+        "PlanStep",
+        "SearchResult",
+        "Itinerary"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "planning_plan_review"
+      ],
+      "affordance": "show multi-step progress/status while it runs; surface results as each step completes",
+      "invocation": {
+        "trigger": "Two-phase: (1) user submits city + interests in the example app UI, which invokes the planner call and returns the displayed plan; (2) user's explicit advance signal triggers sequential execution of the planned steps.",
+        "mode": "asynchronous"
+      },
+      "catalog_surface": "trip_day_planning_agent",
+      "catalog_surface_id": "trip_day_planning_agent",
+      "implements_feature_ids": [
+        "planning_agent_example_app"
+      ]
+    },
+    {
+      "name": "react_overview",
+      "kind": "non_ai",
+      "screen": "screen-react",
+      "implements_features": [
+        "ReAct_Loop_Example_App"
+      ],
+      "inputs": [
+        "cross-reference link to the Planning Agent example"
+      ],
+      "output": "Educational overview of the interleaved reason-act-observe loop, its explicit contrast with the plan-first Planning Agent example (with a link) and with a single decision about whether to search, the note that on familiar presets the model may state an early hop from memory, and the two-runs-per-visit quota rationale.",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "EducationalOverview"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "react_loop_example_app"
+      ]
+    },
+    {
+      "name": "react_question_form",
+      "kind": "ai",
+      "screen": "screen-react",
+      "implements_features": [
+        "react_loop_example_app"
+      ],
+      "inputs": [
+        "five curated preset question chips",
+        "free-form question text field",
+        "cycle budget select (3-6)",
+        "Start run button",
+        "runs-remaining indicator"
+      ],
+      "output": "Selected preset or typed question plus the cycle budget for the run, with remaining runs shown.",
+      "states": [
+        "idle",
+        "validation error",
+        "running",
+        "runs exhausted (inputs and start disabled, prior results retained)"
+      ],
+      "reads": [
+        "Question",
+        "RunAllowance"
+      ],
+      "writes": [
+        "Question",
+        "RunAllowance"
+      ],
+      "depends_on": [],
+      "affordance": "show multi-step progress/status while it runs",
+      "invocation": {
+        "trigger": "Visitor opens the ReAct Loop example, selects one of five curated multi-hop presets or types their own question, sets a cycle budget, and presses Start; frontend calls POST /api/react/run",
+        "mode": "streaming"
+      },
+      "catalog_surface": "react_search_loop",
+      "catalog_surface_id": "react_search_loop",
+      "implements_feature_ids": [
+        "react_loop_example_app"
+      ]
+    },
+    {
+      "name": "react_suitability_check",
+      "kind": "ai",
+      "screen": "screen-react",
+      "implements_features": [
+        "react_loop_example_app"
+      ],
+      "inputs": [
+        "Dismiss button",
+        "Run it anyway button"
+      ],
+      "output": "An advisory verdict on a free-form question: how many chained facts it needs, whether a hop needs live web information, a category, a confidence level, and one short explaining sentence \u2014 offered as a dismissible suggestion, bypassed for presets.",
+      "states": [
+        "hidden (preset selected)",
+        "checking",
+        "suitable",
+        "likely single-hop advisory",
+        "low-confidence advisory",
+        "dismissed"
+      ],
+      "reads": [
+        "Question",
+        "SuitabilityVerdict"
+      ],
+      "writes": [
+        "SuitabilityVerdict",
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "react_question_form"
+      ],
+      "affordance": "present as a suggestion the user can accept or dismiss",
+      "invocation": {
+        "trigger": "Visitor submits or blurs the free-form question field in the ReAct Loop example (debounced), or presses Start with a custom question and no cached verdict exists. Skipped entirely when one of the five curated presets is selected \u2014 presets carry a hardcoded verdict.",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "react_question_suitability_check",
+      "catalog_surface_id": "react_question_suitability_check",
+      "implements_feature_ids": [
+        "react_loop_example_app"
+      ]
+    },
+    {
+      "name": "react_trace_stream",
+      "kind": "ai",
+      "screen": "screen-react",
+      "implements_features": [
+        "react_loop_example_app"
+      ],
+      "inputs": [],
+      "output": "A progressively filled trace of cycles \u2014 each with the model's short thought, the action it chose (exact query issued, or its decision to answer), and the verbatim observation returned \u2014 with a live cycle counter, ending in exactly one of a final-answer card naming the observations it used or a budget-exhausted card naming what remained unresolved.",
+      "states": [
+        "idle",
+        "thinking",
+        "searching",
+        "observation returned",
+        "empty observation",
+        "answered",
+        "budget exhausted",
+        "answered-from-memory note",
+        "showcase allowance refused"
+      ],
+      "reads": [
+        "TraceCycle",
+        "Thought",
+        "Action",
+        "Observation",
+        "SearchResult",
+        "FinalAnswer"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "react_question_form"
+      ],
+      "affordance": "stream the output progressively (streaming/typing indicator); show multi-step progress/status while it runs",
+      "invocation": {
+        "trigger": "Visitor opens the ReAct Loop example, selects one of five curated multi-hop presets or types their own question, sets a cycle budget, and presses Start; frontend calls POST /api/react/run",
+        "mode": "streaming"
+      },
+      "catalog_surface": "react_search_loop",
+      "catalog_surface_id": "react_search_loop",
+      "implements_feature_ids": [
+        "react_loop_example_app"
+      ]
+    },
+    {
+      "name": "react_hop_annotations",
+      "kind": "ai",
+      "screen": "screen-react",
+      "implements_features": [
+        "react_loop_example_app"
+      ],
+      "inputs": [],
+      "output": "A post-run badge and panel labelling each hop as observed (naming the supplying cycle) or recalled from the model's own knowledge, each with a one-line reason; never presents a budget-exhausted run as answered.",
+      "states": [
+        "hidden (run not finished)",
+        "annotating badge",
+        "annotations ready",
+        "annotation unavailable"
+      ],
+      "reads": [
+        "HopAnnotation",
+        "TraceCycle",
+        "FinalAnswer"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "react_trace_stream"
+      ],
+      "affordance": "runs in the background \u2014 surfaced as a status badge then a panel rather than a blocking wait",
+      "invocation": {
+        "trigger": "Fired once by the ReAct run controller when a run reaches a terminal state (final answer card or budget-exhausted card). Issued as a separate call after the loop closes, never inside a cycle; it does not consume the run's cycle budget.",
+        "mode": "asynchronous"
+      },
+      "catalog_surface": "hop_source_annotation",
+      "catalog_surface_id": "hop_source_annotation",
+      "implements_feature_ids": [
+        "react_loop_example_app"
+      ]
+    },
+    {
+      "name": "orch_overview",
+      "kind": "non_ai",
+      "screen": "screen-orchestrated",
+      "implements_features": [
+        "Orchestrated_Subagents_Example_App"
+      ],
+      "inputs": [],
+      "output": "Educational overview of fan-out / fan-in, the 3-call and 3-run quota rationale, and the contrast with peer multi-agent collaboration.",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "EducationalOverview"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "orch_roster",
+      "kind": "non_ai",
+      "screen": "screen-orchestrated",
+      "implements_features": [
+        "Orchestrated_Subagents_Example_App"
+      ],
+      "inputs": [],
+      "output": "The fixed roster of four knowledge-only specialists, with the chosen pair flagged after the coordinator decides.",
+      "states": [
+        "neutral",
+        "pair chosen"
+      ],
+      "reads": [
+        "Specialist"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "orch_question_form",
+      "kind": "ai",
+      "screen": "screen-orchestrated",
+      "implements_features": [
+        "orchestrated_subagents_example_app"
+      ],
+      "inputs": [
+        "question text field",
+        "curated preset chips",
+        "Choose specialists button",
+        "runs-remaining indicator"
+      ],
+      "output": "Submitted question routed to the coordinator, with remaining runs shown.",
+      "states": [
+        "idle",
+        "validation error",
+        "moderating",
+        "runs exhausted (input disabled)"
+      ],
+      "reads": [
+        "Question",
+        "RunAllowance"
+      ],
+      "writes": [
+        "Question",
+        "RunAllowance"
+      ],
+      "depends_on": [
+        "orch_roster"
+      ],
+      "affordance": "show multi-step progress/status while it runs",
+      "invocation": {
+        "trigger": "Two-phase, visitor-driven. Phase 1: visitor submits a question (curated preset or free-form) from the example app page \u2192 coordinator produces the delegation decision. Phase 2: visitor clicks the explicit 'Dispatch specialists' confirmation \u2192 the two chosen specialists run in parallel and the coordinator emits the merged answer.",
+        "mode": "streaming"
+      },
+      "catalog_surface": "orchestrated_specialist_answer",
+      "catalog_surface_id": "orchestrated_specialist_answer",
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "orch_delegation_decision",
+      "kind": "ai",
+      "screen": "screen-orchestrated",
+      "implements_features": [
+        "orchestrated_subagents_example_app"
+      ],
+      "inputs": [
+        "Dispatch both specialists confirmation button"
+      ],
+      "output": "Moderation verdict, the chosen pair with rationale, and a distinct brief per specialist \u2014 shown before anything is dispatched.",
+      "states": [
+        "moderating",
+        "blocked at moderation",
+        "decision ready",
+        "invalid-decision retried warning",
+        "weak fit warning",
+        "allowance refused"
+      ],
+      "reads": [
+        "OrchestrationDecision",
+        "SubagentBrief",
+        "Specialist"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "orch_question_form"
+      ],
+      "affordance": "require explicit confirmation before the action commits",
+      "invocation": {
+        "trigger": "Two-phase, visitor-driven. Phase 1: visitor submits a question (curated preset or free-form) from the example app page \u2192 coordinator produces the delegation decision. Phase 2: visitor clicks the explicit 'Dispatch specialists' confirmation \u2192 the two chosen specialists run in parallel and the coordinator emits the merged answer.",
+        "mode": "streaming"
+      },
+      "catalog_surface": "orchestrated_specialist_answer",
+      "catalog_surface_id": "orchestrated_specialist_answer",
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "orch_parallel_execution",
+      "kind": "ai",
+      "screen": "screen-orchestrated",
+      "implements_features": [
+        "orchestrated_subagents_example_app"
+      ],
+      "inputs": [],
+      "output": "Two side-by-side specialist tracks with live per-track status, the brief each received, and its answer typed in progressively.",
+      "states": [
+        "dispatched",
+        "running",
+        "one complete one running",
+        "one failed",
+        "both complete"
+      ],
+      "reads": [
+        "SubagentAnswer",
+        "SubagentBrief"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "orch_delegation_decision"
+      ],
+      "affordance": "stream the output progressively (streaming/typing indicator)",
+      "invocation": {
+        "trigger": "Two-phase, visitor-driven. Phase 1: visitor submits a question (curated preset or free-form) from the example app page \u2192 coordinator produces the delegation decision. Phase 2: visitor clicks the explicit 'Dispatch specialists' confirmation \u2192 the two chosen specialists run in parallel and the coordinator emits the merged answer.",
+        "mode": "streaming"
+      },
+      "catalog_surface": "orchestrated_specialist_answer",
+      "catalog_surface_id": "orchestrated_specialist_answer",
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "orch_merged_answer",
+      "kind": "ai",
+      "screen": "screen-orchestrated",
+      "implements_features": [
+        "orchestrated_subagents_example_app"
+      ],
+      "inputs": [],
+      "output": "One merged answer reconciling both contributions, plus a comparison note listing agreements, complements and contradictions; when a specialist failed, the missing perspective is named rather than filled in.",
+      "states": [
+        "merging",
+        "merged from two",
+        "partial merge from one"
+      ],
+      "reads": [
+        "FinalResponse",
+        "SubagentAnswer"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "orch_parallel_execution"
+      ],
+      "affordance": "show fan-in progress while it runs",
+      "invocation": {
+        "trigger": "Two-phase, visitor-driven. Phase 1: visitor submits a question (curated preset or free-form) from the example app page \u2192 coordinator produces the delegation decision. Phase 2: visitor clicks the explicit 'Dispatch specialists' confirmation \u2192 the two chosen specialists run in parallel and the coordinator emits the merged answer.",
+        "mode": "streaming"
+      },
+      "catalog_surface": "orchestrated_specialist_answer",
+      "catalog_surface_id": "orchestrated_specialist_answer",
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "collab_overview",
+      "kind": "non_ai",
+      "screen": "screen-collab",
+      "implements_features": [
+        "Multi_Agent_Collaboration_Example_App"
+      ],
+      "inputs": [],
+      "output": "Educational overview of peer collaboration, the code-enforced opacity claim, the A2A data-shape-without-transport note, and the candid staged-boundary / over-engineering framing plus the 6-call, 2-run budget.",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "EducationalOverview"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "multi_agent_collaboration_example_app"
+      ]
+    },
+    {
+      "name": "collab_agent_cards",
+      "kind": "non_ai",
+      "screen": "screen-collab",
+      "implements_features": [
+        "Multi_Agent_Collaboration_Example_App"
+      ],
+      "inputs": [
+        "card expand/collapse"
+      ],
+      "output": "Inspectable identity cards for the buyer and both sellers (provider, skills, capabilities, tool access), with private constraints explicitly absent.",
+      "states": [
+        "collapsed",
+        "expanded"
+      ],
+      "reads": [
+        "AgentIdentity"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "multi_agent_collaboration_example_app"
+      ]
+    },
+    {
+      "name": "collab_scenario_form",
+      "kind": "ai",
+      "screen": "screen-collab",
+      "implements_features": [
+        "multi_agent_collaboration_example_app"
+      ],
+      "inputs": [
+        "scenario select",
+        "priority weighting toggle",
+        "Start negotiation button",
+        "runs-remaining indicator"
+      ],
+      "output": "Chosen scenario detail (public to all agents) and priority weighting, with remaining runs shown.",
+      "states": [
+        "idle",
+        "validation error",
+        "running",
+        "runs exhausted (controls disabled)",
+        "allowance refused up front"
+      ],
+      "reads": [
+        "Scenario",
+        "PriorityWeighting",
+        "RunAllowance"
+      ],
+      "writes": [
+        "RunAllowance"
+      ],
+      "depends_on": [
+        "collab_agent_cards"
+      ],
+      "affordance": "show multi-step progress/status while it runs",
+      "invocation": {
+        "trigger": "Visitor selects a preset scenario and a priority weighting on the Multi-Agent Collaboration example page and clicks 'Start negotiation'; a single POST /api/examples/multi-agent/runs call starts the run.",
+        "mode": "streaming"
+      },
+      "catalog_surface": "procurement_negotiation_run",
+      "catalog_surface_id": "procurement_negotiation_run",
+      "implements_feature_ids": [
+        "multi_agent_collaboration_example_app"
+      ]
+    },
+    {
+      "name": "collab_negotiation_tracks",
+      "kind": "ai",
+      "screen": "screen-collab",
+      "implements_features": [
+        "multi_agent_collaboration_example_app"
+      ],
+      "inputs": [],
+      "output": "A stage rail plus the composed RFQ, two concurrent seller tracks with bid tables and typed notes for opening and best-and-final bids, and the buyer's two targeted counter-offers.",
+      "states": [
+        "rfq composed",
+        "opening bids running",
+        "counter-offers drafted",
+        "best-and-final running",
+        "all bids in",
+        "seller track failed"
+      ],
+      "reads": [
+        "RequestForQuotation",
+        "Bid",
+        "CounterOffer"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance",
+        "MessageExchange"
+      ],
+      "depends_on": [
+        "collab_scenario_form"
+      ],
+      "affordance": "stream the output progressively (streaming/typing indicator); show multi-step progress/status while it runs",
+      "invocation": {
+        "trigger": "Visitor selects a preset scenario and a priority weighting on the Multi-Agent Collaboration example page and clicks 'Start negotiation'; a single POST /api/examples/multi-agent/runs call starts the run.",
+        "mode": "streaming"
+      },
+      "catalog_surface": "procurement_negotiation_run",
+      "catalog_surface_id": "procurement_negotiation_run",
+      "implements_feature_ids": [
+        "multi_agent_collaboration_example_app"
+      ]
+    },
+    {
+      "name": "collab_message_log",
+      "kind": "non_ai",
+      "screen": "screen-collab",
+      "implements_features": [
+        "Multi_Agent_Collaboration_Example_App"
+      ],
+      "inputs": [
+        "Show/hide message log toggle"
+      ],
+      "output": "Chronological sender\u2192recipient message table with work items, plus a live opacity check counting seller\u2192seller messages.",
+      "states": [
+        "hidden",
+        "empty",
+        "populated"
+      ],
+      "reads": [
+        "MessageExchange"
+      ],
+      "writes": [],
+      "depends_on": [
+        "collab_negotiation_tracks"
+      ],
+      "implements_feature_ids": [
+        "multi_agent_collaboration_example_app"
+      ]
+    },
+    {
+      "name": "collab_award",
+      "kind": "ai",
+      "screen": "screen-collab",
+      "implements_features": [
+        "multi_agent_collaboration_example_app"
+      ],
+      "inputs": [],
+      "output": "The award with a rationale weighing both best-and-final bids against the stated priorities across the non-comparable axes, plus a counterfactual priority-sensitivity note naming the flipping dimension.",
+      "states": [
+        "weighing",
+        "awarded",
+        "awarded on a single remaining bid"
+      ],
+      "reads": [
+        "Award",
+        "Bid",
+        "PriorityWeighting"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "MessageExchange"
+      ],
+      "depends_on": [
+        "collab_negotiation_tracks"
+      ],
+      "affordance": "show progress while the buyer weighs the bids",
+      "invocation": {
+        "trigger": "Visitor selects a preset scenario and a priority weighting on the Multi-Agent Collaboration example page and clicks 'Start negotiation'; a single POST /api/examples/multi-agent/runs call starts the run.",
+        "mode": "streaming"
+      },
+      "catalog_surface": "procurement_negotiation_run",
+      "catalog_surface_id": "procurement_negotiation_run",
+      "implements_feature_ids": [
+        "multi_agent_collaboration_example_app"
+      ]
+    },
+    {
+      "name": "collab_reveal",
+      "kind": "ai",
+      "screen": "screen-collab",
+      "implements_features": [
+        "multi_agent_collaboration_example_app"
+      ],
+      "inputs": [],
+      "output": "Per-party, per-axis reveal of every previously sealed private position with a headline and a short explanation of why each axis was held or conceded, cross-checkable against the message log.",
+      "states": [
+        "sealed",
+        "unsealed"
+      ],
+      "reads": [
+        "PrivatePosition",
+        "Award"
+      ],
+      "writes": [],
+      "depends_on": [
+        "collab_award"
+      ],
+      "affordance": "sealed placeholder until the round ends, then revealed",
+      "invocation": {
+        "trigger": "Visitor selects a preset scenario and a priority weighting on the Multi-Agent Collaboration example page and clicks 'Start negotiation'; a single POST /api/examples/multi-agent/runs call starts the run.",
+        "mode": "streaming"
+      },
+      "catalog_surface": "procurement_negotiation_run",
+      "catalog_surface_id": "procurement_negotiation_run",
+      "implements_feature_ids": [
+        "multi_agent_collaboration_example_app"
+      ]
+    },
+    {
+      "name": "embeddings_overview",
+      "kind": "non_ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "Embeddings_Example_App"
+      ],
+      "inputs": [],
+      "output": "Short educational overview of what an embedding is and what proximity on the plot means.",
+      "states": [
+        "static"
+      ],
+      "reads": [
+        "EducationalOverview"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "embeddings_plot",
+      "kind": "non_ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "Embeddings_Example_App"
+      ],
+      "inputs": [
+        "point hover for full text"
+      ],
+      "output": "Fixed 2D projection of 24 curated texts grouped by category with labels and a legend; custom points rendered distinctly without moving the presets.",
+      "states": [
+        "presets only",
+        "with custom points"
+      ],
+      "reads": [
+        "PlotPoint",
+        "TextExample"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "embeddings_custom_form",
+      "kind": "ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "embeddings_example_app"
+      ],
+      "inputs": [
+        "custom text field",
+        "suggestion chips",
+        "Add to plot button"
+      ],
+      "output": "Submitted custom text queued for embedding and placement.",
+      "states": [
+        "idle",
+        "submitting",
+        "disabled"
+      ],
+      "reads": [
+        "TextExample"
+      ],
+      "writes": [
+        "TextExample"
+      ],
+      "depends_on": [
+        "embeddings_plot"
+      ],
+      "affordance": "progress line while the shared embedding model runs",
+      "invocation": {
+        "trigger": "User submits custom text in the Embeddings Example App (preset examples are embedded and projected once at build/deploy time, not per-request)",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "custom_text_semantic_placement",
+      "catalog_surface_id": "custom_text_semantic_placement",
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "embeddings_placement_result",
+      "kind": "ai",
+      "screen": "screen-embeddings",
+      "implements_features": [
+        "embeddings_example_app"
+      ],
+      "inputs": [],
+      "output": "The custom point's placement verdict plus its three nearest preset neighbours with projected distances.",
+      "states": [
+        "idle",
+        "embedding",
+        "placed in cluster",
+        "no strong match (centred, warned)",
+        "representation quota exhausted"
+      ],
+      "reads": [
+        "PlotPoint",
+        "TextExample"
+      ],
+      "writes": [
+        "ServiceLogEntry",
+        "UsageAllowance"
+      ],
+      "depends_on": [
+        "embeddings_custom_form"
+      ],
+      "affordance": "progress line then result",
+      "invocation": {
+        "trigger": "User submits custom text in the Embeddings Example App (preset examples are embedded and projected once at build/deploy time, not per-request)",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "custom_text_semantic_placement",
+      "catalog_surface_id": "custom_text_semantic_placement",
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "console_request_tester",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [
+        "request type select",
+        "payload textarea",
+        "Send request button",
+        "Simulate limit reached button"
+      ],
+      "output": "The uniform result or explicit failure signal returned by the shared capability.",
+      "states": [
+        "idle",
+        "sending",
+        "response",
+        "limit-reached error"
+      ],
+      "reads": [
+        "UsageAllowance",
+        "StoredRecord"
+      ],
+      "writes": [
+        "StoredRecord",
+        "UsageAllowance",
+        "ServiceLogEntry"
+      ],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    },
+    {
+      "name": "console_usage_limits",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [],
+      "output": "Per-capability usage bars (generation, representation, storage, search) with used/cap counts and a warning state near the cap.",
+      "states": [
+        "normal",
+        "near cap warning",
+        "exhausted"
+      ],
+      "reads": [
+        "UsageAllowance"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    },
+    {
+      "name": "console_request_log",
+      "kind": "non_ai",
+      "screen": "screen-console",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [],
+      "output": "Recent cross-app request log with time, app, capability and summary.",
+      "states": [
+        "empty",
+        "populated"
+      ],
+      "reads": [
+        "ServiceLogEntry"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    }
+  ],
+  "shared_layout": {
+    "nav": "Sticky top bar with BWS4 brand mark, theme toggle, and a hamburger dropdown listing every screen (Home, RAG, Tool-Use, Single-Call, Chained-Calls, Planning-Agent, ReAct-Loop, Orchestrated-Subagents, Multi-Agent Collaboration, Embeddings, Framework Console)",
+    "shell": [
+      "topnav",
+      "brand mark with Spec4 sub-label",
+      "theme toggle button",
+      "hamburger menu dropdown",
+      "single-page screen container with fade-in transitions",
+      "screen head with pattern tags, title and intro paragraph",
+      "card/overview blocks",
+      "result panel",
+      "app footer"
+    ]
+  }
+}

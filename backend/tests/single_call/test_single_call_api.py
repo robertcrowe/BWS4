@@ -14,6 +14,8 @@ an `@pytest.mark.asyncio` here would silently skip.
 
 from __future__ import annotations
 
+from typing import Any
+
 import asyncio
 from unittest.mock import patch
 
@@ -34,7 +36,7 @@ from backend.app.single_call.service import (
 
 
 @pytest.fixture(autouse=True)
-def _gate_allows_everything(allow_all_moderation):
+def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
     The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
@@ -76,7 +78,7 @@ class FakeSession:
         self.commits += 1
 
 
-def _client(session: FakeSession) -> TestClient:
+def _client(session: Any) -> TestClient:
     """A TestClient whose DB dependency is the supplied fake session."""
     app.dependency_overrides[get_db_session] = lambda: session
     return TestClient(app)
@@ -88,7 +90,7 @@ def _generated(text: str = "A hash table maps keys to values.") -> GenerationRes
 
 def test_plain_mode_returns_the_models_text() -> None:
     """The phase's core assertion: a plain prompt yields 200 with non-empty text."""
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(service, "generate_text", return_value=_generated()) as generate:
             response = _client(session).post(
@@ -119,7 +121,7 @@ def test_plain_mode_reports_no_schema_check_rather_than_a_failed_one() -> None:
     was checked, and Phase 3's UI branches on exactly this to decide whether to
     render the validation-failure state.
     """
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(service, "generate_text", return_value=_generated()):
             body = (
@@ -136,7 +138,7 @@ def test_plain_mode_reports_no_schema_check_rather_than_a_failed_one() -> None:
 
 def test_the_served_model_is_reported_not_the_chains_first_entry() -> None:
     """A fallback answered, so the fallback must be what gets named."""
-    session = FakeSession()
+    session: Any = FakeSession()
     served = GenerationResult(text="answered by the deep fallback", model="openrouter/x:free")
     try:
         with patch.object(service, "generate_text", return_value=served):
@@ -153,7 +155,7 @@ def test_the_served_model_is_reported_not_the_chains_first_entry() -> None:
 
 def test_an_unknown_preset_id_is_rejected_rather_than_silently_ignored() -> None:
     """A stale chip must not quietly become an empty free-text prompt."""
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(service, "generate_text") as generate:
             response = _client(session).post(
@@ -170,7 +172,7 @@ def test_an_unknown_preset_id_is_rejected_rather_than_silently_ignored() -> None
 
 def test_submission_with_neither_prompt_nor_preset_is_rejected() -> None:
     """The capability's failure-mode mitigation, enforced server-side too."""
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(service, "generate_text") as generate:
             blank = _client(session).post(
@@ -187,7 +189,7 @@ def test_submission_with_neither_prompt_nor_preset_is_rejected() -> None:
 
 def test_an_overlong_prompt_is_rejected_before_the_model_is_called() -> None:
     """The bound exists to stop one paste spending the day's token budget."""
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(service, "generate_text") as generate:
             response = _client(session).post(
@@ -203,7 +205,7 @@ def test_an_overlong_prompt_is_rejected_before_the_model_is_called() -> None:
 
 def test_a_provider_failure_is_reported_as_unavailable_not_as_an_answer() -> None:
     """No fabricated fallback content -- the capability's escalation path."""
-    session = FakeSession()
+    session: Any = FakeSession()
     try:
         with patch.object(
             service, "generate_text", side_effect=GenerationServiceError("every model failed")
@@ -229,7 +231,7 @@ def test_a_spent_usage_cap_is_reported_differently_from_a_provider_outage() -> N
     raises before the provider is reached.
     """
     exhausted = UsageLimit(capability="generation", used=100, cap=100, window_start=None)
-    session = FakeSession([exhausted])
+    session: Any = FakeSession([exhausted])
 
     with patch.object(service, "generate_text") as generate:
         try:
@@ -251,7 +253,7 @@ def test_a_call_is_capped_and_logged_through_the_shared_services() -> None:
     around the cap.
     """
     fresh = UsageLimit(capability="generation", used=0, cap=100, window_start=None)
-    session = FakeSession([fresh])
+    session: Any = FakeSession([fresh])
 
     with patch.object(service, "generate_text", return_value=_generated()):
         result = asyncio.run(run_plain_call(session, prompt_text="What is a hash table?"))

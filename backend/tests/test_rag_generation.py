@@ -1,4 +1,6 @@
 # Built with Spec4 AI - https://spec4.ai
+
+from typing import Any
 from collections.abc import AsyncGenerator
 from unittest.mock import patch
 
@@ -18,7 +20,7 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _gate_allows_everything(allow_all_moderation):
+def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
     The gate is not this file's subject, and with no `OPENAI_API_KEY` in the

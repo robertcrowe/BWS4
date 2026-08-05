@@ -157,6 +157,7 @@ class TestTrimming:
         assert check.ok
         assert check.errors == []
         assert check.trimmed_note is not None
+        assert check.plan is not None
         assert len(check.plan.steps) == MAX_RESEARCH_STEPS + 1
 
     def test_trimming_keeps_the_synthesis_step_last(self) -> None:

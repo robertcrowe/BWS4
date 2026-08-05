@@ -37,6 +37,16 @@ dev = [
 pythonpath = ["."]
 testpaths = ["backend/tests"]
 
+# The live smoke run is developer-invoked and deselected by default. A suite
+# that calls live models passes on a laptop and fails in CI the day a slug is
+# rate-limited or withdrawn, and a gate that fails for reasons unrelated to the
+# change is one people learn to ignore. Everything that gates the build runs on
+# recorded fixtures; run the smoke pass deliberately with `-m live`.
+addopts = "-m 'not live'"
+markers = [
+  "live: reaches real model providers and real Exa. Opt in with `-m live`.",
+]
+
 # Ruff and mypy arrive in v5 against a backend that has never had either. Both
 # are therefore scoped deliberately: the gate applies to code this revision
 # writes, and the four already-shipped example apps are left alone. Widening it
@@ -56,9 +66,14 @@ target-version = "py312"
 extend-exclude = [
     "backend/app/main.py",
     # api/ is listed file by file for the same reason services/ is, below: v6
-    # adds `api/collab.py`, and a new file must be gated from the moment it
-    # exists rather than inheriting an exclusion written for its neighbours.
-    # Every pre-v6 router stays excluded; nothing here has been un-excluded.
+    # adds `api/collab.py` and v7 adds `api/react.py`, and a new file must be
+    # gated from the moment it exists rather than inheriting an exclusion
+    # written for its neighbours. Every pre-v6 router stays excluded; nothing
+    # here has been un-excluded. **`backend/app/react` and
+    # `backend/tests/react` are deliberately absent from this list**, which is
+    # what puts them inside the gate -- a new file inside an already-excluded
+    # package would be silently ungated, so v7's code lives outside every
+    # excluded path rather than being added and then re-enabled.
     "backend/app/api/__init__.py",
     "backend/app/api/chained_calls.py",
     "backend/app/api/embeddings.py",
@@ -69,7 +84,15 @@ extend-exclude = [
     "backend/app/api/single_call.py",
     "backend/app/api/tools.py",
     "backend/app/chained_calls",
-    "backend/app/core",
+    # core/ is listed file by file for the same reason services/ and api/ are:
+    # v7 Phase 2 adds the `span()` helper to `observability.py`, and code this
+    # revision writes must be gated rather than inheriting an exclusion written
+    # for its neighbours. `observability.py` already passed both gates as it
+    # stood, so this cost nothing to turn on. `config.py` and `logging.py` keep
+    # exactly the exclusion they had; nothing legacy has been un-excluded.
+    "backend/app/core/__init__.py",
+    "backend/app/core/config.py",
+    "backend/app/core/logging.py",
     "backend/app/db",
     "backend/app/embeddings",
     "backend/app/planning",
@@ -124,7 +147,13 @@ python_version = "3.12"
 # round so that a new package is covered by default and any exemption is
 # visible as an explicit entry rather than an omission.
 strict = true
-files = ["backend/app"]
+# The test tree joined the checked set in v7. It had never been type checked --
+# `mypy backend` reported 406 errors across 45 files -- and those were fixed
+# rather than configured away: the annotations are real, and the handful of
+# `type: ignore`s that remain each carry the reason they are there. Listing it
+# here is what stops it rotting back, since a gate nobody runs by default is a
+# gate that decays.
+files = ["backend/app", "backend/tests"]
 
 [[tool.mypy.overrides]]
 # The pre-v5 backend is comprehensively annotated but has never been type
@@ -168,8 +197,38 @@ module = [
     "backend.app.services.prompt_context",
     "backend.app.services.probe_capabilities",
     "backend.app.services.chain_health",
+    # v7 Phase 2 adds `span()` here. Its two neighbours in core/ keep their
+    # exemption; this one file leaves it because this revision wrote code in it.
+    "backend.app.core.observability",
 ]
 ignore_errors = false
+
+[[tool.mypy.overrides]]
+# v7's ReAct slice. `strict = true` and `files = ["backend/app"]` already cover
+# these -- they are named explicitly anyway, so the gate for this phase's files
+# is something a reader can *see* rather than something they have to infer from
+# the absence of an exclusion. The documented trap is exactly that: the
+# exclusion inventories are per-file, so `ignore_errors` inherited from a
+# neighbouring entry is invisible, and a green summary is not evidence a new
+# file was checked at all.
+#
+# `backend.app.react.*` is a wildcard rather than a file list on purpose: every
+# module this slice adds across the remaining phases is gated on creation
+# instead of when somebody remembers to extend an inventory. Phase 2's
+# `duplicate_guard` is covered by it, and so is whatever Phase 3 adds.
+module = [
+    "backend.app.api.react",
+    "backend.app.react.*",
+    # v7 Phase 2 declares the search capability's published result schema here
+    # (`SearchToolResult`), so this one file leaves the pre-v5 `services.*`
+    # blanket exemption for **mypy**. It stays in ruff's `extend-exclude`: the
+    # file carries a pre-existing long line, and reformatting a legacy path is
+    # the repo-wide reformat this gate is scoped to avoid. Type checking it
+    # costs nothing and catches the thing worth catching in an added model.
+    "backend.app.services.web_search",
+]
+ignore_errors = false
+
 
 [[tool.mypy.overrides]]
 # Third-party packages without shipped stubs.

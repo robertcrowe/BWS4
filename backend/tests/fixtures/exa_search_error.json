@@ -1,0 +1,8 @@
+{
+  "_recorded": "Exa refusing the request. Distinct from the empty case: the tool failed, so the run must not read it as evidence about the world.",
+  "_query": "any query at all",
+  "status_code": 503,
+  "body": {
+    "error": "service temporarily unavailable"
+  }
+}
