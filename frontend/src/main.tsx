@@ -4,6 +4,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { router } from './routes'
+import { installSeo } from './seo/installSeo'
 
 // Error tracking is optional: with no VITE_SENTRY_DSN set (local dev, forks),
 // Sentry is never initialized and the app runs exactly as before. When the DSN
@@ -20,6 +22,12 @@ if (sentryDsn) {
     environment: import.meta.env.MODE,
   })
 }
+
+// Per-route titles, descriptions and canonical links, plus the GA4 page view
+// each navigation should count as. Both no-op cleanly when switched off: the
+// meta half always runs, the analytics half only in a production build with a
+// measurement id — see `analytics.ts` for why dev traffic is kept out.
+installSeo(router)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

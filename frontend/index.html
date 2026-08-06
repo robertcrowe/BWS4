@@ -2,9 +2,72 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Built with Spec4 (BWS4)</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!--
+      The defaults every crawler sees before a line of JavaScript runs. This is
+      a single-page app, so one HTML file is served for all eleven routes —
+      these tags therefore describe the *site*, and `src/seo/` rewrites them
+      per route once React is running. Anything here that named one example app
+      would be wrong on the other ten.
+    -->
+    <title>Built with Spec4 — a working gallery of AI application patterns</title>
+    <meta
+      name="description"
+      content="Nine small example apps, each demonstrating one AI application pattern end to end and every one built with Spec4: embeddings, single-call, RAG, tool use, chained calls, a planning agent, orchestrated subagents, multi-agent collaboration, and the ReAct loop. Open any of them and watch the pattern actually run."
+    />
+    <link rel="canonical" href="https://bw.spec4.ai/" />
+    <meta name="author" content="Robert Crowe" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://bw.spec4.ai/" />
+    <meta property="og:site_name" content="Built with Spec4" />
+    <meta property="og:title" content="Built with Spec4 — a working gallery of AI application patterns" />
+    <meta
+      property="og:description"
+      content="Nine small example apps, each demonstrating one AI application pattern end to end and every one built with Spec4. Open any of them and watch the pattern actually run."
+    />
+    <meta property="og:image" content="https://bw.spec4.ai/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Built with Spec4 — a working gallery of AI application patterns" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Built with Spec4 — a working gallery of AI application patterns" />
+    <meta
+      name="twitter:description"
+      content="Nine small example apps, each demonstrating one AI application pattern end to end and every one built with Spec4. Open any of them and watch the pattern actually run."
+    />
+    <meta name="twitter:image" content="https://bw.spec4.ai/og-image.png" />
+
+    <!-- Matches the palette the pre-paint script below resolves to. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9fafb" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#030712" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Built with Spec4",
+        "alternateName": "BWS4",
+        "url": "https://bw.spec4.ai/",
+        "description": "A gallery of small example apps, each demonstrating one AI application pattern end to end — embeddings, single-call, RAG, tool use, chained calls, planning agents, orchestrated subagents, multi-agent collaboration, and the ReAct loop. Every example was built with Spec4.",
+        "inLanguage": "en",
+        "author": {
+          "@type": "Person",
+          "name": "Robert Crowe",
+          "url": "https://github.com/robertcrowe"
+        },
+        "isBasedOn": {
+          "@type": "SoftwareApplication",
+          "name": "Spec4 AI",
+          "url": "https://spec4.ai/",
+          "applicationCategory": "DeveloperApplication"
+        }
+      }
+    </script>
+
     <script>
       // Apply the stored theme before first paint so the page never flashes the
       // wrong palette. Mirrors useTheme's resolution order (stored, then system).

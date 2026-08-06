@@ -222,6 +222,7 @@ The four required variables fail fast at startup with a descriptive error if mis
 | --- | --- | --- |
 | `VITE_API_BASE_URL` | ✅ | The backend API's base URL (defaults to `http://localhost:8000` in dev). |
 | `VITE_SENTRY_DSN` | — | Optional error tracking, reporting to the same Sentry project as the backend. **Unset → Sentry is never initialized.** |
+| `VITE_GA_MEASUREMENT_ID` | — | Google Analytics 4 property, defaulting to the deployed site's own. **Analytics loads only in a production build** — `npm run dev` and the test suite send nothing, so developer traffic never reaches the property. Set it to an empty string to disable analytics entirely in a fork. |
 
 Vite inlines `VITE_*` variables at build time, so the frontend must be **rebuilt** after
 changing either of them.

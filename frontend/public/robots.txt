@@ -1,0 +1,9 @@
+# Built with Spec4 AI - https://spec4.ai
+User-agent: *
+Allow: /
+
+# An operational connectivity probe, not a page anyone should land on from a
+# search result. It hits the API and the database on every request.
+Disallow: /health
+
+Sitemap: https://bw.spec4.ai/sitemap.xml
