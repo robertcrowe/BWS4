@@ -1,0 +1,936 @@
+{
+  "version": 1,
+  "features": [
+    {
+      "id": "landing_page",
+      "name": "Landing_Page",
+      "purpose": "Serves as the entry point to BWS4, explaining what the gallery is, making clear that it and every example app inside it were built with Spec4, and presenting the catalogue of example apps a visitor can explore.",
+      "invocation": {
+        "trigger": "A visitor opens the gallery at its top level, or chooses the gallery/home entry from the navigation available on any page."
+      },
+      "inputs": [
+        {
+          "name": "gallery introduction",
+          "type": "text",
+          "description": "Short explanation of what BWS4 is, that it is an educational collection of agentic-AI example apps, and that all of it was produced with Spec4.",
+          "required": true
+        },
+        {
+          "name": "example app catalogue",
+          "type": "list of items",
+          "description": "The set of example apps currently available, each with a display name, the agentic pattern it illustrates, a one-line summary, and a way to reach it.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "An introductory page listing every available example app with a route into each, plus the same app list reachable from a compact navigation on every page.",
+        "format": "A browsable page of explanatory text and app entries",
+        "schema_notes": "Each app entry carries name, illustrated pattern, one-line summary, and destination; the list is drawn from one shared description of the gallery so listing and reality cannot diverge."
+      },
+      "success_criteria": [
+        "Every example app that exists in the gallery appears exactly once in the list, and no entry points at an app that does not exist",
+        "Selecting any entry takes the visitor to that example app",
+        "The statement that BWS4 and all its examples were built with Spec4 is visible without scrolling past the introduction",
+        "The same set of apps is reachable from the navigation on any page of the gallery, matching the landing list",
+        "A newly added example app appears in both the list and the navigation without changing any other page"
+      ],
+      "failure_modes": [
+        {
+          "mode": "The listed apps drift out of step with the apps that actually exist",
+          "likelihood": "medium",
+          "mitigation": "The list and the navigation are both derived from one shared description of the gallery's apps, so an app cannot be advertised without existing"
+        },
+        {
+          "mode": "A visitor cannot tell which pattern each example teaches and picks at random",
+          "likelihood": "medium",
+          "mitigation": "Each entry names the pattern it illustrates and gives a one-line summary before the visitor commits to opening it"
+        },
+        {
+          "mode": "The purpose of the gallery is mistaken for a product rather than a demonstration",
+          "likelihood": "low",
+          "mitigation": "The introduction states plainly that the examples are illustrative and educational rather than practically useful tools"
+        }
+      ],
+      "dependencies": [],
+      "entities": [
+        "Gallery",
+        "ExampleApp",
+        "Visitor"
+      ],
+      "references": []
+    },
+    {
+      "id": "rag_example_app",
+      "name": "RAG_Example_App",
+      "purpose": "Demonstrates the retrieval-augmented generation pattern: a visitor's question is answered by first finding relevant passages in a small, openly available body of source material and then having a model answer from those passages, so the visitor can see grounding in action.",
+      "invocation": {
+        "trigger": "A visitor submits a question, or selects one of the offered example questions, on the RAG example page."
+      },
+      "inputs": [
+        {
+          "name": "visitor question",
+          "type": "text",
+          "description": "A free-form question about the example body of source material.",
+          "required": false
+        },
+        {
+          "name": "preset question",
+          "type": "choice",
+          "description": "One of a curated set of questions chosen to show retrieval working well and, in at least one case, questions the material cannot answer.",
+          "required": false
+        },
+        {
+          "name": "example source material",
+          "type": "collection of documents",
+          "description": "A small, publicly available body of text prepared for semantic retrieval when the gallery begins serving.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "The passages retrieved for the question, shown before or beside an answer that is composed from those passages and states which ones it drew on.",
+        "format": "A set of retrieved passages plus a grounded answer",
+        "schema_notes": "Each retrieved passage shows its source document and its relevance ordering; the answer names the passages it used, and an answer with no supporting passages is reported as such."
+      },
+      "success_criteria": [
+        "The retrieved passages shown are visibly related to the question a visitor asked",
+        "The answer names which retrieved passages it relied on, so a visitor can check the grounding themselves",
+        "When the material contains nothing relevant, the app says the question cannot be answered from this material instead of inventing an answer",
+        "The retrieval step is visible as a distinct stage from the answering step, so the pattern is legible",
+        "A short overview explains the retrieval-augmented generation pattern and when it is appropriate",
+        "Each question consumes exactly one generation and counts toward the shared usage allowance"
+      ],
+      "failure_modes": [
+        {
+          "mode": "Retrieval surfaces passages unrelated to the question",
+          "likelihood": "medium",
+          "mitigation": "Retrieved passages are always displayed, so poor retrieval is visible as teaching content rather than hidden behind a confident answer"
+        },
+        {
+          "mode": "The model answers from its own knowledge instead of the retrieved passages",
+          "likelihood": "medium",
+          "mitigation": "The answer must name the passages it used, and passages are on screen so unsupported claims stand out"
+        },
+        {
+          "mode": "The example material is unavailable when a visitor asks",
+          "likelihood": "low",
+          "mitigation": "The page states plainly that the source material is temporarily unavailable rather than answering ungrounded"
+        },
+        {
+          "mode": "A visitor asks something entirely outside the material's subject",
+          "likelihood": "high",
+          "mitigation": "Out-of-scope questions produce an honest 'not covered by this material' outcome, which the overview frames as expected behaviour"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "landing_page"
+      ],
+      "entities": [
+        "Document",
+        "Passage",
+        "Question",
+        "Answer",
+        "Citation",
+        "Run"
+      ],
+      "references": []
+    },
+    {
+      "id": "shared_framework_services",
+      "name": "Shared_Framework_Services",
+      "purpose": "Provides the common capabilities every example app relies on \u2014 language-model generation, semantic embedding of text, external web search, and durable retention of the gallery's information \u2014 behind one consistent contract, together with the usage accounting that keeps the whole gallery inside its free usage allowance.",
+      "invocation": {
+        "trigger": "Any example app requests a generation, an embedding, a search, or stored information; readiness of the shared capabilities is established once when the gallery begins serving visitors and maintained continuously thereafter."
+      },
+      "inputs": [
+        {
+          "name": "generation request",
+          "type": "text with options",
+          "description": "The instruction to send to a language model, optionally with a requested response shape and a preferred model choice.",
+          "required": false
+        },
+        {
+          "name": "embedding request",
+          "type": "text or list of texts",
+          "description": "One or more pieces of text to be converted into a comparable semantic representation.",
+          "required": false
+        },
+        {
+          "name": "search request",
+          "type": "text",
+          "description": "A query to be answered from the open web.",
+          "required": false
+        },
+        {
+          "name": "retention request",
+          "type": "record or query",
+          "description": "Information the gallery needs to keep or retrieve, including semantic representations searched by similarity.",
+          "required": false
+        },
+        {
+          "name": "calling context",
+          "type": "identifier",
+          "description": "Which example app and which visitor's visit the request belongs to, so usage can be attributed and limited.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A uniform result for each capability \u2014 generated text or a structured result, semantic representations, ranked search results, or retained/retrieved information \u2014 accompanied by usage accounting.",
+        "format": "Structured results plus a usage record",
+        "schema_notes": "Every result reports whether it succeeded, and on failure names the reason in terms a calling app can show a visitor (allowance exhausted, provider unavailable, nothing found, request rejected)."
+      },
+      "success_criteria": [
+        "Any example app can obtain a generation, an embedding, a search, or retained information without knowing which provider served it",
+        "The embedding capability answers the very first visitor request as quickly as later ones, with no first-use warm-up wait",
+        "Shared hourly and daily usage allowances are enforced across all apps together, and remaining allowance is reportable to any app that needs to tell a visitor",
+        "When a model or search provider is unavailable or refuses, the calling app receives a clear, actionable outcome within a bounded wait rather than an indefinite hang",
+        "The same text embedded from two different example apps yields comparable results, so semantic comparisons are consistent gallery-wide",
+        "No example app introduces a capability of its own that duplicates one of these"
+      ],
+      "failure_modes": [
+        {
+          "mode": "The free model allowance is exhausted or requests are throttled",
+          "likelihood": "high",
+          "mitigation": "Shared hourly and daily caps plus per-app run limits keep usage inside the allowance, and exhaustion is reported as an explicit, explained outcome"
+        },
+        {
+          "mode": "A model provider is temporarily unavailable or unusually slow",
+          "likelihood": "medium",
+          "mitigation": "Requests fall back to an alternative model choice where possible and otherwise fail fast with a message the app can display"
+        },
+        {
+          "mode": "Retained information becomes unreachable",
+          "likelihood": "low",
+          "mitigation": "Apps that do not need retained information keep working, and those that do explain the temporary limitation instead of breaking"
+        },
+        {
+          "mode": "A model returns a result that does not match the requested shape",
+          "likelihood": "medium",
+          "mitigation": "The nonconformance is reported alongside the raw result so the calling app can show what actually came back"
+        }
+      ],
+      "dependencies": [],
+      "entities": [
+        "ModelRequest",
+        "ModelResponse",
+        "Embedding",
+        "SearchResult",
+        "UsageAllowance",
+        "ExampleApp"
+      ],
+      "references": []
+    },
+    {
+      "id": "tool_use_integration",
+      "name": "Tool_Use_Integration",
+      "purpose": "Gives example apps a single shared way to consult the open web, and makes the resulting queries and findings inspectable so that tool use is visible to the visitor rather than hidden inside an agent.",
+      "invocation": {
+        "trigger": "An example app, or an agent within one, decides that external information is needed and issues a search request."
+      },
+      "inputs": [
+        {
+          "name": "search query",
+          "type": "text",
+          "description": "The exact query the requesting agent or app wants answered from the web.",
+          "required": true
+        },
+        {
+          "name": "result count preference",
+          "type": "number",
+          "description": "How many findings the caller wants back, within a bounded maximum.",
+          "required": false
+        },
+        {
+          "name": "calling context",
+          "type": "identifier",
+          "description": "Which example app and visitor's run the search belongs to, for usage accounting.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A ranked set of web findings, each with a title, a reference to its source, and a short excerpt, together with the exact query that produced them.",
+        "format": "Ordered list of findings plus the issued query",
+        "schema_notes": "The issued query is always returned to the caller so it can be displayed in a trace; an unavailable search is reported distinctly from a search that legitimately found nothing."
+      },
+      "success_criteria": [
+        "The exact query issued is available to the calling app for display, never paraphrased",
+        "Findings are returned within a few seconds under normal conditions, or the wait ends with a stated timeout",
+        "A search that found nothing is clearly distinguishable from a search that could not be performed",
+        "Search usage counts toward the gallery's shared usage allowance",
+        "Two different example apps issuing the same query receive findings in the same shape and can display them identically"
+      ],
+      "failure_modes": [
+        {
+          "mode": "The search capability is unavailable or has hit its allowance",
+          "likelihood": "medium",
+          "mitigation": "The caller receives an explicit unavailable outcome it can show the visitor, and the run continues or ends candidly rather than fabricating findings"
+        },
+        {
+          "mode": "Findings are irrelevant to the question being pursued",
+          "likelihood": "medium",
+          "mitigation": "Excerpts are shown to the visitor alongside the query so the visitor can judge relevance, and the calling agent may reformulate"
+        },
+        {
+          "mode": "A search takes unusually long and stalls a run",
+          "likelihood": "low",
+          "mitigation": "Every search has a bounded wait after which the run reports a timed-out observation and proceeds"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "SearchQuery",
+        "SearchResult",
+        "Run",
+        "ExampleApp"
+      ],
+      "references": []
+    },
+    {
+      "id": "embeddings_example_app",
+      "name": "Embeddings_Example_App",
+      "purpose": "Makes text embeddings tangible by placing a curated set of words, phrases, and sentences on a two-dimensional map so semantic clustering is visible, and letting a visitor drop their own text into the same map to see where it lands.",
+      "invocation": {
+        "trigger": "A visitor opens the embeddings example page, and again whenever the visitor submits their own text to be added to the map."
+      },
+      "inputs": [
+        {
+          "name": "curated example texts",
+          "type": "list of items",
+          "description": "A pre-configured mix of short category terms (such as animals, emotions, technology terms) and full sentences, each labelled with its category.",
+          "required": true
+        },
+        {
+          "name": "visitor text",
+          "type": "text",
+          "description": "A short piece of the visitor's own wording to be embedded and added to the map.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A two-dimensional map of points, one per text, coloured by category, with any visitor-supplied text shown in a visually distinct colour, alongside a short explanation of the embedding pattern.",
+        "format": "A labelled two-dimensional visual map plus explanatory text",
+        "schema_notes": "Every point exposes the text it represents and its category; visitor points are marked as such; adding visitor text recomputes the placement of all points together so everything shares one map."
+      },
+      "success_criteria": [
+        "Texts from the same category appear visibly grouped, and unrelated categories appear apart",
+        "The map appears promptly on a visitor's first arrival, with no warm-up wait",
+        "Submitting text places a new, clearly distinguishable point on the same map as the curated examples",
+        "A visitor-supplied text semantically close to a curated category lands near that category's group",
+        "Entering the same text twice in a row places it in the same position",
+        "A short overview explains what embeddings are and what the two-dimensional view does and does not show",
+        "The app uses the gallery's existing shared embedding capability, with no separate embedding behaviour of its own"
+      ],
+      "failure_modes": [
+        {
+          "mode": "Point positions shift noticeably when a visitor's text is added, confusing the visitor",
+          "likelihood": "medium",
+          "mitigation": "The explanation states that the whole map is recomputed together and that relative grouping, not absolute position, carries the meaning"
+        },
+        {
+          "mode": "Labels overlap and the map becomes unreadable",
+          "likelihood": "medium",
+          "mitigation": "Point text is revealed on inspection rather than all labels being drawn at once, and the curated set is kept small enough to stay legible"
+        },
+        {
+          "mode": "A visitor submits very long or empty text",
+          "likelihood": "low",
+          "mitigation": "A stated length bound is applied and the visitor is told why, with empty submissions simply declined"
+        },
+        {
+          "mode": "A visitor concludes that closeness on the map is exact semantic distance",
+          "likelihood": "medium",
+          "mitigation": "The overview notes the map is a flattened approximation of a much richer representation"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "landing_page"
+      ],
+      "entities": [
+        "TextSample",
+        "Category",
+        "Embedding",
+        "Projection",
+        "Visitor"
+      ],
+      "references": []
+    },
+    {
+      "id": "single_call_example_app",
+      "name": "Single_Call_Example_App",
+      "purpose": "Illustrates the simplest agentic pattern \u2014 one request to a model producing one response, with no retrieval, no tools and no chaining \u2014 and contrasts a plain-text exchange with one that asks the model to return a result conforming to a requested shape.",
+      "invocation": {
+        "trigger": "A visitor submits a prompt, or selects a preset prompt, on the single-call example page."
+      },
+      "inputs": [
+        {
+          "name": "visitor prompt",
+          "type": "text",
+          "description": "A free-form instruction for the model.",
+          "required": false
+        },
+        {
+          "name": "preset prompt",
+          "type": "choice",
+          "description": "One of a small set of illustrative prompts such as summarise, classify, or extract.",
+          "required": false
+        },
+        {
+          "name": "mode selection",
+          "type": "choice",
+          "description": "Whether the exchange is plain (text in, text out) or structured (the request asks for a result matching a described shape).",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "In plain mode, the model's response as returned; in structured mode, both the full request including the requested result shape and the model's shape-conforming result, shown side by side.",
+        "format": "Displayed request and response",
+        "schema_notes": "The structured result is displayed exactly as returned; if it does not match the requested shape, that mismatch is flagged rather than concealed."
+      },
+      "success_criteria": [
+        "Exactly one model call is made per submission, and the page states that no retrieval, tools or chaining are involved",
+        "In structured mode the visitor can see both the requested result shape and the result that came back",
+        "Submitting the same prompt in each mode makes the difference between the two modes plainly visible",
+        "A response is shown, or a clear failure explained, within a few seconds of submission",
+        "A short overview explains the single-call pattern and when it is the right choice",
+        "Each submission counts toward the shared usage allowance"
+      ],
+      "failure_modes": [
+        {
+          "mode": "The model returns a result that does not match the requested shape",
+          "likelihood": "medium",
+          "mitigation": "The result is shown as returned with the mismatch explicitly flagged, which the overview frames as a real limitation of the pattern"
+        },
+        {
+          "mode": "The visitor submits nothing",
+          "likelihood": "low",
+          "mitigation": "A prompt, chosen or typed, is required before a run can start, and the requirement is stated"
+        },
+        {
+          "mode": "The response is very long and dominates the page",
+          "likelihood": "low",
+          "mitigation": "Long responses are presented in a contained, scrollable region so the request stays visible"
+        },
+        {
+          "mode": "The model service is unavailable or the allowance is spent",
+          "likelihood": "medium",
+          "mitigation": "A clear message explains which limit was reached and what the visitor can do next"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "landing_page"
+      ],
+      "entities": [
+        "Prompt",
+        "Response",
+        "ResponseShape",
+        "Run",
+        "ExampleApp"
+      ],
+      "references": []
+    },
+    {
+      "id": "chained_calls_example_app",
+      "name": "Chained_Calls_Example_App",
+      "purpose": "Shows how one model call's output can become the next call's input, by running a fixed two-stage chain in which both the intermediate and final results are visible so the hand-off between stages is unmistakable.",
+      "invocation": {
+        "trigger": "A visitor submits an initial request, or selects a preset, on the chained-calls example page."
+      },
+      "inputs": [
+        {
+          "name": "initial request",
+          "type": "text",
+          "description": "The visitor's starting input for the first stage of the chain.",
+          "required": false
+        },
+        {
+          "name": "preset request",
+          "type": "choice",
+          "description": "One of a small set of prepared starting inputs chosen to show the hand-off clearly.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "The first stage's intermediate result and the second stage's final result, each labelled with the role of the stage that produced it.",
+        "format": "Two labelled, ordered results",
+        "schema_notes": "Each stage's role is stated before the run begins; the second stage's input is shown to be exactly the first stage's output."
+      },
+      "success_criteria": [
+        "Exactly two model calls occur per run",
+        "Each stage's role is described to the visitor before the run starts, so expectations are set",
+        "The intermediate result is displayed, not only the final one, and the visitor can see it feeding the second stage",
+        "The page states that the two-call limit is a deliberate allowance-conserving choice for this demonstration and that the pattern itself supports any number of chained calls",
+        "A short overview explains the chained-calls pattern",
+        "Each run counts toward the shared usage allowance"
+      ],
+      "failure_modes": [
+        {
+          "mode": "The first stage produces output the second stage cannot use well",
+          "likelihood": "medium",
+          "mitigation": "The intermediate result stays on screen so the weak hand-off is visible, and the second stage responds candidly to what it received"
+        },
+        {
+          "mode": "The second call fails after the first succeeded",
+          "likelihood": "medium",
+          "mitigation": "The intermediate result remains displayed and the failure of the second stage is explained separately"
+        },
+        {
+          "mode": "A visitor reads the two-call limit as a property of the pattern",
+          "likelihood": "medium",
+          "mitigation": "The limit is labelled explicitly as an allowance-conserving choice for this demo"
+        },
+        {
+          "mode": "The usage allowance is spent mid-run",
+          "likelihood": "medium",
+          "mitigation": "The run stops with a clear statement of which limit was reached, keeping whatever has completed on screen"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "landing_page"
+      ],
+      "entities": [
+        "Run",
+        "Stage",
+        "ModelCall",
+        "Prompt",
+        "Response"
+      ],
+      "references": []
+    },
+    {
+      "id": "planning_agent_example_app",
+      "name": "Planning_Agent_Example_App",
+      "purpose": "Illustrates the plan-first agentic pattern: a planner decomposes the visitor's goal into a small number of discrete steps, the plan is shown before anything runs, and separate executor steps then carry the plan out \u2014 demonstrated as a one-day trip planner.",
+      "invocation": {
+        "trigger": "A visitor submits a city and their interests to produce a plan, and then advances the run to execute the planned steps."
+      },
+      "inputs": [
+        {
+          "name": "city",
+          "type": "text",
+          "description": "The place the visitor wants a day planned in.",
+          "required": true
+        },
+        {
+          "name": "interests",
+          "type": "text",
+          "description": "What the visitor cares about, used to shape both the plan and the final itinerary.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A displayed plan of discrete steps, followed on the visitor's advance by each step's result as it completes, ending with a composed one-day itinerary.",
+        "format": "A step list, then per-step results, then a final itinerary",
+        "schema_notes": "Each step states what it will do and, once run, what it found; research steps show the queries and findings they used; the final itinerary reflects the earlier steps' results and the stated interests."
+      },
+      "success_criteria": [
+        "The full plan is displayed before any step is executed",
+        "No step runs until the visitor explicitly advances the run",
+        "Each step's result appears as that step completes, rather than everything appearing at the end",
+        "The final itinerary visibly reflects both the research findings and the interests the visitor gave",
+        "A run stays within its small fixed call budget of roughly one planning call plus two or three executing calls",
+        "The number of runs allowed during a visit is enforced, with a clear explanation when it is reached",
+        "The overview explains the planning-agent pattern and explicitly contrasts it with the ReAct example, where the next step is decided only after observing the previous result"
+      ],
+      "failure_modes": [
+        {
+          "mode": "The planner produces more steps than the budget allows or steps that make no sense",
+          "likelihood": "medium",
+          "mitigation": "The plan is constrained to the allowed number of steps and any trimming is shown to the visitor as part of the demonstration"
+        },
+        {
+          "mode": "A research step returns nothing useful",
+          "likelihood": "medium",
+          "mitigation": "That step's result honestly records that nothing useful was found and the final composition proceeds with what is available, saying so"
+        },
+        {
+          "mode": "The visitor never advances after seeing the plan",
+          "likelihood": "low",
+          "mitigation": "No further usage is consumed until the visitor advances, and the plan remains readable on its own"
+        },
+        {
+          "mode": "The usage allowance is reached partway through execution",
+          "likelihood": "medium",
+          "mitigation": "Completed steps stay on screen and the run ends with a clear statement of which limit stopped it"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "tool_use_integration",
+        "landing_page"
+      ],
+      "entities": [
+        "Plan",
+        "PlanStep",
+        "Run",
+        "SearchResult",
+        "Itinerary",
+        "Visitor",
+        "RunAllowance"
+      ],
+      "references": []
+    },
+    {
+      "id": "orchestrated_subagents_example_app",
+      "name": "Orchestrated_Subagents_Example_App",
+      "purpose": "Demonstrates orchestration: one coordinating agent decides which two of four specialists should answer a question, writes each of them a brief, dispatches them to work independently at the same time, and merges their answers into a single response \u2014 with the fan-out and fan-in visible on screen.",
+      "invocation": {
+        "trigger": "A visitor submits a question, or picks a preset question, to obtain a delegation decision, and then advances the run to dispatch the chosen specialists."
+      },
+      "inputs": [
+        {
+          "name": "visitor question",
+          "type": "text",
+          "description": "A free-form question for the orchestrator to route.",
+          "required": false
+        },
+        {
+          "name": "preset question",
+          "type": "choice",
+          "description": "One of a curated set of questions chosen to exercise different specialist pairings.",
+          "required": false
+        },
+        {
+          "name": "specialist roster",
+          "type": "list of items",
+          "description": "The fixed set of four specialists \u2014 technical, financial, historical and practical \u2014 each knowledge-only with no access to external information.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A delegation decision naming the two chosen specialists with a short rationale and the brief written for each, then each specialist's progress and answer shown separately and updating independently, then one merged final answer.",
+        "format": "A delegation summary, two independently updating specialist results, and a merged answer",
+        "schema_notes": "Each specialist's result is headed by the brief it was given; the merged answer draws on both; a remaining-runs indicator accompanies the page throughout."
+      },
+      "success_criteria": [
+        "The orchestrator always chooses exactly two specialists from the roster of four, and shows why",
+        "The delegation decision and both briefs are visible before anything is dispatched",
+        "Nothing is dispatched until the visitor advances the run",
+        "The two specialists progress independently and neither waits on the other's result",
+        "The merged answer visibly draws on both specialists' contributions",
+        "Exactly three model calls occur per run",
+        "The remaining-runs indicator is accurate and decreases by one per run; when the allowance for the visit is used up the inputs and the advance control are unavailable, a clear explanation is shown, and earlier results remain on screen",
+        "Messaging distinguishes reaching this app's per-visit run limit from reaching the gallery's shared usage cap",
+        "The overview explains that subagents are independent workers able to run at the same time because neither depends on the other's output"
+      ],
+      "failure_modes": [
+        {
+          "mode": "The orchestrator names fewer or more than two specialists, or a specialist outside the roster",
+          "likelihood": "medium",
+          "mitigation": "The choice is constrained to exactly two members of the fixed roster before dispatch"
+        },
+        {
+          "mode": "One specialist fails while the other succeeds",
+          "likelihood": "medium",
+          "mitigation": "The failing specialist's area shows the failure plainly and the merge proceeds, stating that one contribution is missing"
+        },
+        {
+          "mode": "Both specialists fail",
+          "likelihood": "low",
+          "mitigation": "No merged answer is fabricated; the run ends with an honest failure and the delegation decision still visible"
+        },
+        {
+          "mode": "A visitor tries to reset their run allowance by reloading the page",
+          "likelihood": "medium",
+          "mitigation": "The allowance applies to the visitor's ongoing visit and is not reset by reloading"
+        },
+        {
+          "mode": "The chosen pairing seems arbitrary to the visitor",
+          "likelihood": "medium",
+          "mitigation": "The rationale for the pairing is always shown alongside the choice"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "landing_page"
+      ],
+      "entities": [
+        "Orchestrator",
+        "Specialist",
+        "Brief",
+        "Question",
+        "Answer",
+        "Run",
+        "RunAllowance"
+      ],
+      "references": []
+    },
+    {
+      "id": "multi_agent_collaboration_example_app",
+      "name": "Multi_Agent_Collaboration_Example_App",
+      "purpose": "Demonstrates peer agents negotiating across a trust boundary rather than working for one owner: a buyer agent acting for the visitor runs a competitive procurement round against two rival seller agents that hold private constraints and cannot see each other, making genuine judgement and message opacity visible.",
+      "invocation": {
+        "trigger": "A visitor selects a preset procurement scenario, sets their priority weighting, and starts the negotiation run."
+      },
+      "inputs": [
+        {
+          "name": "procurement scenario",
+          "type": "choice",
+          "description": "One of a curated set of scenarios, each tuned so the sellers' hidden constraints produce genuinely non-comparable offers.",
+          "required": true
+        },
+        {
+          "name": "priority weighting",
+          "type": "set of preferences",
+          "description": "The visitor's relative emphasis across price, delivery speed, full quantity and warranty terms.",
+          "required": true
+        },
+        {
+          "name": "seller private positions",
+          "type": "hidden constraints",
+          "description": "Each seller's cost floor, stock level, delivery capability and support capacity, visible to neither the buyer nor the rival seller during the run.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A single negotiation round shown as it unfolds: the request for quotation, two blind opening offers, targeted counter-offers, two best-and-final offers, and an award with a rationale \u2014 followed by a reveal of every party's previously hidden position and, on request, the same run rendered as a chronological sender-to-recipient message log.",
+        "format": "A staged negotiation view, a private-position reveal, and an optional message log view",
+        "schema_notes": "Each agent publishes an inspectable description of itself \u2014 name, provider, skills and capabilities; exchanges are structured tasks, messages and produced artefacts carried between agents; the message log shows recipients explicitly so the absence of any seller-to-seller message is checkable."
+      },
+      "success_criteria": [
+        "Exactly three agents take part and exactly six model calls occur per run; the request for quotation is composed without any model call",
+        "The two sellers produce their offers at the same time and neither seller's content can be influenced by the other's",
+        "The message log shows no message ever addressed from one seller to the other, and opacity holds regardless of what any agent is asked to do",
+        "Each agent's published self-description is inspectable by the visitor",
+        "The same scenario run with different priority weightings can produce a different winner",
+        "Hidden positions stay hidden until the run ends and are then revealed, explaining why each seller held firm or conceded",
+        "The award rationale refers explicitly to the priorities the visitor set",
+        "The overview explains the pattern, states that the interaction uses a standard peer-agent data model and interaction shape without its network transport and what a real deployment would add, and candidly notes that all three agents ship under one owner so the trust boundary is staged for teaching",
+        "The overview also notes that this scenario would be over-engineering in a real system"
+      ],
+      "failure_modes": [
+        {
+          "mode": "A seller appears to know something only its rival could know",
+          "likelihood": "low",
+          "mitigation": "Each agent only ever receives the messages addressed to it, enforced by what it is given rather than by asking it not to peek, and the message log lets a visitor verify this"
+        },
+        {
+          "mode": "The two offers turn out comparable on a single axis, making the buyer's judgement trivial",
+          "likelihood": "medium",
+          "mitigation": "Scenarios are pre-tuned so the hidden constraints force trade-offs across axes that cannot be reduced to one number"
+        },
+        {
+          "mode": "A seller returns an offer missing required terms",
+          "likelihood": "medium",
+          "mitigation": "The offer is shown as returned and the buyer proceeds with what it has, noting the gap in its rationale"
+        },
+        {
+          "mode": "One seller fails entirely mid-run",
+          "likelihood": "medium",
+          "mitigation": "The failure is visible in that seller's track and the award proceeds on the surviving offer, stated as such"
+        },
+        {
+          "mode": "A visitor believes the negotiation crosses a real organisational boundary",
+          "likelihood": "medium",
+          "mitigation": "The overview states plainly that the boundary is staged for teaching purposes"
+        },
+        {
+          "mode": "Run cost is high relative to the gallery's allowance",
+          "likelihood": "medium",
+          "mitigation": "The run is fixed at six model calls, and the gallery's standard hourly and daily caps backstop total spend"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "landing_page"
+      ],
+      "entities": [
+        "BuyerAgent",
+        "SellerAgent",
+        "AgentCard",
+        "RequestForQuotation",
+        "Bid",
+        "CounterOffer",
+        "Award",
+        "Message",
+        "PrivatePosition",
+        "Run"
+      ],
+      "references": []
+    },
+    {
+      "id": "react_loop_example_app",
+      "name": "ReAct_Loop_Example_App",
+      "purpose": "Demonstrates the interleaved reason\u2013act\u2013observe loop: on a multi-hop question the model thinks, chooses a search or decides it can answer, reads what came back, and then thinks again \u2014 with no plan shown up front and no approval mid-run, in deliberate contrast with the plan-first planning-agent example.",
+      "invocation": {
+        "trigger": "A visitor selects one of five curated multi-hop questions, or types their own, and starts the run."
+      },
+      "inputs": [
+        {
+          "name": "preset question",
+          "type": "choice",
+          "description": "One of five curated multi-hop questions, each requiring at least two chained facts where the later query cannot be written before the earlier result is read, and each containing at least one hop that defeats memorised knowledge by being time-variable or genuinely obscure. Presets store questions only and never their answers.",
+          "required": false
+        },
+        {
+          "name": "visitor question",
+          "type": "text",
+          "description": "The visitor's own question, which may or may not be answerable within the run budget.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A trace that fills in cycle by cycle \u2014 each short thought, then the chosen action (the exact search query issued, or the decision to answer), then the observation returned \u2014 accompanied by a live cycle counter, and ending either in a final answer stating which observations it drew on or in a budget-exhausted card presenting the partial trace and naming what remained unresolved.",
+        "format": "A progressively filled trace, a cycle counter, a remaining-runs indicator, and one of two terminal cards",
+        "schema_notes": "Every action records the exact query text; every observation records the excerpts returned; the terminal card is explicitly one of two kinds and never presents an unresolved run as a confident answer."
+      },
+      "success_criteria": [
+        "Trace entries appear in order as they happen rather than all at once at the end of the run",
+        "The exact query the model issued is shown, unaltered",
+        "On a multi-hop preset, a later query visibly incorporates a fact taken from an earlier observation",
+        "No plan is shown before the run and the visitor is asked to approve nothing mid-run",
+        "The cycle counter advances visibly and never exceeds the cap of roughly eight searches plus one final answering call",
+        "Because presets hold only questions, time-variable answers come from fresh observation on every run",
+        "When the budget runs out first, the run ends candidly with the partial trace and the unresolved part named",
+        "Two runs per visit are enforced, a remaining-runs indicator is visible, and once exhausted the question input and start control are unavailable with a clear message while earlier results stay on screen",
+        "Messaging distinguishes this app's per-visit run limit from the gallery's shared usage cap",
+        "The overview explains the loop, contrasts it with the single search decision in the tool-use example and the approved fixed plan in the planning-agent example, and notes that on some presets the model may supply an early hop from its own knowledge and spend its searches where observation is genuinely needed"
+      ],
+      "failure_modes": [
+        {
+          "mode": "The model repeats near-identical queries and makes no progress",
+          "likelihood": "medium",
+          "mitigation": "The cycle cap bounds the run, the visible counter lets the visitor anticipate the ending, and the budget-exhausted outcome is presented as a legitimate result"
+        },
+        {
+          "mode": "A search returns nothing useful for a hop",
+          "likelihood": "medium",
+          "mitigation": "The empty observation is shown as it is, and the model may reformulate on the next cycle within budget"
+        },
+        {
+          "mode": "The model answers a hop from memory when it should have observed",
+          "likelihood": "medium",
+          "mitigation": "Three of the five presets guarantee at least one demonstration where every hop comes from an observation, and the overview explains that choosing where observation is required is itself correct behaviour"
+        },
+        {
+          "mode": "A free-form question is unanswerable or unbounded",
+          "likelihood": "medium",
+          "mitigation": "The run ends with the budget-exhausted card naming what was never resolved, rather than an invented answer"
+        },
+        {
+          "mode": "A preset stops making sense as the world changes",
+          "likelihood": "low",
+          "mitigation": "Presets hold questions and not answers, so an occasional sanity check that each question still parses is the only upkeep needed"
+        },
+        {
+          "mode": "This is the most expensive example per run and drains the shared allowance",
+          "likelihood": "medium",
+          "mitigation": "The tightest per-visit run limit in the gallery applies here, on top of the shared caps"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "tool_use_integration",
+        "landing_page"
+      ],
+      "entities": [
+        "Question",
+        "Cycle",
+        "Thought",
+        "Action",
+        "Observation",
+        "SearchQuery",
+        "Trace",
+        "Run",
+        "RunAllowance"
+      ],
+      "references": []
+    },
+    {
+      "id": "self_hosted_deployment",
+      "name": "Self_Hosted_Deployment",
+      "purpose": "Ensures the whole gallery is continuously available at one public address over a connection visitors' browsers trust, responds immediately on a visitor's very first interaction with no warm-up wait, and has enough dedicated capacity that shared capabilities stay ready \u2014 while behaving exactly as it did before, with no change to any example app, limit or message.",
+      "invocation": {
+        "trigger": "Continuous: the gallery is reachable at all times, and readiness of its shared capabilities is established once when it begins serving and maintained for as long as it is serving."
+      },
+      "inputs": [
+        {
+          "name": "gallery content",
+          "type": "collection",
+          "description": "The landing page and every example app to be made publicly reachable.",
+          "required": true
+        },
+        {
+          "name": "readiness prerequisites",
+          "type": "prepared state",
+          "description": "The work that must be completed before visitors are served, including preparing the shared embedding capability and fitting the two-dimensional projection used by the embeddings example.",
+          "required": true
+        },
+        {
+          "name": "public address",
+          "type": "text",
+          "description": "The single canonical address at which visitors reach the gallery.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A continuously reachable gallery at one canonical public address, warm and immediately responsive, with the same behaviour, limits and messaging as before.",
+        "format": "A publicly reachable, continuously available gallery",
+        "schema_notes": "Externally held information used by the gallery remains external; the readiness state prepared before serving is retained for as long as the gallery keeps serving."
+      },
+      "success_criteria": [
+        "A visitor's first interaction after a long quiet period responds as quickly as any later one \u2014 there is no first-visit warm-up penalty",
+        "Pages that depend on the shared embedding capability render immediately on first request",
+        "The gallery is reached over a connection the visitor's browser trusts, with no security warnings",
+        "Every example app behaves exactly as it did before the move \u2014 same flows, same usage limits, same visitor-facing wording",
+        "Visitors reach the gallery at one canonical address; earlier addresses no longer serve it",
+        "Available capacity is sufficient that shared capabilities remain ready while several visitors are active at once"
+      ],
+      "failure_modes": [
+        {
+          "mode": "Capacity is exhausted when many visitors are active simultaneously",
+          "likelihood": "medium",
+          "mitigation": "Shared usage caps and bounded concurrent work keep response times within target, and any queuing is explained rather than silently slow"
+        },
+        {
+          "mode": "A shared capability loses its readiness while the gallery is serving",
+          "likelihood": "low",
+          "mitigation": "Readiness is restored transparently and, in the interim, affected pages show a clear temporary message instead of appearing broken"
+        },
+        {
+          "mode": "The connection stops being trusted by visitors' browsers",
+          "likelihood": "low",
+          "mitigation": "Trust is maintained continuously so visitors never encounter a warning"
+        },
+        {
+          "mode": "Externally held information becomes unreachable",
+          "likelihood": "low",
+          "mitigation": "Unaffected example apps keep working and the affected ones explain the temporary limitation"
+        },
+        {
+          "mode": "The move changes visitor-facing behaviour by accident",
+          "likelihood": "medium",
+          "mitigation": "The move is treated as behaviour-preserving: every app flow, limit and message is verified unchanged against how the gallery behaved before"
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "landing_page"
+      ],
+      "entities": [
+        "Gallery",
+        "ExampleApp",
+        "ServiceReadiness",
+        "Visitor"
+      ],
+      "references": []
+    }
+  ],
+  "nfr_goals": [
+    "Immediately responsive on a visitor's first interaction, with no warm-up wait at any time of day",
+    "Pages appear within about a second, and model-driven results appear progressively as they are produced rather than after a long silence",
+    "Continuously reachable at one canonical public address over a connection visitors' browsers trust",
+    "Every example app shares one consistent layout and navigation, so what differs between them is the pattern rather than the interface",
+    "Total model and search usage stays within a free usage allowance, enforced by shared hourly and daily caps plus clearly explained per-app run limits",
+    "Every failure \u2014 allowance exhausted, provider unavailable, nothing found, unresolved run \u2014 is surfaced candidly and actionably, never as a hang and never dressed up as a successful result",
+    "Each example app teaches its pattern well enough that a visitor understands it without reading any source",
+    "A new example app can be added and appear in the gallery listing and navigation without altering any existing app",
+    "Comfortable for tens of visitors exploring at the same time",
+    "Content and example apps can be updated while the gallery keeps running, without interrupting visitors",
+    "Usable in current browsers on desktop, and legible on smaller screens"
+  ]
+}
