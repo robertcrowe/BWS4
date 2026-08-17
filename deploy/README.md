@@ -273,7 +273,7 @@ the restart, leaving the previous build serving untouched):
 1. Preflight: refuses to run as root; refuses a dirty working tree.
 2. `git pull --ff-only` in `/srv/bws4`.
 3. `uv sync --locked` (as the operator, `UV_PYTHON_INSTALL_DIR=/opt/uv/python`).
-4. `npm ci && VITE_API_BASE_URL= npm run build` in `frontend/`, with
+4. `npm ci && VITE_API_BASE_URL='' npm run build` in `frontend/`, with
    `VITE_SENTRY_DSN` sourced from `/etc/bws4/build.env` if present.
    `VITE_API_BASE_URL` **must be the empty string, never unset**: the api
    modules read `import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'`,

@@ -162,7 +162,7 @@ npm ci
 # `npm run build` is `tsc -b && vite build`: a type error aborts the deploy
 # here, before Vite touches dist/ and before the service is restarted, so a
 # broken push leaves the previous build serving untouched.
-VITE_API_BASE_URL= npm run build
+VITE_API_BASE_URL='' npm run build
 cd "$REPO"
 
 # ---------------------------------------------------------------------------
