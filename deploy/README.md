@@ -274,3 +274,102 @@ serving cold. Always grep the current boot's journal for
 - The `sentry_enabled` record reports `environment: development` because
   `SENTRY_ENVIRONMENT` is deliberately not in the env contract (see the
   Phase 1 cross-check note above).
+
+# Phase 3: Caddy edge — HTTPS, single-origin SPA + API on bwtemp.spec4.ai
+
+Phase 3 makes the VPS publicly reachable: Caddy 2 terminates TLS at the
+edge for the **temporary validation hostname** `bwtemp.spec4.ai`, serves
+the Vite bundle from **`/srv/bws4/frontend/dist`** with SPA history
+fallback, and reverse-proxies `/api/*` (plus `/health`) to the loopback
+Uvicorn. Render continues serving real visitors at `bw.spec4.ai`
+throughout; nothing about that origin, its DNS, or `render.yaml` changes
+until the Phase 6 cutover.
+
+## The edge arrangement
+
+- Config template in the repo: **`deploy/Caddyfile`** (installed copy:
+  `/etc/caddy/Caddyfile`). The file itself carries the WHY-comments; the
+  short version:
+  - **One canonical origin serves both the SPA and the API.** The browser
+    talks to a single host, so cross-origin traffic disappears from
+    production entirely; the `CORS_ORIGIN` contract is retained unchanged
+    and is exercised chiefly in local development.
+  - **`flush_interval -1` is set explicitly** on the `/api/*` proxy
+    rather than trusting Caddy's content-type detection. Caddy only
+    auto-disables buffering on a Content-Type of exactly
+    `text/event-stream`; a charset suffix or unflushed headers defeat
+    that detection, which would silently convert all four SSE apps'
+    progressive streams into one end-of-run burst — a failure that
+    passes a naive smoke test.
+  - **No `encode` on the API block.** Compression over an SSE stream is a
+    second, independent way to reintroduce buffering. `encode zstd gzip`
+    applies only to the static block.
+  - **`/health` is proxied to the backend** (it lives outside `/api`), so
+    the edge can be probed independently of the SPA. Deliberate
+    consequence: the SPA's own client-side `/health` screen is shadowed
+    on this origin and no longer reachable as a deep link.
+  - **Port 80 must stay open** — Caddy uses it for the ACME HTTP
+    challenge and the automatic HTTP→HTTPS redirect. It never serves the
+    app over plain HTTP.
+- Caddy comes from the **official Caddy apt repository**
+  (`dl.cloudsmith.io/public/caddy/stable`), not Debian's own archive —
+  the packaged systemd unit is kept, no custom build, no plugins.
+- Host firewall: **ufw** allows `22/tcp`, `80/tcp`, `443/tcp` (and
+  `443/udp` for HTTP/3). Port 8000 has no allow rule and Uvicorn is bound
+  to loopback anyway — two independent reasons it is unreachable from
+  outside.
+
+## DNS (temporary validation records)
+
+`bwtemp.spec4.ai` → A `159.195.17.63`, AAAA
+`2a0a:4cc0:101:148b:986f:c0ff:fe7e:fbcb` (the VPS's global IPv6). The
+records must resolve publicly **before** Caddy loads the site block,
+because Let's Encrypt validates over the public hostname; reloading
+earlier burns failed ACME attempts against LE rate limits. `bw.spec4.ai`
+keeps resolving to Render untouched. Both temporary records are retired
+at Phase 6.
+
+## The frontend bundle must be built for same-origin — do not lose this
+
+Every `frontend/src/api/*.ts` module bakes the API base in at **build**
+time: `import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'`. On
+Render the static site was built with `VITE_API_BASE_URL` set to the
+API's Render URL (cross-origin). On the VPS the bundle must be built with
+the variable set to the **empty string**:
+
+```sh
+cd /srv/bws4/frontend && npm ci && VITE_API_BASE_URL= npm run build
+```
+
+The empty string survives `??` (it is not nullish), so every request
+becomes a relative same-origin path (`/api/...`, `/health`) — which also
+makes the bundle indifferent to the Phase 6 hostname change. A bundle
+built with the variable **unset** silently falls back to
+`http://localhost:8000` and every API call fails in visitors' browsers;
+the Phase 1 bundle had exactly this defect and was rebuilt in Phase 3.
+(`VITE_SENTRY_DSN` remains unset at build time until Phase 4's deploy
+script makes the build environment explicit and permanent.)
+
+## CORS_ORIGIN during validation
+
+`CORS_ORIGIN=https://bwtemp.spec4.ai` in `/etc/bws4/bws4.env` for the
+duration of validation (Phases 3–5) — the value already recorded in the
+Phase 1 env contract above. This is a **temporary value**: Phase 6
+changes it to `https://bw.spec4.ai` and restarts `bws4-api`. The variable
+itself is unchanged from the retired platform's contract — only its
+value moves. Any change to the file requires
+`sudo systemctl restart bws4-api` to take effect.
+
+## Install / operate
+
+```sh
+sudo cp /srv/bws4/deploy/Caddyfile /etc/caddy/Caddyfile
+caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+sudo systemctl reload caddy            # reload, not restart: keeps serving
+systemctl is-enabled caddy             # must be "enabled" (starts at boot)
+journalctl -u caddy --no-pager | grep -Ei 'certificate|acme|obtain'
+```
+
+A certificate-issuance failure is nearly always (in this order) DNS not
+yet resolving to the VPS, or port 80 blocked — diagnose from Caddy's own
+journal rather than retrying blindly.

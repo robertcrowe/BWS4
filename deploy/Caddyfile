@@ -1,0 +1,70 @@
+# Built with Spec4 AI - https://spec4.ai
+#
+# BWS4 public edge — Caddy 2 site configuration.
+#
+# Phase 3 note: this file defines ONLY the TEMPORARY validation hostname
+# bwtemp.spec4.ai. The canonical bw.spec4.ai block is added — and this one
+# removed — at the Phase 6 cutover, while Render continues to serve real
+# visitors at bw.spec4.ai until then. No wildcard/catch-all host matcher:
+# the edge answers only for hostnames we have deliberately placed here.
+#
+# TLS is automatic HTTPS, not manual configuration: because the site
+# address is a real hostname, Caddy issues the Let's Encrypt certificate
+# itself, installs the HTTP→HTTPS redirect on port 80, and renews the
+# certificate in-process. Renewal is delegated to the server rather than
+# to an external timer (certbot cron etc.) so an expired certificate is
+# structurally hard rather than merely automated — there is no separate
+# moving part whose silent failure lets the cert lapse.
+#
+# No HTTP Basic auth, IP allowlist or other access control appears here
+# by design: the application has no accounts or authentication, and abuse
+# is bounded by the server-side usage caps, not by identity.
+bwtemp.spec4.ai {
+	# Ordered handle blocks: the API and the static SPA must never
+	# contend for a path. handle blocks are mutually exclusive and
+	# matched in the order written, so /api/* is claimed first and the
+	# final unmatched block owns everything else.
+	handle /api/* {
+		# NO `encode` directive in this block, deliberately: gzip/zstd
+		# over a server-sent-event stream is a second, independent way
+		# to reintroduce buffering even with flush_interval set.
+		# Compression is applied only to the static block below.
+		reverse_proxy 127.0.0.1:8000 {
+			# Explicit, not redundant: Caddy auto-disables response
+			# buffering only when it detects a Content-Type of exactly
+			# text/event-stream, and there are documented cases where a
+			# charset suffix or unflushed headers defeat that detection.
+			# That failure is silent — the four SSE apps (ReAct loop's
+			# cycle-by-cycle trace, the planning agent's per-step
+			# results, the orchestrated subagents' per-specialist
+			# events, the collaboration app's per-stage events) would
+			# still "work" while delivering every event in one burst at
+			# stream close, destroying the progressive behaviour those
+			# demonstrations exist to show. A negative flush_interval
+			# selects low-latency mode: flush after every write.
+			flush_interval -1
+		}
+	}
+
+	# The backend liveness endpoint lives OUTSIDE the /api prefix
+	# (GET /health, backend/app/api/health.py), so it needs its own
+	# proxy block to stay reachable through the edge independently of
+	# the SPA. Known, deliberate consequence: the SPA also defines a
+	# client-side /health route (HealthScreen); on this single origin
+	# the backend wins and that screen is no longer reachable as a deep
+	# link. The screen's own fetch of /health still resolves correctly.
+	handle /health {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	# Everything else is the SPA bundle. try_files falls back to
+	# /index.html for any path that is not a real file, which is what
+	# makes deep links to example-app routes (/react, /collab, …)
+	# resolve to the bundle so React Router can route them client-side.
+	handle {
+		root * /srv/bws4/frontend/dist
+		encode zstd gzip
+		try_files {path} /index.html
+		file_server
+	}
+}
