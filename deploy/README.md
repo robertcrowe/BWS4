@@ -373,3 +373,51 @@ journalctl -u caddy --no-pager | grep -Ei 'certificate|acme|obtain'
 A certificate-issuance failure is nearly always (in this order) DNS not
 yet resolving to the VPS, or port 80 blocked — diagnose from Caddy's own
 journal rather than retrying blindly.
+
+## Phase 3 verification results (2026-08-17)
+
+All checked from outside the VPS. Caddy v2.11.4 (official repo,
+upgraded over Debian's preinstalled 2.6.2), active and enabled.
+
+- DNS: `bwtemp.spec4.ai` → `159.195.17.63` + the AAAA; `bw.spec4.ai`
+  still → Render (216.24.57.x), untouched. One operational gotcha worth
+  keeping: the records were first created **Cloudflare-proxied**, which
+  resolves to Cloudflare edge IPs — that both breaks ACME and would
+  insert a second buffering proxy in front of the SSE apps. The records
+  must be **DNS only** (grey cloud).
+- Certificate: Let's Encrypt issued on the first attempt (TLS-ALPN-01),
+  `certificate obtained successfully` in the journal; expiry Nov 15 2026,
+  renewal in-process. `https://` → HTTP/2 200 (h3 advertised);
+  `http://` → 308 to https.
+- SPA fallback: deep links `/react` and `/chained-calls` return 200
+  serving `index.html`; so does an unknown route (by design —
+  `try_files` cannot 404 an app path, the SPA owns unknown paths).
+- API through the edge: `/api/collab/identity-cards` returns the three
+  agent cards in camelCase; `/health` returns
+  `{"status":"ok","db":"connected"}` (backend JSON — the SPA's
+  client-side /health screen is shadowed, as documented above).
+- **Progressive streaming — the check this phase exists for**: a collab
+  run (`curl -N`, each line timestamped on arrival) delivered
+  quotation_request at 1.6 s, opening bids at 2.9 s, counter_offers at
+  5.6 s, best-and-final bids at 7.1 s, award at 109.5 s and the
+  reveal/sensitivity panels at 171.7 s — events spread across the run,
+  not one burst at close. sse-starlette keep-alive pings arrived at
+  exact 15 s intervals throughout the ~100 s idle stretch before the
+  award, and the edge never dropped the idle connection.
+- ReAct runs (two, respecting the per-session limit) streamed
+  run_started → cycle_thought → cycle_action → cycle_observation →
+  cycle_counter progressively (counter advancing 0→1) with
+  hop_annotations arriving ~14 s after the terminal card. Both runs
+  ended candidly with `budget_exhausted`/`malformed_step` after cycle 1
+  — the free model returned an unreadable step twice, the loop's
+  documented honest-stop behaviour. This is upstream model flakiness
+  (the known free-slug rot risk), not edge buffering: the envelopes
+  that were produced all crossed the proxy incrementally. Flagged for
+  Phase 5's behaviour-preservation comparison against Render.
+- Port 8000: external connect times out (ufw has no rule for it AND
+  Uvicorn binds loopback); 80/443 answer.
+- Guardrails: `render.yaml` present, `bw.spec4.ai` DNS unchanged, no
+  modifications under `backend/app/` or to `frontend/src/routes.tsx`.
+- Browser check (visitor's view): landing page over the trusted cert,
+  roster + header navigation, same-origin `/api/` calls with no CORS
+  preflight failures.
