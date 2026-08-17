@@ -1,423 +1,451 @@
 [Built with Spec4 AI](https://spec4.ai)
 
-# BWS4 self-hosted deployment — Phase 1: VPS baseline bring-up
+# BWS4 self-hosted deployment — provisioning runbook and operations guide
 
-This file records what was actually done to prove the existing BWS4 tree
-builds, migrates and boots warm on the project's own VPS, and — more
-importantly — **why** each decision was made. Later phases add process
-supervision (systemd), the public HTTPS edge (Caddy), and the release
-script; none of that exists yet at this phase, deliberately. Render
-continues to serve real visitors at `bw.spec4.ai` untouched until the
-Phase 6 cutover.
+This is the complete, final-form runbook for the BWS4 gallery's
+self-hosted deployment: how to reproduce the entire installation from a
+bare VPS (§ First-time provisioning), how to ship a release
+(§ Releases — `deploy/deploy.sh`), and how to operate and roll back
+(§ Operations). Measured results from the phased bring-up are preserved
+at the end (§ Verification records) — they are the baselines the deploy
+script's readiness gate budgets against.
 
-## Host
+**Topology.** One netcup VPS runs everything except the database: Caddy
+terminates TLS at the edge, serves the Vite bundle from
+`/srv/bws4/frontend/dist` with SPA history fallback, and reverse-proxies
+`/api/*` (plus `/health`) to a single loopback Uvicorn process on
+`127.0.0.1:8000` supervised by systemd. Postgres is external (Neon,
+pgvector) and unchanged by the migration. Origin during validation:
+`https://bwtemp.spec4.ai`; the canonical `https://bw.spec4.ai` cuts over
+in Phase 6, until which Render keeps serving it and `render.yaml` stays
+in the tree untouched.
+
+**The one architectural rule.** The API runs with `--workers 1` — a
+requirement, not a default. The loaded embedding model, the fitted PCA
+projection, the in-process peer message bus and the ReAct duplicate-guard
+cache are all per-process state; a second worker would not crash, it
+would *silently* split that state. Never add workers, never front it with
+a multi-worker Gunicorn.
+
+---
+
+# First-time provisioning (bare VPS → serving gallery)
+
+Reproduces the phased bring-up (Phases 1–3, all completed 2026-08-17) as
+one linear procedure. Every step assumes an unprivileged operator user
+(`rcrowe` throughout) with sudo; nothing below runs services as root.
+
+## 1. Host prerequisites
 
 - **netcup VPS 500 G12** — 2 vCore, 4 GB DDR5 ECC RAM, 128 GB NVMe,
-  Debian GNU/Linux 13 (trixie), KVM.
-- Measured before bring-up: **3442 MB available** of 3919 MB total, 113 GB
-  free disk. The 4 GB of guaranteed RAM is the reason this plan was chosen:
-  it removes the memory pressure the previous host's free tier imposed on
-  torch and sentence-transformers, and makes keeping the model resident in
-  one always-on process comfortable.
+  Debian GNU/Linux 13 (trixie), KVM. The 4 GB of guaranteed RAM is why
+  this host class was chosen: torch + sentence-transformers stay resident
+  in one always-on process comfortably (measured ≈3.4 GB available before
+  bring-up).
+- Exactly what the stack requires and nothing more — no Docker, no
+  Kubernetes, no process manager beyond the distro's systemd:
+  - `git` (2.47.x) and **Node 20** (`nodejs`/`npm` from Debian 13
+    packages — v20.20.2 at bring-up)
+  - **uv** (0.12.x): `curl -LsSf https://astral.sh/uv/install.sh | sh`,
+    then copy the binary to **`/usr/local/bin/uv`** (root-owned). It must
+    live outside `/home` — see the hardening note in step 5.
+  - **Python 3.12 via uv-managed interpreters**, installed to
+    **`/opt/uv/python`** (outside `/home`, world-readable):
 
-## Host prerequisites installed
+    ```sh
+    sudo mkdir -p /opt/uv/python
+    UV_PYTHON_INSTALL_DIR=/opt/uv/python uv python install 3.12
+    ```
 
-Exactly what the stack requires and nothing more — no Docker, no
-Kubernetes tooling, no process manager other than the systemd the distro
-already ships (used from Phase 2):
+    Debian 13's system Python is 3.13; the project pins 3.12
+    (`.python-version`), so the venv is always built from the uv-managed
+    interpreter. (uv creates a `cpython-3.12-…` minor-version alias dir
+    beside the full-version dir — globs over `/opt/uv/python` match twice;
+    harmless.)
+- Add the operator to the journal-reading group (the deploy script's
+  readiness gate greps the unit's journal):
 
-- `git` 2.47.3 and Node **v20.20.2** (Debian 13 packages, already present)
-- **uv 0.12.5** (installed per the uv docs: `curl -LsSf
-  https://astral.sh/uv/install.sh | sh`)
-- **Python 3.12 via uv-managed interpreters** — Debian 13's system Python
-  is 3.13, and the project pins 3.12 (`.python-version`), so the venv is
-  built from uv's managed 3.12 rather than the distro interpreter.
+  ```sh
+  sudo usermod -aG systemd-journal rcrowe   # re-login to take effect
+  ```
 
-## Repository checkout
+## 2. Repository checkout
 
-- Path: **`/srv/bws4`**, branch `dev`, owned by the unprivileged operator
-  user (`rcrowe`) so git/uv/npm never run as root. This path is the stable
-  anchor every later phase's artifact references (Phase 3's Caddy serves
-  `/srv/bws4/frontend/dist/`; Phase 4's deploy script operates here).
-- The repo is public, cloned over HTTPS — no deploy key to manage.
+```sh
+sudo mkdir -p /srv/bws4 && sudo chown rcrowe:rcrowe /srv/bws4
+git clone https://github.com/<org>/BWS4.git /srv/bws4   # public repo, HTTPS, no deploy key
+cd /srv/bws4 && git checkout dev
+```
 
-## The environment contract — `/etc/bws4/bws4.env`
+- **`/srv/bws4`**, owned by the operator so git/uv/npm never run as root.
+  This path is the stable anchor everything references: Caddy serves
+  `/srv/bws4/frontend/dist`, the unit's `WorkingDirectory` is
+  `/srv/bws4`, and `deploy/deploy.sh` operates here.
 
-- **Location**: `/etc/bws4/bws4.env`, directory mode `0700`, file owned
-  `root:root` mode `0600`.
+## 3. The environment contract — `/etc/bws4/bws4.env`
+
+```sh
+sudo mkdir -p /etc/bws4 && sudo chmod 0700 /etc/bws4
+sudo touch /etc/bws4/bws4.env && sudo chmod 0600 /etc/bws4/bws4.env
+sudo "$EDITOR" /etc/bws4/bws4.env   # fill in VALUES; names below
+```
+
 - **Why outside the repository tree**: the tree at `/srv/bws4` must never
   be *able* to contain a secret, even by accident — a stray `git add`, a
-  tarball of the checkout, an editor backup file. Keeping the file under
-  `/etc/bws4` root-only means leaking it requires root, not a git mistake.
-  `git status --porcelain` in `/srv/bws4` stays clean by construction.
-- **Variable NAMES** (values live only in the file, carried over verbatim
-  from the retired Render dashboard — no additions, removals or renames):
-  - `DATABASE_URL` — Neon Postgres (pgvector-enabled), external, unchanged
+  tarball of the checkout, an editor backup. Leaking `/etc/bws4/bws4.env`
+  requires root, not a git mistake. `git status` in `/srv/bws4` stays
+  clean by construction, and `deploy.sh` enforces that before every pull.
+- **Variable NAMES** (values live only in the file — carried over
+  verbatim from the retired Render dashboard, no additions or renames):
+  - `DATABASE_URL` — Neon Postgres (pgvector-enabled), external
   - `OPENROUTER_API_KEY`
   - `GROQ_API_KEY`
   - `EXA_API_KEY`
   - `OPENAI_API_KEY`
-  - `CORS_ORIGIN` — `https://bwtemp.spec4.ai` during Phases 1–5 (the
-    temporary validation origin); repointed to `https://bw.spec4.ai` at
-    the Phase 6 cutover
+  - `CORS_ORIGIN` — `https://bwtemp.spec4.ai` during validation
+    (Phases 1–5); repointed to `https://bw.spec4.ai` at the Phase 6
+    cutover. Any change to this file needs
+    `sudo systemctl restart bws4-api` to take effect.
   - `SENTRY_DSN` — optional; `configure_sentry` no-ops cleanly when unset
-- **Cross-check resolution** (required by the phase because `.env.example`
-  had not been sampled by the code review): `.env.example` also names
-  `PORT`, `EMBEDDING_MODEL_NAME`, `SENTRY_ENVIRONMENT` and
-  `VITE_API_BASE_URL`, and `backend/app/core/config.py` additionally reads
-  `MODERATION_HASH_SALT`. Resolved in favour of what the code actually
-  reads: `PORT` (defaults to 8000), `EMBEDDING_MODEL_NAME` (defaults to
-  all-MiniLM-L6-v2), `SENTRY_ENVIRONMENT` (defaults to "development") and
-  `MODERATION_HASH_SALT` (a process-stable salt is generated at boot; only
-  cross-restart hash comparability is lost) are deliberately omitted so the
-  contract stays verbatim; `VITE_API_BASE_URL` is a frontend build-time
-  variable with no place in a runtime file.
-- **`VITE_SENTRY_DSN` caveat — do not lose this**: it is consumed by Vite
-  at **build** time (`npm run build`), not by the running server. Putting
-  it only in a systemd `EnvironmentFile` does NOT reach the frontend
-  build, and frontend error tracking silently stops. Phase 1 confirmed the
-  bundle built without it contains no Sentry initialisation; Phase 4's
-  deploy script is where the build-time environment is made explicit and
-  permanent.
+- Deliberately omitted (cross-checked against `.env.example` and
+  `backend/app/core/config.py`, resolved in favour of what the code
+  reads): `PORT` (defaults 8000), `EMBEDDING_MODEL_NAME` (defaults
+  all-MiniLM-L6-v2), `SENTRY_ENVIRONMENT` (defaults "development"),
+  `MODERATION_HASH_SALT` (process-stable salt generated at boot; only
+  cross-restart hash comparability is lost). `VITE_API_BASE_URL` and
+  `VITE_SENTRY_DSN` are **build-time** variables with no place in a
+  runtime file — next section.
 
-## Manual boot (Phase 1 only — systemd supervision arrives in Phase 2)
+## 4. The build-time environment — `/etc/bws4/build.env` (optional)
+
+Vite substitutes `VITE_`-prefixed variables at **build** time
+(`npm run build`), so the systemd `EnvironmentFile` — which reaches only
+the running service — does NOT reach the frontend build. After migrating
+from a platform that showed every variable in one flat dashboard list,
+this is the single easiest thing to get wrong, and the failure is
+silent: the bundle simply ships without frontend error tracking.
+
+`deploy/deploy.sh` therefore sources **`/etc/bws4/build.env`** (if
+present) into the build step's environment:
 
 ```sh
-cd /srv/bws4 \
-  && set -a && . /etc/bws4/bws4.env && set +a \
-  && uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --workers 1
+sudo sh -c 'printf "VITE_SENTRY_DSN=<your-frontend-dsn>\n" > /etc/bws4/build.env && chmod 0644 /etc/bws4/build.env'
 ```
 
-- **Why `--workers 1` is mandatory, not incidental**: the loaded embedding
-  model, the fitted PCA projection, the in-process peer message bus (the
-  multi-agent collaboration app) and the ReAct duplicate-guard cache are
-  all **per-process** state. A second worker would not crash — it would
-  *silently* split that state: half the requests would see an unfitted
-  projection, peer messages would vanish between processes, and duplicate
-  queries would stop being detected. Never add workers; never suggest
-  Gunicorn with multiple workers.
-- **Why `--host 127.0.0.1`**: Uvicorn must never be directly reachable
-  from the network. The public edge (TLS, one canonical origin) is Caddy's
-  job from Phase 3; until then the service is loopback-only. Verified from
-  an external machine: `curl http://<vps-ip>:8000/health` times out.
-- Note for operators running this by hand: the secrets file is root-only,
-  so the manual boot needs root to *source* the file; the server process
-  itself should still run as the unprivileged user (Phase 1 used
-  `runuser -p -u rcrowe` after sourcing).
-- Alembic must run **from `backend/`** (`uv run alembic -c alembic.ini
-  ...`): the ini's `script_location = app/db/migrations` is resolved
-  relative to the working directory, not the ini file.
+- Mode 0644 is fine (unlike `bws4.env`): the DSN ships inside the public
+  JS bundle anyway; it is configuration, not a secret.
+- The file is optional. `@sentry/react` is never initialised when
+  `VITE_SENTRY_DSN` is unset, so its absence is a legitimate
+  configuration (frontend error tracking off) — the deploy announces the
+  choice but never fails on it.
+- `VITE_API_BASE_URL` is NOT in this file: the deploy script hardcodes it
+  to the **empty string**, which is a structural requirement, not
+  configuration (§ Releases explains why).
 
-## Measured warm-up (the cost this migration moves off the visitor)
-
-First boot on the VPS, from the structlog timestamps in the boot log:
-
-- Process launch → `embeddings_projection_built`: **≈ 25.5 s**
-  (launch 06:45:18 local → built 06:45:43.5), of which the projection
-  build itself (`ensure_built`: model load + PCA fit over 24 presets,
-  384-dim) reported `elapsed_ms: 11527`.
-- On Render's free tier this cost was paid on a visitor's first request
-  after every spin-down; on the always-on VPS it is paid once per deploy
-  restart. Phase 2's supervision keeps it that way across crashes and
-  reboots.
-- The warm-up is deliberately **best-effort**: `ensure_built()` is wrapped
-  in a bare `except Exception` in the lifespan so a broken projection logs
-  (`embeddings_projection_warmup_failed`) and the gallery still boots.
-  Because of that, a successful boot is NOT proof of warmth — always grep
-  the boot log for `embeddings_projection_built` and for the absence of
-  the failure record, exactly as this phase's verification did.
-- `/health` is a liveness signal only, deliberately independent of the
-  warm-up; it returns 200 (and reports DB connectivity) even if the
-  projection failed to build.
-
-## Phase 1 verification results (2026-08-17)
-
-- Alembic `current` == `heads` at `0013_react_runs` against Neon (no-op
-  upgrade, as expected — the store is external and survived the host move
-  untouched).
-- Boot log contains `embeddings_projection_built`; no swallowed warm-up
-  exception.
-- `curl -sS -i http://127.0.0.1:8000/health` → 200
-  `{"status":"ok","db":"connected"}`.
-- `ss -ltnp` shows the only listener on `127.0.0.1:8000`; external curl to
-  port 8000 fails to connect.
-- Starting with `DATABASE_URL` unset exits immediately with the
-  pydantic-settings error naming the missing configuration.
-- Quality gates on the VPS matched the local baseline — pytest 1815
-  passed / 21 skipped / 5 deselected, ruff clean, mypy clean (202 files).
-  Caveats recorded, not fixed: the suite deselects `live` tests, and both
-  ruff and mypy exempt pre-v5/pre-v6 paths file by file, so green ≠
-  everything checked.
-- `npm ci && npm run build` emits the hashed bundle with per-example lazy
-  chunks into **`/srv/bws4/frontend/dist/`** (the exact directory Phase
-  3's Caddy will serve). One repair was required and committed: the
-  checked-in `package-lock.json` was out of sync with `package.json`
-  (missing optional `@emnapi/*` entries), which made `npm ci` fail on any
-  host; fixed by a metadata-only lockfile regeneration with no dependency
-  version changes.
-
-# Phase 2: Process supervision — systemd, warm-at-boot, restart survival
-
-Phase 2 (2026-08-17) put the single-worker Uvicorn under systemd so the
-always-on warm guarantee is structural rather than incidental: the service
-restarts itself after a crash, starts itself after a reboot, and rebuilds
-the embedding model + PCA projection warm at every boot. The service is
-still loopback-only; Caddy/TLS (Phase 3) and the cutover (Phase 6) come
-later, and Render continues to serve visitors at `bw.spec4.ai` untouched.
-
-## The unit
-
-- Template in the repo: **`deploy/bws4-api.service`** (no secret values —
-  it names only the `EnvironmentFile` path). Installed copy:
-  `/etc/systemd/system/bws4-api.service`. The unit file itself carries the
-  WHY-comments for every decision (one worker, loopback bind, root-owned
-  EnvironmentFile outside the tree, best-effort warm-up, hardening).
-- `EnvironmentFile=/etc/bws4/bws4.env` is read **by systemd as root**
-  before privileges drop to the service user, which is why the file stays
-  `root:root 0600` and was NOT loosened for Phase 2. Verified: the service
-  user cannot read it directly.
-- Runs as dedicated system user **`bws4`** (nologin, home
-  `/var/lib/bws4`). It can read `/srv/bws4` but cannot write `.git`
-  (verified both ways).
-- Hardening: `NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=strict` with
-  `ReadWritePaths=/var/lib/bws4` as the *only* writable path (logs go to
-  journald, the DB is external, the venv is read-only to the service),
-  `ProtectHome=true`, `ProtectKernelTunables=true`.
-
-## Why the toolchain moved out of /home
-
-`ProtectHome=true` makes `/home` invisible to the process — and after
-Phase 1 the entire runtime lived there (uv at `~rcrowe/.local/bin/uv`, the
-venv's interpreter symlinked into `~rcrowe/.local/share/uv/python/…`).
-Under the hardened unit the service literally could not exec its own
-interpreter. Relocation, done once at Phase 2 install:
-
-- uv binary → **`/usr/local/bin/uv`** (root-owned copy).
-- CPython 3.12 → **`/opt/uv/python/`** via
-  `UV_PYTHON_INSTALL_DIR=/opt/uv/python uv python install 3.12`
-  (world-readable; note uv also creates a `cpython-3.12-…` minor-version
-  alias dir next to the full-version dir).
-- `/srv/bws4/.venv` rebuilt (as `rcrowe`, who still owns it) against that
-  interpreter with `UV_PYTHON_INSTALL_DIR=/opt/uv/python uv sync --locked`,
-  so its symlinks resolve outside `/home`. Releases (Phase 4) sync the
-  venv as `rcrowe`; the unit runs `uv run --no-sync` and never writes it.
-- The HuggingFace model cache was pre-seeded into
-  `/var/lib/bws4/.cache/huggingface` (and chowned to `bws4`) so the first
-  supervised boot did not re-download the model. `HOME=/var/lib/bws4`
-  comes from the `bws4` passwd entry; `UV_CACHE_DIR=/var/lib/bws4/uv-cache`
-  keeps uv inside the writable path.
-
-## Process shape
-
-`ExecStart` invokes `uv run --no-sync uvicorn …`. uv stays resident as a
-thin launcher, so `systemctl status` shows **two** PIDs: the `uv` MainPID
-and exactly **one** `python`/`uvicorn` child — the single application
-process the architecture mandates. There is no process manager and there
-are no workers. `systemctl stop` SIGTERMs the whole cgroup (default
-control-group kill mode), so Uvicorn still shuts down gracefully.
-
-## Operator commands
+## 5. Python venv and the ProtectHome relocation
 
 ```sh
-sudo systemctl start|stop|restart bws4-api   # lifecycle
-systemctl status bws4-api                    # state + process tree
-journalctl -u bws4-api -f                    # follow logs (structlog JSON)
-journalctl -u bws4-api -b --no-pager \
-  | grep -Ei 'projection|embedding'          # warmth check (see below)
+cd /srv/bws4
+UV_PYTHON_INSTALL_DIR=/opt/uv/python uv sync --locked   # as the operator
 ```
 
-**Never infer warmth from `is-active`.** The lifespan warm-up is
-deliberately best-effort (bare `except Exception` in
-`backend/app/main.py`), so a unit blocked from its model cache — the
-classic `ProtectSystem=strict` failure — still reports active while
-serving cold. Always grep the current boot's journal for
-`embeddings_projection_built` and for the *absence* of
-`embeddings_projection_warmup_failed`.
+The service unit runs with `ProtectHome=true`, which makes `/home`
+invisible to the process. That is why the toolchain lives outside
+`/home`: uv at `/usr/local/bin/uv`, CPython under `/opt/uv/python`, and
+the venv's symlinks resolving there. The venv itself (`/srv/bws4/.venv`)
+is owned by the operator; releases sync it as the operator, and the unit
+starts with `uv run --no-sync` so the service never writes it.
 
-## Measured warm-up under supervision (2026-08-17)
-
-- Fresh `systemctl start`, quiet host: unit start →
-  `embeddings_projection_built` **≈ 29.6 s** (projection build itself
-  `elapsed_ms` 6238).
-- **Post-reboot: ≈ 32.3 s** — the figure a deploy or unplanned reboot
-  costs, slightly above the ~25.5 s Phase 1 manual-boot baseline because
-  the warm-up competes with everything else starting on 2 vCores. Phase
-  4's deploy-restart posture budgets against this number.
-- Warmth verified by evidence, not unit state: journal shows the success
-  record with no swallowed exception, and two consecutive timed calls to
-  `/api/embeddings/presets` returned in 5.7 ms then 1.6 ms after reboot —
-  no first-request model-load penalty.
-
-## Crash and reboot survival (both individually verified)
-
-- `kill -9` of the MainPID: systemd restarted the service automatically
-  (`Restart=always`, `RestartSec=3` so a flapping unit produces readable,
-  spaced journal entries), the new process completed its warm-up, and
-  `/health` returned 200.
-- `sudo reboot`: with no manual intervention the unit came back
-  active+enabled (`WantedBy=multi-user.target` — the property
-  `Restart=always` alone does not give you), warmed up, answered
-  `/health` 200, and the listener was still bound to `127.0.0.1:8000`
-  only (external connect to port 8000 times out).
-
-## Honest caveats
-
-- `network-online.target` is declared (`After=`/`Wants=`) because the
-  warm-up reaches Neon and the HF Hub, but on this host neither
-  `systemd-networkd-wait-online` nor `NetworkManager-wait-online` is
-  enabled, so the target is reached trivially. In practice networking is
-  up well before `multi-user.target`; if a future boot races it, the
-  warm-up's failure record in the journal is the detector.
-- Startup makes one unauthenticated HF Hub request (model verification)
-  even with the seeded cache; harmless, but it is why the unit wants real
-  network at boot.
-- The `sentry_enabled` record reports `environment: development` because
-  `SENTRY_ENVIRONMENT` is deliberately not in the env contract (see the
-  Phase 1 cross-check note above).
-
-# Phase 3: Caddy edge — HTTPS, single-origin SPA + API on bwtemp.spec4.ai
-
-Phase 3 makes the VPS publicly reachable: Caddy 2 terminates TLS at the
-edge for the **temporary validation hostname** `bwtemp.spec4.ai`, serves
-the Vite bundle from **`/srv/bws4/frontend/dist`** with SPA history
-fallback, and reverse-proxies `/api/*` (plus `/health`) to the loopback
-Uvicorn. Render continues serving real visitors at `bw.spec4.ai`
-throughout; nothing about that origin, its DNS, or `render.yaml` changes
-until the Phase 6 cutover.
-
-## The edge arrangement
-
-- Config template in the repo: **`deploy/Caddyfile`** (installed copy:
-  `/etc/caddy/Caddyfile`). The file itself carries the WHY-comments; the
-  short version:
-  - **One canonical origin serves both the SPA and the API.** The browser
-    talks to a single host, so cross-origin traffic disappears from
-    production entirely; the `CORS_ORIGIN` contract is retained unchanged
-    and is exercised chiefly in local development.
-  - **`flush_interval -1` is set explicitly** on the `/api/*` proxy
-    rather than trusting Caddy's content-type detection. Caddy only
-    auto-disables buffering on a Content-Type of exactly
-    `text/event-stream`; a charset suffix or unflushed headers defeat
-    that detection, which would silently convert all four SSE apps'
-    progressive streams into one end-of-run burst — a failure that
-    passes a naive smoke test.
-  - **No `encode` on the API block.** Compression over an SSE stream is a
-    second, independent way to reintroduce buffering. `encode zstd gzip`
-    applies only to the static block.
-  - **`/health` is proxied to the backend** (it lives outside `/api`), so
-    the edge can be probed independently of the SPA. Deliberate
-    consequence: the SPA's own client-side `/health` screen is shadowed
-    on this origin and no longer reachable as a deep link.
-  - **Port 80 must stay open** — Caddy uses it for the ACME HTTP
-    challenge and the automatic HTTP→HTTPS redirect. It never serves the
-    app over plain HTTP.
-- Caddy comes from the **official Caddy apt repository**
-  (`dl.cloudsmith.io/public/caddy/stable`), not Debian's own archive —
-  the packaged systemd unit is kept, no custom build, no plugins.
-- Host firewall: **ufw** allows `22/tcp`, `80/tcp`, `443/tcp` (and
-  `443/udp` for HTTP/3). Port 8000 has no allow rule and Uvicorn is bound
-  to loopback anyway — two independent reasons it is unreachable from
-  outside.
-
-## DNS (temporary validation records)
-
-`bwtemp.spec4.ai` → A `159.195.17.63`, AAAA
-`2a0a:4cc0:101:148b:986f:c0ff:fe7e:fbcb` (the VPS's global IPv6). The
-records must resolve publicly **before** Caddy loads the site block,
-because Let's Encrypt validates over the public hostname; reloading
-earlier burns failed ACME attempts against LE rate limits. `bw.spec4.ai`
-keeps resolving to Render untouched. Both temporary records are retired
-at Phase 6.
-
-## The frontend bundle must be built for same-origin — do not lose this
-
-Every `frontend/src/api/*.ts` module bakes the API base in at **build**
-time: `import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'`. On
-Render the static site was built with `VITE_API_BASE_URL` set to the
-API's Render URL (cross-origin). On the VPS the bundle must be built with
-the variable set to the **empty string**:
+## 6. Service user and systemd unit
 
 ```sh
-cd /srv/bws4/frontend && npm ci && VITE_API_BASE_URL= npm run build
+sudo useradd --system --home-dir /var/lib/bws4 --create-home --shell /usr/sbin/nologin bws4
+sudo cp /srv/bws4/deploy/bws4-api.service /etc/systemd/system/bws4-api.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now bws4-api
 ```
 
-The empty string survives `??` (it is not nullish), so every request
-becomes a relative same-origin path (`/api/...`, `/health`) — which also
-makes the bundle indifferent to the Phase 6 hostname change. A bundle
-built with the variable **unset** silently falls back to
-`http://localhost:8000` and every API call fails in visitors' browsers;
-the Phase 1 bundle had exactly this defect and was rebuilt in Phase 3.
-(`VITE_SENTRY_DSN` remains unset at build time until Phase 4's deploy
-script makes the build environment explicit and permanent.)
+- The unit template `deploy/bws4-api.service` carries the WHY-comments
+  for every decision: one worker, loopback bind (`--host 127.0.0.1`,
+  Uvicorn must never be network-reachable — the edge is Caddy's job),
+  `EnvironmentFile=/etc/bws4/bws4.env` (read by systemd as root before
+  privileges drop, which is why the file stays root-only),
+  `Restart=always` + `WantedBy=multi-user.target` (crash AND reboot
+  survival), and hardening (`NoNewPrivileges`, `PrivateTmp`,
+  `ProtectSystem=strict` with `ReadWritePaths=/var/lib/bws4` as the only
+  writable path, `ProtectHome=true`).
+- Runs as the dedicated system user **`bws4`** (nologin, home
+  `/var/lib/bws4` — holds the HuggingFace model cache and
+  `UV_CACHE_DIR`). It can read `/srv/bws4` but cannot write `.git`.
+  Optionally pre-seed `/var/lib/bws4/.cache/huggingface` (chowned to
+  `bws4`) so the first boot skips the model download; startup still makes
+  one unauthenticated HF Hub request even with a seeded cache.
+- Process shape: `uv run --no-sync` stays resident as a thin launcher, so
+  `systemctl status` shows **two** PIDs — the `uv` MainPID and exactly
+  one `uvicorn` child, the single application process the architecture
+  mandates.
+- The boot warm-up (embedding model load + PCA projection fit) runs in
+  the FastAPI lifespan **before** Uvicorn accepts connections, and is
+  deliberately best-effort: a broken projection logs
+  `embeddings_projection_warmup_failed` and the gallery boots anyway.
+  **Never infer warmth from `systemctl is-active`** — grep the current
+  boot's journal for `embeddings_projection_built` and the *absence* of
+  the failure record. The deploy script's readiness gate automates
+  exactly this.
 
-## CORS_ORIGIN during validation
+## 7. DNS — before Caddy is first started
 
-`CORS_ORIGIN=https://bwtemp.spec4.ai` in `/etc/bws4/bws4.env` for the
-duration of validation (Phases 3–5) — the value already recorded in the
-Phase 1 env contract above. This is a **temporary value**: Phase 6
-changes it to `https://bw.spec4.ai` and restarts `bws4-api`. The variable
-itself is unchanged from the retired platform's contract — only its
-value moves. Any change to the file requires
-`sudo systemctl restart bws4-api` to take effect.
+Create these records **before** loading the Caddy site block: Let's
+Encrypt validates over the public hostname, and reloading earlier burns
+failed ACME attempts against LE rate limits.
 
-## Install / operate
+- `bwtemp.spec4.ai` → A `159.195.17.63`, AAAA
+  `2a0a:4cc0:101:148b:986f:c0ff:fe7e:fbcb` (temporary validation records,
+  retired at Phase 6).
+- **Cloudflare gotcha — do not lose this**: spec4.ai is on Cloudflare,
+  and the records must be **DNS only** (grey cloud). Proxied records
+  resolve to Cloudflare edge IPs, which breaks ACME issuance *and* would
+  insert a second, buffering proxy in front of the four SSE example apps.
+- `bw.spec4.ai` keeps resolving to Render untouched until Phase 6.
+
+## 8. Caddy — TLS edge, static bundle, API proxy
 
 ```sh
+# Official Caddy apt repo (dl.cloudsmith.io/public/caddy/stable), not
+# Debian's archive — packaged systemd unit kept, no custom build/plugins.
+sudo apt install caddy
 sudo cp /srv/bws4/deploy/Caddyfile /etc/caddy/Caddyfile
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
-sudo systemctl reload caddy            # reload, not restart: keeps serving
-systemctl is-enabled caddy             # must be "enabled" (starts at boot)
+sudo systemctl reload caddy      # reload, not restart: keeps serving
+systemctl is-enabled caddy       # must be "enabled"
 journalctl -u caddy --no-pager | grep -Ei 'certificate|acme|obtain'
 ```
 
-A certificate-issuance failure is nearly always (in this order) DNS not
-yet resolving to the VPS, or port 80 blocked — diagnose from Caddy's own
-journal rather than retrying blindly.
+The Caddyfile template carries its own WHY-comments; the short version:
+one origin serves both SPA and API (cross-origin traffic disappears from
+production; the `CORS_ORIGIN` contract is retained unchanged),
+`flush_interval -1` is set explicitly on the `/api/*` proxy so the SSE
+apps stream progressively (Caddy's content-type autodetection is too
+fragile to trust), **no `encode` on the API block** (compression is a
+second way to reintroduce buffering), and `/health` is proxied to the
+backend (deliberate consequence: the SPA's client-side /health screen is
+shadowed on this origin). A certificate-issuance failure is nearly always
+DNS not yet resolving to the VPS or port 80 blocked — diagnose from
+Caddy's journal, don't retry blindly.
 
-## Phase 3 verification results (2026-08-17)
+## 9. Firewall
 
-All checked from outside the VPS. Caddy v2.11.4 (official repo,
-upgraded over Debian's preinstalled 2.6.2), active and enabled.
+```sh
+sudo ufw default deny incoming
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp     # ACME HTTP challenge + HTTP→HTTPS redirect; never serves the app in plain HTTP
+sudo ufw allow 443/tcp
+sudo ufw allow 443/udp    # HTTP/3
+sudo ufw enable
+```
 
-- DNS: `bwtemp.spec4.ai` → `159.195.17.63` + the AAAA; `bw.spec4.ai`
-  still → Render (216.24.57.x), untouched. One operational gotcha worth
-  keeping: the records were first created **Cloudflare-proxied**, which
-  resolves to Cloudflare edge IPs — that both breaks ACME and would
-  insert a second buffering proxy in front of the SSE apps. The records
-  must be **DNS only** (grey cloud).
-- Certificate: Let's Encrypt issued on the first attempt (TLS-ALPN-01),
-  `certificate obtained successfully` in the journal; expiry Nov 15 2026,
-  renewal in-process. `https://` → HTTP/2 200 (h3 advertised);
-  `http://` → 308 to https.
-- SPA fallback: deep links `/react` and `/chained-calls` return 200
-  serving `index.html`; so does an unknown route (by design —
-  `try_files` cannot 404 an app path, the SPA owns unknown paths).
-- API through the edge: `/api/collab/identity-cards` returns the three
-  agent cards in camelCase; `/health` returns
-  `{"status":"ok","db":"connected"}` (backend JSON — the SPA's
-  client-side /health screen is shadowed, as documented above).
-- **Progressive streaming — the check this phase exists for**: a collab
-  run (`curl -N`, each line timestamped on arrival) delivered
-  quotation_request at 1.6 s, opening bids at 2.9 s, counter_offers at
-  5.6 s, best-and-final bids at 7.1 s, award at 109.5 s and the
-  reveal/sensitivity panels at 171.7 s — events spread across the run,
-  not one burst at close. sse-starlette keep-alive pings arrived at
-  exact 15 s intervals throughout the ~100 s idle stretch before the
-  award, and the edge never dropped the idle connection.
-- ReAct runs (two, respecting the per-session limit) streamed
-  run_started → cycle_thought → cycle_action → cycle_observation →
-  cycle_counter progressively (counter advancing 0→1) with
-  hop_annotations arriving ~14 s after the terminal card. Both runs
-  ended candidly with `budget_exhausted`/`malformed_step` after cycle 1
-  — the free model returned an unreadable step twice, the loop's
-  documented honest-stop behaviour. This is upstream model flakiness
-  (the known free-slug rot risk), not edge buffering: the envelopes
-  that were produced all crossed the proxy incrementally. Flagged for
-  Phase 5's behaviour-preservation comparison against Render.
-- Port 8000: external connect times out (ufw has no rule for it AND
-  Uvicorn binds loopback); 80/443 answer.
-- Guardrails: `render.yaml` present, `bw.spec4.ai` DNS unchanged, no
-  modifications under `backend/app/` or to `frontend/src/routes.tsx`.
-- Browser check (visitor's view): landing page over the trusted cert,
-  roster + header navigation, same-origin `/api/` calls with no CORS
-  preflight failures.
+**Port 8000 is never opened.** It has no allow rule AND Uvicorn binds
+loopback only — two independent reasons the API is unreachable except
+through Caddy.
+
+## 10. First deploy
+
+With all of the above in place, every release — including the very first
+frontend build — is the same single command (next section).
+
+---
+
+# Releases — `deploy/deploy.sh`
+
+The entire release procedure is one version-controlled script,
+`deploy/deploy.sh`, run **on the VPS** as the operator from an
+interactive terminal (two steps use sudo and prompt once for a
+password):
+
+```sh
+ssh -t rcrowe@<vps> '/srv/bws4/deploy/deploy.sh'
+```
+
+What it does, in order (each step announced to the terminal and journal;
+`set -euo pipefail` means any failing step aborts the deploy *before*
+the restart, leaving the previous build serving untouched):
+
+1. Preflight: refuses to run as root; refuses a dirty working tree.
+2. `git pull --ff-only` in `/srv/bws4`.
+3. `uv sync --locked` (as the operator, `UV_PYTHON_INSTALL_DIR=/opt/uv/python`).
+4. `npm ci && VITE_API_BASE_URL= npm run build` in `frontend/`, with
+   `VITE_SENTRY_DSN` sourced from `/etc/bws4/build.env` if present.
+   `VITE_API_BASE_URL` **must be the empty string, never unset**: the api
+   modules read `import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'`,
+   and only the empty string (which survives `??`) yields relative
+   same-origin paths. A bundle built with it unset bakes
+   `localhost:8000` into every chunk — Phase 1 shipped exactly that
+   defect. Check for regressions with `grep -rl localhost:8000 dist/assets/`.
+5. `alembic upgrade head` from `backend/` against the external Neon
+   database — idempotent; a deploy with no new migration reports the
+   current head. Root sources `/etc/bws4/bws4.env` in a subshell for this
+   one step and drops back to the operator to run it.
+6. `sudo systemctl restart bws4-api`.
+7. **Readiness gate — the deploy is not done until this passes**:
+   - polls `http://127.0.0.1:8000/health` to a 200 (bounded, loud
+     timeout);
+   - requires this boot's `embeddings_projection_built` journal record
+     and the absence of `embeddings_projection_warmup_failed` — because
+     the warm-up is best-effort by design, `/health` is deliberately
+     independent of it, and a naive health check would declare success
+     over a cold projection;
+   - calls `GET /api/embeddings/presets` through loopback and requires
+     success. On any failure it names the embeddings example app as
+     degraded and exits non-zero.
+8. Prints the measured cost of the release: the downtime window
+   (restart → first `/health` 200), the warm-up time
+   (restart → projection built), and the projection build's own
+   `elapsed_ms` — so every release records what it actually cost.
+
+Re-running the script with no upstream change is safe and supported: it
+completes as a no-op plus a restart.
+
+**Quality gates are deliberately NOT in the script.** `uv run pytest`,
+`uv run ruff check .`, `uv run mypy backend` and `npm run test` (in
+`frontend/`) remain developer-run before push — no CI exists in the tree
+and adding one is out of this revision's scope. Known caveat: pyproject
+sets `addopts = "-m 'not live'"`, so a green pytest run says nothing
+about live provider behaviour; that is verified by observation on the
+running origin (Phase 5).
+
+---
+
+# Operations
+
+## Logs
+
+```sh
+journalctl -u bws4-api -f     # follow the API (structlog JSON lines)
+journalctl -u caddy -f        # follow the edge (ACME, TLS, access errors)
+journalctl -u bws4-api -b --no-pager | grep -Ei 'projection|embedding'   # warmth check
+```
+
+## Restart and status
+
+```sh
+sudo systemctl restart bws4-api
+systemctl status bws4-api          # expect 2 PIDs: uv launcher + one uvicorn
+sudo systemctl reload caddy        # after Caddyfile changes (validate first)
+```
+
+After any manual restart, apply the same standard as the deploy script:
+`is-active` is not warmth — check the journal for this boot's
+`embeddings_projection_built`, or just re-run `deploy/deploy.sh`, whose
+gate does it for you.
+
+## Rollback
+
+```sh
+cd /srv/bws4
+git checkout <previous-commit>   # detached HEAD is fine for an emergency
+/srv/bws4/deploy/deploy.sh       # rebuilds, re-migrates (no-op), restarts, re-gates
+```
+
+(`git pull --ff-only` inside the script is a no-op on a detached HEAD or
+pinned commit; return with `git checkout dev` and a normal deploy.)
+
+**Migration boundary caveat**: the script deliberately contains no
+downgrade path — the migration tree is forward-only and authoritative.
+A rollback that crosses a migration boundary therefore needs manual
+attention: old code may not run correctly against the newer schema.
+Check whether the range being rolled back touches
+`backend/app/db/migrations/versions/` before relying on a plain
+checkout-and-redeploy.
+
+## Accepted limitation: a release is a brief interruption
+
+Stated plainly rather than buried: **a release interrupts service for
+roughly the warm-up window (~30–40 s measured)** while the restarted
+process reloads the embedding model and re-fits the PCA projection at
+boot. The project-wide goal — updating content and example apps without
+interrupting visitors — is met by deploying *rarely and quickly*, not by
+hot-swapping: the cost is paid by the deploy, at a moment the operator
+chooses, and never by a visitor's first interaction.
+
+Zero-downtime deployment (a second warm instance plus a Caddy upstream
+flip) was considered and deliberately deferred as unnecessary machinery
+for an infrequently-deployed showcase. It remains a purely additive
+change — nothing in this arrangement forecloses it — if the interruption
+ever chafes.
+
+---
+
+# Verification records (phased bring-up, 2026-08-17)
+
+Condensed from the phase-by-phase verification runs; these are the
+baselines the deploy gate budgets against.
+
+## Phase 1 — VPS baseline
+
+- Alembic `current` == `heads` at `0013_react_runs` against Neon (no-op
+  upgrade; the store is external and survived the host move untouched).
+- Boot-to-warm ≈ **25.5 s** manual boot (projection build `elapsed_ms`
+  11527); boot log contains `embeddings_projection_built`, no swallowed
+  warm-up exception.
+- `/health` → 200 `{"status":"ok","db":"connected"}`; only listener is
+  `127.0.0.1:8000`; external curl to 8000 cannot connect; starting with
+  `DATABASE_URL` unset exits immediately with the pydantic-settings
+  error naming the missing variable.
+- Quality gates on the VPS matched local: pytest 1815 passed / 21
+  skipped / 5 deselected, ruff clean, mypy clean (202 files). Caveats
+  recorded, not fixed: `live` tests deselected; ruff/mypy exempt
+  pre-v5/pre-v6 paths file by file, so green ≠ everything checked.
+- One real defect found and fixed: the checked-in
+  `frontend/package-lock.json` was out of sync with `package.json`
+  (missing optional `@emnapi/*` entries), failing `npm ci` on any host;
+  repaired by a metadata-only lockfile regeneration.
+
+## Phase 2 — systemd supervision
+
+- Fresh `systemctl start` → `embeddings_projection_built` ≈ **29.6 s**
+  (projection `elapsed_ms` 6238); **post-reboot ≈ 32.3 s** — the number a
+  deploy restart budgets against, slightly above the manual baseline
+  because boot competes for 2 vCores.
+- Warmth verified by evidence, not unit state: journal success record
+  plus two timed `/api/embeddings/presets` calls at 5.7 ms then 1.6 ms —
+  no first-request model-load penalty.
+- `kill -9` of the MainPID: auto-restart (`Restart=always`,
+  `RestartSec=3`), re-warmed, `/health` 200. Full `sudo reboot`: unit
+  came back enabled+active with no intervention, warmed, loopback-only.
+- Honest caveats: `network-online.target` is declared but no
+  wait-online service is enabled, so it is reached trivially (the
+  warm-up's own journal failure record is the detector if a boot ever
+  races networking); startup makes one unauthenticated HF Hub request
+  even with the seeded cache; `sentry_enabled` reports
+  `environment: development` because `SENTRY_ENVIRONMENT` is
+  deliberately not in the env contract.
+
+## Phase 3 — Caddy edge
+
+- Caddy v2.11.4 (official repo, upgraded over Debian's preinstalled
+  2.6.2). Let's Encrypt issued first-attempt (TLS-ALPN-01); expiry
+  Nov 15 2026 with in-process renewal; `http://` → 308 → `https://`
+  HTTP/2 200, h3 advertised.
+- DNS records had to be switched from Cloudflare-proxied to **DNS only**
+  (proxied resolved to Cloudflare IPs — broke ACME and would have added
+  a second buffering proxy in front of SSE).
+- SPA fallback serves deep links and unknown routes (by design the SPA
+  owns unknown paths); `/api/collab/identity-cards` and `/health` answer
+  through the edge.
+- **Progressive streaming proven through the edge**: a collab run's
+  events arrived spread across 171.7 s (first at 1.6 s, award at
+  109.5 s), not as one burst; sse-starlette keep-alive pings held exact
+  15 s intervals through a ~100 s idle stretch. ReAct runs streamed
+  cycle envelopes progressively; both ended candidly
+  `budget_exhausted`/`malformed_step` after cycle 1 — upstream free-model
+  flakiness, flagged for Phase 5's comparison against Render, not edge
+  buffering.
+- Port 8000 externally unreachable (no ufw rule AND loopback bind);
+  80/443 answer. Frontend bundle rebuilt with `VITE_API_BASE_URL=`
+  (empty) after the Phase 1 bundle was found to bake in
+  `localhost:8000`.
+
+## Phase 4 — release delivery
+
+_Results recorded after the first scripted deploys — see the deploy
+script's printed summary for the measured downtime of each release._
