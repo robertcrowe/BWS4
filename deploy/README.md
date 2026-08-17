@@ -155,3 +155,122 @@ First boot on the VPS, from the structlog timestamps in the boot log:
   (missing optional `@emnapi/*` entries), which made `npm ci` fail on any
   host; fixed by a metadata-only lockfile regeneration with no dependency
   version changes.
+
+# Phase 2: Process supervision — systemd, warm-at-boot, restart survival
+
+Phase 2 (2026-08-17) put the single-worker Uvicorn under systemd so the
+always-on warm guarantee is structural rather than incidental: the service
+restarts itself after a crash, starts itself after a reboot, and rebuilds
+the embedding model + PCA projection warm at every boot. The service is
+still loopback-only; Caddy/TLS (Phase 3) and the cutover (Phase 6) come
+later, and Render continues to serve visitors at `bw.spec4.ai` untouched.
+
+## The unit
+
+- Template in the repo: **`deploy/bws4-api.service`** (no secret values —
+  it names only the `EnvironmentFile` path). Installed copy:
+  `/etc/systemd/system/bws4-api.service`. The unit file itself carries the
+  WHY-comments for every decision (one worker, loopback bind, root-owned
+  EnvironmentFile outside the tree, best-effort warm-up, hardening).
+- `EnvironmentFile=/etc/bws4/bws4.env` is read **by systemd as root**
+  before privileges drop to the service user, which is why the file stays
+  `root:root 0600` and was NOT loosened for Phase 2. Verified: the service
+  user cannot read it directly.
+- Runs as dedicated system user **`bws4`** (nologin, home
+  `/var/lib/bws4`). It can read `/srv/bws4` but cannot write `.git`
+  (verified both ways).
+- Hardening: `NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=strict` with
+  `ReadWritePaths=/var/lib/bws4` as the *only* writable path (logs go to
+  journald, the DB is external, the venv is read-only to the service),
+  `ProtectHome=true`, `ProtectKernelTunables=true`.
+
+## Why the toolchain moved out of /home
+
+`ProtectHome=true` makes `/home` invisible to the process — and after
+Phase 1 the entire runtime lived there (uv at `~rcrowe/.local/bin/uv`, the
+venv's interpreter symlinked into `~rcrowe/.local/share/uv/python/…`).
+Under the hardened unit the service literally could not exec its own
+interpreter. Relocation, done once at Phase 2 install:
+
+- uv binary → **`/usr/local/bin/uv`** (root-owned copy).
+- CPython 3.12 → **`/opt/uv/python/`** via
+  `UV_PYTHON_INSTALL_DIR=/opt/uv/python uv python install 3.12`
+  (world-readable; note uv also creates a `cpython-3.12-…` minor-version
+  alias dir next to the full-version dir).
+- `/srv/bws4/.venv` rebuilt (as `rcrowe`, who still owns it) against that
+  interpreter with `UV_PYTHON_INSTALL_DIR=/opt/uv/python uv sync --locked`,
+  so its symlinks resolve outside `/home`. Releases (Phase 4) sync the
+  venv as `rcrowe`; the unit runs `uv run --no-sync` and never writes it.
+- The HuggingFace model cache was pre-seeded into
+  `/var/lib/bws4/.cache/huggingface` (and chowned to `bws4`) so the first
+  supervised boot did not re-download the model. `HOME=/var/lib/bws4`
+  comes from the `bws4` passwd entry; `UV_CACHE_DIR=/var/lib/bws4/uv-cache`
+  keeps uv inside the writable path.
+
+## Process shape
+
+`ExecStart` invokes `uv run --no-sync uvicorn …`. uv stays resident as a
+thin launcher, so `systemctl status` shows **two** PIDs: the `uv` MainPID
+and exactly **one** `python`/`uvicorn` child — the single application
+process the architecture mandates. There is no process manager and there
+are no workers. `systemctl stop` SIGTERMs the whole cgroup (default
+control-group kill mode), so Uvicorn still shuts down gracefully.
+
+## Operator commands
+
+```sh
+sudo systemctl start|stop|restart bws4-api   # lifecycle
+systemctl status bws4-api                    # state + process tree
+journalctl -u bws4-api -f                    # follow logs (structlog JSON)
+journalctl -u bws4-api -b --no-pager \
+  | grep -Ei 'projection|embedding'          # warmth check (see below)
+```
+
+**Never infer warmth from `is-active`.** The lifespan warm-up is
+deliberately best-effort (bare `except Exception` in
+`backend/app/main.py`), so a unit blocked from its model cache — the
+classic `ProtectSystem=strict` failure — still reports active while
+serving cold. Always grep the current boot's journal for
+`embeddings_projection_built` and for the *absence* of
+`embeddings_projection_warmup_failed`.
+
+## Measured warm-up under supervision (2026-08-17)
+
+- Fresh `systemctl start`, quiet host: unit start →
+  `embeddings_projection_built` **≈ 29.6 s** (projection build itself
+  `elapsed_ms` 6238).
+- **Post-reboot: ≈ 32.3 s** — the figure a deploy or unplanned reboot
+  costs, slightly above the ~25.5 s Phase 1 manual-boot baseline because
+  the warm-up competes with everything else starting on 2 vCores. Phase
+  4's deploy-restart posture budgets against this number.
+- Warmth verified by evidence, not unit state: journal shows the success
+  record with no swallowed exception, and two consecutive timed calls to
+  `/api/embeddings/presets` returned in 5.7 ms then 1.6 ms after reboot —
+  no first-request model-load penalty.
+
+## Crash and reboot survival (both individually verified)
+
+- `kill -9` of the MainPID: systemd restarted the service automatically
+  (`Restart=always`, `RestartSec=3` so a flapping unit produces readable,
+  spaced journal entries), the new process completed its warm-up, and
+  `/health` returned 200.
+- `sudo reboot`: with no manual intervention the unit came back
+  active+enabled (`WantedBy=multi-user.target` — the property
+  `Restart=always` alone does not give you), warmed up, answered
+  `/health` 200, and the listener was still bound to `127.0.0.1:8000`
+  only (external connect to port 8000 times out).
+
+## Honest caveats
+
+- `network-online.target` is declared (`After=`/`Wants=`) because the
+  warm-up reaches Neon and the HF Hub, but on this host neither
+  `systemd-networkd-wait-online` nor `NetworkManager-wait-online` is
+  enabled, so the target is reached trivially. In practice networking is
+  up well before `multi-user.target`; if a future boot races it, the
+  warm-up's failure record in the journal is the detector.
+- Startup makes one unauthenticated HF Hub request (model verification)
+  even with the seeded cache; harmless, but it is why the unit wants real
+  network at boot.
+- The `sentry_enabled` record reports `environment: development` because
+  `SENTRY_ENVIRONMENT` is deliberately not in the env contract (see the
+  Phase 1 cross-check note above).

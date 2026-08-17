@@ -1,0 +1,77 @@
+# Built with Spec4 AI - https://spec4.ai
+#
+# bws4-api.service — systemd supervision for the BWS4 gallery API.
+#
+# This template is committed to version control and therefore contains NO
+# secret values — only the path of the EnvironmentFile that supplies them.
+# Install: cp deploy/bws4-api.service /etc/systemd/system/bws4-api.service
+#          systemctl daemon-reload && systemctl enable --now bws4-api
+
+[Unit]
+Description=BWS4 gallery API (FastAPI/Uvicorn, single worker, loopback-only)
+# The boot-time warm-up connects to Neon Postgres and may download or verify
+# sentence-transformers model assets, so the unit must wait for functioning
+# network rather than merely a configured network stack.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Dedicated unprivileged service identity. Its home is /var/lib/bws4 (set in
+# /etc/passwd), which is where the HuggingFace model cache lives — NOT under
+# /home, because ProtectHome=true below makes /home invisible to the process.
+User=bws4
+Group=bws4
+WorkingDirectory=/srv/bws4
+# systemd reads this file AS ROOT before dropping privileges to User=bws4.
+# That is why the file can — and must — stay root:root mode 0600, outside the
+# repository tree at /srv/bws4: the checkout must never be able to contain a
+# secret, and the service user must never be able to read the file directly.
+EnvironmentFile=/etc/bws4/bws4.env
+# Keep any uv cache access inside the service's own writable state directory
+# (ProtectSystem=strict makes everything else read-only to this process).
+Environment=UV_CACHE_DIR=/var/lib/bws4/uv-cache
+# --no-sync: the venv at /srv/bws4/.venv is owned by the operator/deploy user
+#   and is read-only to this service; releases sync it, the unit never does.
+# --workers 1 is MANDATORY, not a default: the loaded embedding model, the
+#   fitted PCA projection, the in-process peer message bus
+#   (backend/app/services/message_bus.py) and the ReAct duplicate-guard cache
+#   are all per-process state. A second worker would not crash — it would
+#   silently break peer opacity, duplicate-query detection and projection
+#   stability. Never add workers; never front this with a multi-worker
+#   process manager.
+# --host 127.0.0.1: Uvicorn must never be directly reachable from the
+#   network. TLS and the public origin terminate at the edge (Caddy); the
+#   application listens on loopback only.
+ExecStart=/usr/local/bin/uv run --no-sync uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=always
+# A few seconds, not zero: if the unit ever flaps, the journal gets spaced,
+# readable entries instead of a tight restart loop that hides the real error.
+RestartSec=3
+#
+# Hardening. NOTE the interaction with the warm-up: the FastAPI lifespan in
+# backend/app/main.py deliberately swallows warm-up exceptions (best-effort by
+# design), so a sandboxing directive that blocks the model cache produces a
+# unit that LOOKS healthy while serving cold. Never judge warmth by
+# `systemctl is-active` — grep the journal for `embeddings_projection_built`
+# and for the absence of `embeddings_projection_warmup_failed`.
+NoNewPrivileges=true
+PrivateTmp=true
+# Whole filesystem read-only to the process except the paths listed below.
+# The only path this process genuinely writes is its own state/cache home
+# (HuggingFace model cache, uv cache); logs go to stdout -> journald and the
+# database is external (Neon).
+ProtectSystem=strict
+ReadWritePaths=/var/lib/bws4
+# /home is invisible to the process. This is why uv lives at /usr/local/bin
+# and the CPython 3.12 interpreter under /opt/uv/python — toolchain pieces
+# under a user's home directory would make the service unable to exec its
+# own interpreter.
+ProtectHome=true
+ProtectKernelTunables=true
+
+[Install]
+# Start at boot. Restart=always alone only covers crashes of a running
+# service; reboot survival additionally requires this hook plus
+# `systemctl enable bws4-api`.
+WantedBy=multi-user.target
