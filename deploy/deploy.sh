@@ -148,6 +148,11 @@ if [[ -n "${VITE_SENTRY_DSN:-}" ]]; then
     export VITE_SENTRY_DSN
 else
     echo "    VITE_SENTRY_DSN is unset: frontend Sentry will be DISABLED in this bundle"
+    # If you EXPECTED it to be set: /etc/bws4 must be mode 0711 (traverse-
+    # only) or the operator cannot read build.env inside it — a 0700 dir
+    # makes this branch fire even though the file exists. Found the hard
+    # way during Phase 4 verification.
+    echo "    (expected it set? check: /etc/bws4 must be mode 0711 and build.env 0644)"
 fi
 
 cd "$FRONTEND"

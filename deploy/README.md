@@ -85,10 +85,19 @@ cd /srv/bws4 && git checkout dev
 ## 3. The environment contract — `/etc/bws4/bws4.env`
 
 ```sh
-sudo mkdir -p /etc/bws4 && sudo chmod 0700 /etc/bws4
+sudo mkdir -p /etc/bws4 && sudo chmod 0711 /etc/bws4
 sudo touch /etc/bws4/bws4.env && sudo chmod 0600 /etc/bws4/bws4.env
 sudo "$EDITOR" /etc/bws4/bws4.env   # fill in VALUES; names below
 ```
+
+- **Directory mode 0711, not 0700 — learned during Phase 4
+  verification**: the secrecy of `bws4.env` rests on its own `0600`
+  root-only mode, but the deploy script (running as the operator) must be
+  able to reach the world-readable `build.env` in the same directory.
+  `0711` allows traversal by exact path while still preventing anyone but
+  root from listing the directory; `0700` (Phase 1's original choice)
+  silently hides `build.env` from the build and the bundle ships without
+  Sentry.
 
 - **Why outside the repository tree**: the tree at `/srv/bws4` must never
   be *able* to contain a secret, even by accident — a stray `git add`, a
@@ -447,5 +456,32 @@ baselines the deploy gate budgets against.
 
 ## Phase 4 — release delivery
 
-_Results recorded after the first scripted deploys — see the deploy
-script's printed summary for the measured downtime of each release._
+First scripted deploys, all on 2026-08-17 (evening, VPS local time):
+
+- **Run 1** (fresh deploy): every step in order, exit 0. Readiness gate:
+  `/health` 200 at **24 s** after restart, this boot's
+  `embeddings_projection_built` present with no failure record,
+  `/api/embeddings/presets` in **5.7 ms**. Measured: downtime window
+  24 s, restart → projection built 21 s, projection build `elapsed_ms`
+  5944.7 — *better* than the Phase 2 baselines (≈29.6 s fresh /
+  ≈32.3 s post-reboot), because a deploy restart avoids the post-reboot
+  CPU contention.
+- **Run 2** (immediately after, no upstream change): clean idempotent
+  no-op plus restart — alembic reported the current head, downtime again
+  24 s, presets 5.0 ms.
+- **Failure drill**: a scratch branch with a deliberate type error
+  deployed against the running service. `tsc -b` failed
+  (`error TS2322`), `set -euo pipefail` aborted the deploy at the build
+  step — **before** alembic and before `systemctl restart`. The journal
+  shows no stop/start event in the drill window; the previous build kept
+  serving at https://bwtemp.spec4.ai throughout. Scratch branch deleted
+  after the drill.
+- **Recovery deploy** back on `dev`: exit 0, downtime 24 s, presets
+  4.2 ms.
+- Bundle checks: no `localhost:8000` in `dist/assets` (same-origin build
+  confirmed); Sentry-enabled build verified once `/etc/bws4/build.env`
+  became reachable (which required the 0711 directory-mode fix above —
+  the deploy announces ENABLED/DISABLED on every run precisely so this
+  cannot regress silently).
+- The measured release cost — ~24 s of planned interruption — is the
+  number behind the accepted-limitation statement in § Operations.
