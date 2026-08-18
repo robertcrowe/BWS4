@@ -57,13 +57,37 @@ bwtemp.spec4.ai {
 		reverse_proxy 127.0.0.1:8000
 	}
 
-	# Everything else is the SPA bundle. try_files falls back to
+	# Hashed bundle assets get their own block, for two reasons found the
+	# hard way during the Phase 5 acceptance pass. First, caching: Vite
+	# content-hashes every filename in assets/, so a given URL can never
+	# change meaning and may be cached forever — while WITHOUT an explicit
+	# Cache-Control anywhere, browsers fall back to heuristic freshness on
+	# index.html itself and can keep serving a stale entry chunk for hours
+	# after a deploy. Second, fallback scope: assets/ must NOT fall back to
+	# /index.html — a chunk that no longer exists after a redeploy must be
+	# a 404, exactly as Render served it. With the fallback in place the
+	# browser received index.html AS the module ("Failed to fetch
+	# dynamically imported module"), which broke every route navigation
+	# for any visitor holding a pre-deploy index.html.
+	handle /assets/* {
+		root * /srv/bws4/frontend/dist
+		encode zstd gzip
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Everything else is the SPA shell. try_files falls back to
 	# /index.html for any path that is not a real file, which is what
 	# makes deep links to example-app routes (/react, /collab, …)
 	# resolve to the bundle so React Router can route them client-side.
+	# no-cache does NOT mean "don't store": it means revalidate before
+	# reuse, so every navigation re-checks index.html against its etag
+	# (matching the max-age=0 revalidation behaviour Render gave the
+	# gallery) and a fresh deploy is picked up on the next full load.
 	handle {
 		root * /srv/bws4/frontend/dist
 		encode zstd gzip
+		header Cache-Control "no-cache"
 		try_files {path} /index.html
 		file_server
 	}
