@@ -197,14 +197,23 @@ def test_the_live_marker_is_deselected_by_default() -> None:
 def test_no_scheduler_was_created_for_the_smoke_run() -> None:
     """`preset_question_health_check` was rejected; nothing may reintroduce it.
 
-    Scans the deployment manifest and the whole backend for the machinery a
+    Scans the deployment artifacts and the whole backend for the machinery a
     recurring job would need. The risk this guards is real and specific: the
     capability text mentions a weekly run, which reads as licence to build one.
-    """
-    render = (REPO_ROOT / "render.yaml").read_text().lower()
 
-    for marker in ("cron", "schedule", "worker:"):
-        assert marker not in render, f"render.yaml gained a {marker!r} entry"
+    Formerly scanned render.yaml; since the Phase 6 cutover the deployment is
+    the systemd unit plus the release script, so a recurring job would need a
+    timer unit beside them or a cron/schedule entry inside them. The scan is
+    deliberately confined to the OPERATIVE files — the deploy documentation's
+    prose legitimately says the word "cron" while explaining why there is none.
+    """
+    deploy_dir = REPO_ROOT / "deploy"
+    assert not list(deploy_dir.glob("*.timer")), "a systemd timer unit appeared"
+
+    for name in ("bws4-api.service", "deploy.sh"):
+        text = (deploy_dir / name).read_text().lower()
+        for marker in ("cron", "oncalendar", "schedule"):
+            assert marker not in text, f"{name} gained a {marker!r} entry"
 
     pattern = re.compile(r"\b(apscheduler|celery|crontab|schedule\.every)\b")
     for path in (REPO_ROOT / "backend").rglob("*.py"):

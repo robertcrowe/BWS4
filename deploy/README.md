@@ -15,10 +15,15 @@ terminates TLS at the edge, serves the Vite bundle from
 `/srv/bws4/frontend/dist` with SPA history fallback, and reverse-proxies
 `/api/*` (plus `/health`) to a single loopback Uvicorn process on
 `127.0.0.1:8000` supervised by systemd. Postgres is external (Neon,
-pgvector) and unchanged by the migration. Origin during validation:
-`https://bwtemp.spec4.ai`; the canonical `https://bw.spec4.ai` cuts over
-in Phase 6, until which Render keeps serving it and `render.yaml` stays
-in the tree untouched.
+pgvector) and unchanged by the migration. The canonical public origin is
+**`https://bw.spec4.ai`**, cut over from Render on 2026-08-19 (cutover
+record: `deploy/ACCEPTANCE.md`). The temporary validation origin
+`bwtemp.spec4.ai` used through Phases 3–5 is retired — removed from the
+Caddyfile's address line and its DNS records deleted — so exactly one
+address serves the gallery. Render is retired entirely: both services
+deleted, `render.yaml` removed from the tree. Mentions of either
+retired surface below survive only in the historical verification
+records at the end of this document.
 
 **The one architectural rule.** The API runs with `--workers 1` — a
 requirement, not a default. The loaded embedding model, the fitted PCA
@@ -111,10 +116,15 @@ sudo "$EDITOR" /etc/bws4/bws4.env   # fill in VALUES; names below
   - `GROQ_API_KEY`
   - `EXA_API_KEY`
   - `OPENAI_API_KEY`
-  - `CORS_ORIGIN` — `https://bwtemp.spec4.ai` during validation
-    (Phases 1–5); repointed to `https://bw.spec4.ai` at the Phase 6
-    cutover. Any change to this file needs
-    `sudo systemctl restart bws4-api` to take effect.
+  - `CORS_ORIGIN` — `https://bw.spec4.ai`, the canonical origin. At the
+    Phase 6 cutover only the VALUE moved (from the temporary validation
+    origin) — the variable name carries over verbatim from the retired
+    platform's contract, and no environment variable was added, removed
+    or renamed by the migration. Because the SPA and the API are now
+    served from the same canonical origin, cross-origin requests no
+    longer occur in production; the policy is exercised chiefly in local
+    development and is retained unchanged nonetheless. Any change to
+    this file needs `sudo systemctl restart bws4-api` to take effect.
   - `SENTRY_DSN` — optional; `configure_sentry` no-ops cleanly when unset
 - Deliberately omitted (cross-checked against `.env.example` and
   `backend/app/core/config.py`, resolved in favour of what the code
@@ -208,14 +218,19 @@ Create these records **before** loading the Caddy site block: Let's
 Encrypt validates over the public hostname, and reloading earlier burns
 failed ACME attempts against LE rate limits.
 
-- `bwtemp.spec4.ai` → A `159.195.17.63`, AAAA
-  `2a0a:4cc0:101:148b:986f:c0ff:fe7e:fbcb` (temporary validation records,
-  retired at Phase 6).
+- `bw.spec4.ai` → A `159.195.17.63`, AAAA
+  `2a0a:4cc0:101:148b:986f:c0ff:fe7e:fbcb` — the canonical records,
+  TTL 1 hour. (During the Phase 6 cutover the TTL was lowered to 300 s
+  ahead of the repoint and raised back once the origin was confirmed
+  stable.)
 - **Cloudflare gotcha — do not lose this**: spec4.ai is on Cloudflare,
   and the records must be **DNS only** (grey cloud). Proxied records
   resolve to Cloudflare edge IPs, which breaks ACME issuance *and* would
   insert a second, buffering proxy in front of the four SSE example apps.
-- `bw.spec4.ai` keeps resolving to Render untouched until Phase 6.
+- Historical: bring-up used temporary `bwtemp.spec4.ai` records with the
+  same targets while Render still served the canonical name; both the
+  site-block entry and the DNS records were deleted at the end of
+  Phase 6, and no record for that hostname should exist.
 
 ## 8. Caddy — TLS edge, static bundle, API proxy
 
@@ -485,3 +500,12 @@ First scripted deploys, all on 2026-08-17 (evening, VPS local time):
   cannot regress silently).
 - The measured release cost — ~24 s of planned interruption — is the
   number behind the accepted-limitation statement in § Operations.
+
+## Phase 6 — cutover (2026-08-19)
+
+Canonical DNS repointed to the VPS (A + AAAA, DNS-only), production
+Let's Encrypt certificate obtained ~3 minutes after the repoint, full
+external confirmation pass green, bwtemp site block and DNS records
+retired, Render services deleted and `render.yaml` removed. Post-cutover
+reboot: both units returned active unattended with a completed warm-up.
+The full cutover record lives in `deploy/ACCEPTANCE.md`.

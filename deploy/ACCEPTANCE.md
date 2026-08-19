@@ -600,3 +600,134 @@ Stated plainly, mirroring the constraints at the top of this document:
   cycle-2 step. Its counterpart terminal card (budget-exhausted) and the
   run's full accounting were observed working; the healthy full loop awaits
   the chain refresh.
+
+---
+
+# Phase 6 cutover record — bw.spec4.ai repointed, Render retired (2026-08-19)
+
+Repoint performed 2026-08-19 ~20:05–20:08 CEST. The bw.spec4.ai CNAME to
+Render (TTL already 300 s, so no lowering wait was needed) was replaced with
+A `159.195.17.63` + AAAA `2a0a:4cc0:101:148b:986f:c0ff:fe7e:fbcb`, both
+DNS-only (grey cloud), mirroring the validated bwtemp records exactly.
+Immediately beforehand, `deploy/deploy.sh` shipped the current commit
+(`1ff1989`) with a 24 s downtime window and a green readiness gate, and the
+canonical hostname was added to the edge as a SECOND ADDRESS on the
+already-validated site block — never a transcribed copy — so no validated
+property (flush_interval -1, no encode on /api, immutable /assets without
+SPA fallback, no-cache shell) could drift in transcription.
+
+## Confirmation checks against the canonical origin (all from outside the VPS)
+
+- Propagation: A and AAAA returned by both Cloudflare (1.1.1.1 DoH) and
+  Google (8.8.8.8 DoH) resolvers.
+- Certificate: production Let's Encrypt (CN=bw.spec4.ai, issuer C=US, O=Let's
+  Encrypt, CN=YE2; notAfter 2026-11-17), obtained by Caddy at 20:08 CEST —
+  ~3 minutes and two expected pre-propagation failures (one answered by
+  Render, one NXDOMAIN in the record-swap gap) after the repoint; no
+  rate-limit pressure, no manual retry.
+- `https://bw.spec4.ai/` → HTTP/2 200, `cache-control: no-cache`, h3
+  advertised; `http://` → 308 → https.
+- Deep link `/react` → 200 via SPA fallback with the SPA index document.
+- `GET /api/collab/identity-cards` → exactly three camelCase agent cards
+  (buyer, northwind, meridian).
+- `GET /health` → 200 `{"status":"ok","db":"connected"}`.
+- `GET /api/embeddings/presets` → 200 in 0.25 s (warm, no first-request
+  penalty); post-reboot shell load 200 in 0.30 s.
+- Progressive SSE through the canonical edge, `curl -N` on
+  `/api/react/run`: events at 1.6 s / 2.9 s / 6.8 s / 8.5 s — incremental,
+  not one burst — with keep-alive pings at exact 15 s intervals. The run
+  ended in the candid `budget_exhausted`/`malformed_step` terminal card:
+  the known provider-side chain issue documented in this file's Phase-4/5
+  sections, identical signature, not an edge or migration fault.
+- Operator browser pass: trusted certificate with no warning, gallery
+  roster and header navigation rendered, devtools showed same-origin
+  `/api/` calls with no CORS preflight failure (confirming the CORS_ORIGIN
+  flip and restart took effect), embeddings map prompt on first load, one
+  streaming run accumulating events progressively in the network panel,
+  and the rendered canonical link element resolving to https://bw.spec4.ai.
+
+CORS_ORIGIN was flipped to `https://bw.spec4.ai` in `/etc/bws4/bws4.env`
+followed by `systemctl restart bws4-api` (warm gate green) BEFORE the DNS
+repoint. Only the value moved; no environment variable was added, removed
+or renamed by the migration.
+
+## Retirement of the temporary validation surface
+
+Only after every check above passed: `bwtemp.spec4.ai` was deleted from the
+Caddyfile's address line (leaving exactly ONE site block, `caddy validate`
+green), Caddy reloaded, and the bwtemp A/AAAA records deleted. Verified:
+both public resolvers return NXDOMAIN for bwtemp.spec4.ai, and a direct
+`--resolve` probe of the origin shows the edge refuses a TLS handshake for
+the retired hostname. The bw.spec4.ai TTL was then raised to 3600 s.
+
+## Render retired
+
+`render.yaml` deleted from the repository root (commit `987d2be`); the
+operator suspended and deleted both services (the bws4-api web service and
+the web-client static site) in the Render dashboard and confirmed no
+custom-domain entry still claims bw.spec4.ai. Verified externally: both
+Render default hostnames (`bws4.onrender.com`, `bws4-frontend.onrender.com`)
+return 503 and serve nothing. The case-insensitive grep for "render" was
+read hit by hit: remaining occurrences are React/Plotly rendering,
+React Testing Library `render(...)` calls, and deliberate history (this
+document's Phase 5 comparisons; one sentence in the root README recording
+the retirement) — no live instruction or configuration references the
+retired platform.
+
+## SEO canonicals — no change needed (recorded as evidence)
+
+The spec expected the per-route canonical URLs in `frontend/src/routes.tsx`;
+they in fact derive from `SITE_ORIGIN = 'https://bw.spec4.ai'` in
+`frontend/src/seo/siteMeta.ts`, consumed by `installSeo(router)`. The value
+already pointed at the canonical origin, so no source file needed editing —
+itself evidence the migration preserved the canonical address. The operator
+confirmed the rendered canonical link element in a browser.
+
+## Post-cutover continuity proof
+
+`sudo reboot` at 20:37:55 CEST with no manual intervention afterwards:
+bws4-api and caddy both returned active, this boot's journal carries
+`embeddings_projection_built` (6.09 s) with no warm-up failure record, and
+`https://bw.spec4.ai/` served the gallery over the trusted certificate.
+The always-on guarantee holds for the canonical origin, not merely the
+staging one.
+
+## Notes recorded for honesty
+
+- Two stray `Verdict: pending` placeholder lines left over in this file's
+  Phase 5 sections (each alongside its section's real PASS) were removed at
+  the start of Phase 6; no verdict was changed.
+- Commit `2bc5f3b` ("A small fraction"), a landing-page wording edit under
+  `frontend/src/`, is the owner's independent content change authored via
+  GitHub during the Phase 6 teardown. It is not part of the migration: the
+  migration's own commits (`1ff1989`, `9fa9192`, `987d2be`, and the docs
+  commit carrying this record) touch nothing under `backend/app/` or
+  `frontend/src/`, and the wording-parity verdict above was proven against
+  the pre-edit revision. The edit ships with the next routine release.
+
+- Deleting render.yaml broke two backend tests that asserted deployment
+  claims against it as the deploy's source of truth:
+  `backend/tests/collab/test_deploy_readiness.py` (the collab slice adds
+  nothing to the deploy) and one test in
+  `backend/tests/react/test_react_live_smoke.py` (no scheduler machinery was
+  reintroduced). Both were re-anchored to the current deployment's sources
+  of truth — `deploy/bws4-api.service`, `deploy/deploy.sh`, `.env.example`
+  and the runbook — preserving the same claims, including the two-way
+  env-contract agreement and the secrets-never-in-the-repo property.
+  `backend/tests/` is outside this phase's no-touch zone (`backend/app/`,
+  `frontend/src/`), but the edits do exceed the phase's four-file change
+  list; a red test suite was judged the worse deviation. Full gates after
+  the fix: pytest 1815 passed / 21 skipped / 5 deselected, ruff clean, mypy
+  clean (202 files), vitest 29 files / 420 tests.
+
+## Accepted limitation (restated)
+
+A release briefly interrupts service (~24 s measured; ~30–40 s budgeted)
+while the restarted process rebuilds its warm state — the embedding model
+load and PCA projection fit — at boot. The cost is paid by the deploy at a
+moment the operator chooses, never by a visitor's first interaction.
+Zero-downtime deployment via a second warm instance and a Caddy upstream
+flip was considered and deliberately deferred as additive future work.
+
+**Phase 6 verdict: PASS — the migration is complete.** One canonical public
+HTTPS origin, always warm, with the previous host serving nothing.
