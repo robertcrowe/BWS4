@@ -13,7 +13,7 @@ wheels/
 .env
 .env.local
 
-# Hugging Face model cache (populated at build time via HF_HOME on Render)
+# Hugging Face model cache (if HF_HOME is pointed inside the checkout)
 .hf-cache/
 
 # Development files

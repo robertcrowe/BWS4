@@ -187,7 +187,7 @@ platform's secrets manager.
 | `EXA_API_KEY` | ✅ | Live web search, called by the tool-use agent when *it* decides to search. |
 | `OPENAI_API_KEY` | — | The OpenAI moderation endpoint, used as the safety gate on **all free-text input across every example app**. Free of charge and separate from the free-model pool, so it costs a run nothing. **Unset → the gate fails closed and every free-text submission is refused** with `moderation_unavailable`. Each app's curated examples still work: they are verified server-side by byte-match and skip the gate by design, so an unconfigured deployment stays demonstrable. |
 | `MODERATION_HASH_SALT` | — | Salt for the question hashes written to `moderation_log` and to the orchestrated run summary. (The multi-agent collaboration app hashes nothing: its inputs are a scenario enum and a numeric vector, so there is no free text to protect.) Unset → a process-stable salt is generated and a warning is logged, so hashes stop comparing across restarts. Raw question text is never stored either way. |
-| `PORT` | — | Defaults to `8000`; supplied automatically by Render. Don't leave it blank in `.env` — an empty value fails `int` parsing at startup. |
+| `PORT` | — | Defaults to `8000`; the VPS deployment relies on the default (Caddy proxies to `127.0.0.1:8000`). Don't leave it blank in `.env` — an empty value fails `int` parsing at startup. |
 | `EMBEDDING_MODEL_NAME` | — | Defaults to `sentence-transformers/all-MiniLM-L6-v2`. |
 | `GENERATION_HOURLY_LIMIT` | — | Cap on generation calls **per UTC hour** (free-tier guardrail, default 50). Shared by every app that generates text — they draw on one counter, because they draw on one provider quota. Most reservations are made up front, so a run that can't be finished is never started: a chained-calls submission reserves **2** units, an orchestrated run reserves **12** (four logical calls, each allowed two framework re-prompts), and a multi-agent collaboration run reserves **12** (six negotiation calls, two post-award explanations, and four held back for the repairs the sequencer makes). At the default 50 that is roughly 4 orchestrated or collaboration runs per hour across the whole showcase; raise this if you want more, and lower it first on a tighter provider account. |
 | *(no embedding cap)* | — | Embedding is deliberately **uncapped** — the model runs in-process, so it spends local CPU and no third-party quota. It is still logged to `service_log_entries`. |
@@ -202,7 +202,7 @@ platform's secrets manager.
 
 | `SENTRY_DSN` | — | Optional error tracking. **Unset → Sentry is never initialized** and the app runs normally. |
 | `SENTRY_ENVIRONMENT` | — | Environment tag on Sentry events (default `development`). |
-| `HF_HOME` | — | Where the sentence-transformers model is cached. Set on Render so the build-time download survives into the running service; unset locally, where it defaults to `~/.cache/huggingface`. |
+| `HF_HOME` | — | Where the sentence-transformers model is cached. Unset in the VPS deployment (the service user's home holds the cache at `/var/lib/bws4/.cache/huggingface`) and locally, where it defaults to `~/.cache/huggingface`. |
 | `HF_TOKEN` | — | Optional. Raises Hugging Face's anonymous download rate limit. The embedding model is public, so no token is needed to fetch it. |
 
 All four caps are **per UTC hour** and reset at the top of the hour —
@@ -301,75 +301,36 @@ Two failure modes worth telling apart:
 
 ## Deployment
 
-This project runs on free tiers everywhere it matters — Neon Postgres, the model providers,
-and Exa search — which is what the usage caps in `Settings` exist to protect. The one
-exception is web hosting: the blueprint puts the API on Render's paid **Starter** plan so it
-stays always-on, because this process pays an unusually large cold start (see the note
-below). It runs correctly on `plan: free`; the cost is the wait.
+BWS4 is self-hosted: one always-on VPS runs Caddy (TLS termination, static
+bundle, API reverse proxy) in front of a single systemd-supervised Uvicorn
+process, with Postgres external on Neon. The canonical public origin is
+**https://bw.spec4.ai**. The full provisioning runbook, release procedure
+(`deploy/deploy.sh`) and operations guide live in
+[`deploy/README.md`](./deploy/README.md); the migration's acceptance record
+is [`deploy/ACCEPTANCE.md`](./deploy/ACCEPTANCE.md).
 
-A [`render.yaml`](./render.yaml) blueprint at the repo root defines both targets; you can
-either point Render at it (**New → Blueprint**) or create the two services by hand with the
-settings below.
+The project previously deployed to Render as two managed services; that
+platform was retired at the v8 migration's cutover (2026-08-19) and its
+`render.yaml` blueprint deleted from the tree.
 
-**`bws4-web` — the frontend, as a Render Static Site** (CDN-served, no spin-down)
-
-| Setting | Value |
-| --- | --- |
-| Root directory | `frontend` |
-| Build command | `npm ci && npm run build` |
-| Publish directory | `dist` |
-| Rewrite rule | `/*` → `/index.html` (client-side routing) |
-| Env vars | `VITE_API_BASE_URL` (the API service's URL), optional `VITE_SENTRY_DSN` |
-
-**`bws4-api` — the backend, as a Render Web Service** (Python 3.12; **Starter** plan in the
-blueprint, works on Free)
-
-| Setting | Value |
-| --- | --- |
-| Root directory | `.` (repo root) |
-| Runtime | Python 3.12 (`PYTHON_VERSION=3.12`) |
-| Build command | `pip install uv && uv sync --frozen --no-dev`, followed by the embedding-model prefetch (see `render.yaml`) |
-| Start command | `uv run uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT` |
-| Health check path | `/health` |
-| Env vars | `DATABASE_URL`, `CORS_ORIGIN`, `OPENROUTER_API_KEY`, `EXA_API_KEY`, `HF_HOME`, optional `GROQ_API_KEY` / `OPENAI_API_KEY` / `MODERATION_HASH_SALT` / `SENTRY_DSN` / `SENTRY_ENVIRONMENT` / `HF_TOKEN` |
-
-The API embeds text **in-process** with sentence-transformers rather than calling a hosted
-embedding API, so the ~88 MB `all-MiniLM-L6-v2` model has to be on disk before the first
-question can be answered. The build command downloads it into `HF_HOME`
-(`/opt/render/project/src/.hf-cache`, inside the project directory) so it ships with the
-build instead of being fetched on the first request. Both variables must be set, and
-`HF_HOME` must point to the same path at build time and run time — otherwise the running
-service silently re-downloads the model on every cold start.
-
-**Deployment steps**
-
-1. Create the Neon database, enable `pgvector`, and run the Alembic migrations against it (see the ordering note in step 5 of *Installation & Setup*).
-2. Run `uv run python -m backend.app.rag.index_dataset` once so the RAG example has embeddings to retrieve.
-3. Deploy `bws4-api` first, and note the URL Render assigns it.
-4. Deploy `bws4-web` with `VITE_API_BASE_URL` set to that API URL.
-5. Set the API's `CORS_ORIGIN` to the static site's exact origin (e.g. `https://bws4-web.onrender.com`) and redeploy the API. The blueprint wires this automatically via `fromService`.
-
-> **Why the API is not on the free plan.** This process pays an unusually large start-up
-> cost: it imports torch and sentence-transformers, then fits the embeddings projection in
-> `lifespan` before serving its first request — **30–60 seconds**, even with the model
-> already on disk. On Render's free plan the service spins down after roughly **15 minutes
-> of inactivity**, so the first visitor of every quiet period pays that in full, which for a
-> showcase is the worst possible moment to spend it. The **Starter** plan keeps the process
-> resident and the cost is paid once per deploy instead.
->
-> On the free plan the deployment is still correct, just slower to greet you; a slow first
-> request after an idle period is expected behaviour, not a broken deployment, and an
-> external uptime checker (UptimeRobot, Better Stack) pinging `/health` keeps it warm during
-> demos. On either plan, if start-up is much slower than 30–60 seconds, check that `HF_HOME`
-> matches between build and run time — a mismatch turns every start into a fresh 88 MB model
-> download. The static frontend is CDN-served and never spins down on any plan.
+Why self-hosted rather than a managed free tier: this process pays an
+unusually large start-up cost — it imports torch and sentence-transformers,
+then fits the embeddings projection in `lifespan` before serving its first
+request (~30 s even with the model already on disk). A plan that spins down
+after idle makes the first visitor of every quiet period pay that in full,
+which for a showcase is the worst possible moment to spend it. The VPS keeps
+the process permanently warm; the cost is paid once per deploy instead.
 
 Other deployment notes:
 
-- **HTTPS only**: Render terminates TLS and issues certificates for both services; the static site redirects HTTP → HTTPS. Set `VITE_API_BASE_URL` and `CORS_ORIGIN` to `https://` URLs.
+- **HTTPS only**: Caddy issues and renews the Let's Encrypt certificate
+  in-process and redirects HTTP → HTTPS. The SPA and the API share the one
+  canonical origin, so production traffic is same-origin; `CORS_ORIGIN` is
+  retained (set to the canonical origin) and is exercised chiefly in local
+  development.
 - **CORS**: the API allows exactly one origin — whatever `CORS_ORIGIN` is set to — rather than `*`. Requests from any other origin are rejected by the browser's preflight.
 - **Database**: Neon's free tier, which — unlike many providers' free Postgres offerings — persists indefinitely rather than expiring after a fixed window.
-- **Deploys are manual** (`autoDeploy: false`) rather than automatic on every push.
+- **Deploys are manual**: one operator-run script, `deploy/deploy.sh` — pull, build, migrate, restart, readiness-gate. A release briefly interrupts service (~24 s measured) while the warm state is rebuilt at boot.
 - **Error tracking**: Sentry, wired up via `SENTRY_DSN` / `VITE_SENTRY_DSN`. Both sides no-op cleanly when their DSN is unset, so local dev and forks need no Sentry account at all.
 - **Chain-health reporting**: two classes of event are sent to Sentry explicitly, because neither would arrive on its own. `run_abort:*` covers a run that ended without producing what it set out to — those are caught deliberately and turned into a stream event so the visitor keeps partial results, so nothing raises. `model_health:*` covers the model chains decaying: a slug withdrawn from the free tier (`models_benched`), a provider's daily allowance spent (`daily_quota_exhausted`), and a chain that has started serving every request from its tail rather than its preferred head (`chain_head_not_serving`). That last one is the important one operationally — it produces **no error at all**, since the fallback chain answers correctly from further down, so the only visible symptom is that the app has quietly got slower.
 

@@ -84,7 +84,7 @@ A few conventions are load-bearing. `CLAUDE.md` documents these and others in mo
 
 ### Free-tier constraints
 
-BWS4 must run entirely on free tiers — Render, Neon, free LLM models, and free-tier search quota. Contributions that require a paid service, or that could exhaust a daily quota quickly, will generally be declined. Anything that spends a shared capability must go through `backend/app/services/shared.py` so it is counted against the usage limits.
+BWS4 must run on free tiers everywhere it matters — Neon, free LLM models, and free-tier search quota; web hosting is one small self-funded always-on VPS (see `deploy/README.md`). Contributions that require a paid service, or that could exhaust a daily quota quickly, will generally be declined. Anything that spends a shared capability must go through `backend/app/services/shared.py` so it is counted against the usage limits.
 
 ### Honesty about what the demos do
 

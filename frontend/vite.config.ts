@@ -11,8 +11,8 @@ export default defineConfig({
   // (frontend/), finds nothing, and silently falls back to the hardcoded
   // defaults in src/api/* — so VITE_API_BASE_URL and VITE_SENTRY_DSN were
   // configured but never read in local dev. Production was unaffected, since
-  // Render supplies them as real environment variables, which Vite reads
-  // regardless of envDir.
+  // deploy.sh supplies them as real environment variables at build time,
+  // which Vite reads regardless of envDir.
   //
   // Only VITE_-prefixed variables are exposed to client code, so the backend
   // secrets living in that same file (DATABASE_URL, the provider API keys)
