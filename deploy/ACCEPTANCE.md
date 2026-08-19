@@ -490,8 +490,6 @@ representations, single-call 3 generations, tool-use 1 search, orchestrated
 
 Verdict: PASS
 
-Verdict: pending
-
 # Visitor-facing wording parity vs Render (bw.spec4.ai)
 
 Checks: educational overviews, call-cost disclosures and limit notices
@@ -518,8 +516,6 @@ bw.spec4.ai and bwtemp.spec4.ai — overviews, call-cost disclosures and limit
 notices identical, consistent with the automated bundle result above.
 
 Verdict: PASS
-
-Verdict: pending
 
 # Layout, responsiveness, theme
 
