@@ -20,9 +20,9 @@ export function LandingScreen() {
           Built with Spec4 (BWS4)
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-gray-600 dark:text-gray-400">
-          BWS4 is a framework and a growing collection of example apps that demonstrate what
-          Spec4 can build. Every example below — including this landing page — was built using
-          Spec4, so you&apos;re looking at a live demonstration, not a slide deck.
+          BWS4 is a framework and a growing collection of example apps that demonstrate 
+          a small fraction of what Spec4 can build. Every example below — including this
+          landing page — was built using Spec4, so you&apos;re looking at a live demonstration.
         </p>
       </section>
 
