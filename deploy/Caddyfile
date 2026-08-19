@@ -2,18 +2,15 @@
 #
 # BWS4 public edge — Caddy 2 site configuration.
 #
-# Phase 6 note: the canonical hostname bw.spec4.ai is served here. It is
-# added as a SECOND ADDRESS on the already-validated site block rather
-# than as a transcribed copy of it, deliberately: Caddy treats each
-# address as its own site (own certificate, own HTTP→HTTPS redirect), so
-# this satisfies "both hostnames answer during DNS propagation" while
-# making it structurally impossible for the canonical site's config to
-# drift from the one Phase 3–5 validated — the transcription slip that
-# would silently reintroduce SSE buffering cannot be written this way.
-# Once the canonical origin is confirmed healthy, retiring the temporary
-# validation hostname is deleting "bwtemp.spec4.ai" from the address
-# line, leaving exactly one site. No wildcard/catch-all host matcher:
-# the edge answers only for hostnames we have deliberately placed here.
+# This is the final post-cutover form (Phase 6, 2026-08-19): exactly one
+# site, the canonical bw.spec4.ai. The block below is byte-for-byte the
+# configuration validated on the temporary hostname bwtemp.spec4.ai
+# through Phases 3–5 — at the cutover the canonical name joined it as a
+# second address (never as a transcribed copy, so the validated
+# properties could not drift), and once the canonical origin was
+# confirmed healthy the temporary name was deleted from the address line
+# and its DNS records removed. No wildcard/catch-all host matcher: the
+# edge answers only for hostnames we have deliberately placed here.
 #
 # TLS is automatic HTTPS, not manual configuration: because the site
 # address is a real hostname, Caddy issues the Let's Encrypt certificate
@@ -26,7 +23,7 @@
 # No HTTP Basic auth, IP allowlist or other access control appears here
 # by design: the application has no accounts or authentication, and abuse
 # is bounded by the server-side usage caps, not by identity.
-bw.spec4.ai, bwtemp.spec4.ai {
+bw.spec4.ai {
 	# Ordered handle blocks: the API and the static SPA must never
 	# contend for a path. handle blocks are mutually exclusive and
 	# matched in the order written, so /api/* is claimed first and the
