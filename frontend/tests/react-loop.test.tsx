@@ -107,7 +107,12 @@ describe('the ReAct Loop catalogue entry', () => {
     // The catalogue's ordering rule is newest-last: the first four ascend by
     // machinery required and everything after them is appended in the order it
     // shipped. Inserting here would reshuffle the landing cards *and* the menu.
-    expect(exampleApps.at(-1)?.id).toBe('react_loop_example_app')
+    // ReAct shipped directly after collaboration; the Router (v9) was appended
+    // after it, so the property is adjacency to its predecessor, not last place.
+    const ids = exampleApps.map((app) => app.id)
+    expect(ids.indexOf('react_loop_example_app')).toBe(
+      ids.indexOf('multi_agent_collaboration_example_app') + 1,
+    )
   })
 
   it('appears exactly once on the landing roster, as a live link', () => {

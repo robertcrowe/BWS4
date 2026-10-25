@@ -1,6 +1,6 @@
 [project]
 name = "bws4"
-version = "0.1.0"
+version = "1.1.0"
 description = "Built with Spec4 (BWS4) example apps"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -226,6 +226,11 @@ module = [
     # the repo-wide reformat this gate is scoped to avoid. Type checking it
     # costs nothing and catches the thing worth catching in an added model.
     "backend.app.services.web_search",
+    # v9's Router slice, named for the same reason as the ReAct entries above:
+    # the gate on these files is visible rather than inferred, and the wildcard
+    # covers every module later phases add to the package.
+    "backend.app.api.router",
+    "backend.app.router.*",
 ]
 ignore_errors = false
 

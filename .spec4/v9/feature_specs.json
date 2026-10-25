@@ -1,0 +1,857 @@
+{
+  "version": 1,
+  "features": [
+    {
+      "id": "landing_page",
+      "name": "Landing_Page",
+      "purpose": "Introduces BWS4 as one unified gallery of example apps, states that BWS4 and every example in it were built with Spec4, and lists the available example apps so visitors can explore them.",
+      "invocation": {
+        "trigger": "A visitor opens the site's home address or chooses the home entry in the site navigation."
+      },
+      "inputs": [
+        {
+          "name": "Example app catalogue",
+          "type": "list of items",
+          "description": "Name, short description and pattern label of each available example app, including the labels 'ReAct Loop' and 'Router'.",
+          "required": true
+        },
+        {
+          "name": "Visitor selection",
+          "type": "choice",
+          "description": "The example app the visitor chooses to open.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A welcome page explaining BWS4 and listing every example app with an entry point to each.",
+        "format": "Web page",
+        "schema_notes": "Contains a Spec4 attribution statement, an audience-oriented explanation, and one entry per example app. The same set of apps appears in the site navigation."
+      },
+      "success_criteria": [
+        "Every available example app is listed with a name and one-line description.",
+        "The page states plainly that BWS4 and all its examples were built with Spec4.",
+        "Choosing any entry opens the matching example app.",
+        "The listing matches the site navigation exactly."
+      ],
+      "failure_modes": [
+        {
+          "mode": "An example app is missing from the listing or the listing points to the wrong app",
+          "likelihood": "medium",
+          "mitigation": "Drive the listing and the site navigation from one shared catalogue so they cannot disagree."
+        },
+        {
+          "mode": "A visitor cannot tell what each example demonstrates",
+          "likelihood": "low",
+          "mitigation": "Give each entry a short plain-language description of the pattern it teaches."
+        }
+      ],
+      "dependencies": [],
+      "entities": [
+        "Example App",
+        "Pattern",
+        "Visitor"
+      ],
+      "references": []
+    },
+    {
+      "id": "rag_example_app",
+      "name": "RAG_Example_App",
+      "purpose": "Teaches the Retrieval-Augmented Generation pattern with a small, publicly available dataset: relevant passages are retrieved first and then used to ground the generated answer. It is educational rather than practical.",
+      "invocation": {
+        "trigger": "The visitor submits a question in the RAG example app."
+      },
+      "inputs": [
+        {
+          "name": "Question",
+          "type": "text",
+          "description": "A question about the dataset's subject matter, either chosen from examples or typed.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A generated answer together with the retrieved passages it was grounded in.",
+        "format": "Answer text plus a list of retrieved passages with their document titles",
+        "schema_notes": "Shows the retrieval step and the generation step as distinct, labelled stages. Includes a short educational overview of the RAG pattern in the common example-app layout."
+      },
+      "success_criteria": [
+        "Retrieved passages are shown and are relevant to the question.",
+        "The answer is consistent with the retrieved passages.",
+        "The overview explains retrieval followed by grounded generation.",
+        "The app is reachable from the landing page and site navigation."
+      ],
+      "failure_modes": [
+        {
+          "mode": "No passage in the dataset is relevant",
+          "likelihood": "medium",
+          "mitigation": "Say that the dataset does not cover the question instead of fabricating an answer."
+        },
+        {
+          "mode": "The answer contradicts or ignores the retrieved passages",
+          "likelihood": "medium",
+          "mitigation": "Instruct generation to answer only from the passages and display them next to the answer."
+        },
+        {
+          "mode": "Generation or retrieval is unavailable or capped",
+          "likelihood": "medium",
+          "mitigation": "Show a clear message identifying the cause."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Question",
+        "Document",
+        "Passage",
+        "Answer"
+      ],
+      "references": []
+    },
+    {
+      "id": "shared_framework_services",
+      "name": "Shared_Framework_Services",
+      "purpose": "Provides the common capabilities every example app relies on: text generation from free models, a small local embedding capability, web search, and access to the relational and vector data. It also enforces the shared usage caps. These services are ready once at startup and stay ready while the service runs.",
+      "invocation": {
+        "trigger": "An example app requests generation, embedding, search or data access, or the service starts up."
+      },
+      "inputs": [
+        {
+          "name": "Generation request",
+          "type": "text with optional response-shape definition",
+          "description": "A prompt, optionally with a required structure for the reply.",
+          "required": false
+        },
+        {
+          "name": "Text to embed",
+          "type": "text or list of text",
+          "description": "Text to turn into a numeric meaning representation.",
+          "required": false
+        },
+        {
+          "name": "Search query",
+          "type": "text",
+          "description": "A query for the shared web search capability.",
+          "required": false
+        },
+        {
+          "name": "Data request",
+          "type": "read or write request",
+          "description": "A request to read or record relational or vector data.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "Generated text or structured replies, embeddings, search result snippets, and data results, each returned to the calling app.",
+        "format": "Structured results",
+        "schema_notes": "Also reports remaining shared hourly and daily usage so apps can distinguish their own per-app limit from the shared cap. Embedding and its 2D projection are prepared at startup and stay ready."
+      },
+      "success_criteria": [
+        "Apps obtain generation, embedding, search and data results through this one shared layer.",
+        "The embedding capability and its 2D projection are ready before the first visitor arrives and respond without a first-visit delay.",
+        "Usage caps are enforced and the cause of a refusal can be told apart.",
+        "A request that cannot complete under the shared cap is refused before it starts."
+      ],
+      "failure_modes": [
+        {
+          "mode": "A free model is rate-limited or unavailable",
+          "likelihood": "high",
+          "mitigation": "Fall back to another available free model and show the visitor a clear, candid message if none can answer."
+        },
+        {
+          "mode": "The shared daily or hourly cap is reached",
+          "likelihood": "medium",
+          "mitigation": "Refuse new runs with a message naming the shared cap and keep earlier results visible."
+        },
+        {
+          "mode": "Embedding capability is not ready at startup",
+          "likelihood": "low",
+          "mitigation": "Report the service as not ready and do not serve embedding-dependent apps until it is."
+        },
+        {
+          "mode": "Search or data access is temporarily unavailable",
+          "likelihood": "medium",
+          "mitigation": "Return a clear failure to the calling app so it can tell the visitor rather than invent results."
+        }
+      ],
+      "dependencies": [],
+      "entities": [
+        "Generation Request",
+        "Embedding",
+        "Search Result",
+        "Usage Cap",
+        "Document"
+      ],
+      "references": []
+    },
+    {
+      "id": "tool_use_integration",
+      "name": "Tool_Use_Integration",
+      "purpose": "Gives example apps that use tools access to live web search through the shared search capability, so an app can ground answers in current information.",
+      "invocation": {
+        "trigger": "An example app or a model decision within an app asks for a web search."
+      },
+      "inputs": [
+        {
+          "name": "Search query",
+          "type": "text",
+          "description": "The query the app or model wants searched.",
+          "required": true
+        },
+        {
+          "name": "Result limit",
+          "type": "number",
+          "description": "How many result snippets to return.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A short list of result snippets with their sources.",
+        "format": "List of text snippets with source references",
+        "schema_notes": "Each snippet has title, source and excerpt. An empty or failed search is reported explicitly."
+      },
+      "success_criteria": [
+        "A valid query returns relevant snippets with sources.",
+        "The exact query used is available to the calling app for display.",
+        "Failures are reported explicitly and never filled with invented results."
+      ],
+      "failure_modes": [
+        {
+          "mode": "Search quota exhausted or search unavailable",
+          "likelihood": "medium",
+          "mitigation": "Return an explicit failure so the app can tell the visitor and stop cleanly."
+        },
+        {
+          "mode": "Results are irrelevant or empty",
+          "likelihood": "medium",
+          "mitigation": "Return the empty result as such so the calling app can try another query or say it is unresolved."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Search Query",
+        "Search Result"
+      ],
+      "references": []
+    },
+    {
+      "id": "embeddings_example_app",
+      "name": "Embeddings_Example_App",
+      "purpose": "Teaches embeddings through a visual explorer: curated words, short phrases and sentences are embedded with the shared embedding capability, projected to 2D and plotted so visitors can see semantic clusters. Visitors can add their own text, which appears in a distinct colour.",
+      "invocation": {
+        "trigger": "The visitor opens the app (curated plot shown) or submits custom text."
+      },
+      "inputs": [
+        {
+          "name": "Curated examples",
+          "type": "list of text items with categories",
+          "description": "Pre-configured words, phrases (e.g. animals, emotions, tech terms) and full sentences.",
+          "required": true
+        },
+        {
+          "name": "Custom text",
+          "type": "text",
+          "description": "Text the visitor wants placed on the plot.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A 2D plot of all points, with curated points grouped by category and custom points in a distinct colour.",
+        "format": "Interactive visual plot with labels",
+        "schema_notes": "Adding custom text recalculates one shared 2D projection that includes curated and custom points. Includes a short educational overview of embeddings."
+      },
+      "success_criteria": [
+        "Similar items visibly cluster together.",
+        "Custom text appears in a distinct colour within the same recalculated projection.",
+        "The shared embedding capability is reused; no new embedding capability is introduced.",
+        "The plot appears without a noticeable first-visit delay."
+      ],
+      "failure_modes": [
+        {
+          "mode": "Custom text is empty or excessively long",
+          "likelihood": "medium",
+          "mitigation": "Reject it with a clear message about acceptable input."
+        },
+        {
+          "mode": "The projection shifts so much after adding a point that visitors lose orientation",
+          "likelihood": "medium",
+          "mitigation": "Keep curated category colours and labels stable and highlight the new point."
+        },
+        {
+          "mode": "Embedding capability not ready",
+          "likelihood": "low",
+          "mitigation": "Show a clear 'not ready yet' message."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Text Item",
+        "Embedding",
+        "Category",
+        "2D Projection"
+      ],
+      "references": []
+    },
+    {
+      "id": "single_call_example_app",
+      "name": "Single_Call_Example_App",
+      "purpose": "Teaches the single-call pattern: one direct request to the model produces one direct response, with no retrieval, tools or chaining. Visitors can compare a Simple mode with a Structured mode.",
+      "invocation": {
+        "trigger": "The visitor submits a free-form or preset prompt."
+      },
+      "inputs": [
+        {
+          "name": "Prompt",
+          "type": "text",
+          "description": "Free-form text or one of the preset examples (e.g. summarize, classify, extract).",
+          "required": true
+        },
+        {
+          "name": "Mode",
+          "type": "choice of two",
+          "description": "Simple (plain text in, plain text out) or Structured (reply must conform to a defined shape).",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "The model's response; in Structured mode, also the structured request and the structured reply.",
+        "format": "Plain text, or a structured reply with the request definition shown beside it",
+        "schema_notes": "Exactly one model call per run. Includes a short overview of the pattern and when it is appropriate."
+      },
+      "success_criteria": [
+        "Each run makes exactly one model call.",
+        "In Structured mode the reply conforms to the displayed shape.",
+        "Both the structured request and the structured reply are visible in Structured mode.",
+        "Preset prompts populate the input ready to run."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The structured reply does not conform to the required shape",
+          "likelihood": "medium",
+          "mitigation": "Detect it, show the raw reply, and tell the visitor it did not conform."
+        },
+        {
+          "mode": "Empty or oversized prompt",
+          "likelihood": "medium",
+          "mitigation": "Validate and explain the accepted input."
+        },
+        {
+          "mode": "Shared usage cap reached",
+          "likelihood": "medium",
+          "mitigation": "Explain the cap and keep earlier results visible."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Prompt",
+        "Response",
+        "Response Shape",
+        "Mode"
+      ],
+      "references": []
+    },
+    {
+      "id": "chained_calls_example_app",
+      "name": "Chained_Calls_Example_App",
+      "purpose": "Teaches the chained calls pattern: the output of one model call becomes the input to the next. The demo uses exactly two chained calls to conserve quota, and says that the pattern itself allows any number of calls.",
+      "invocation": {
+        "trigger": "The visitor submits an initial request."
+      },
+      "inputs": [
+        {
+          "name": "Initial request",
+          "type": "text",
+          "description": "The request given to the first agent.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "The intermediate output of the first call and the final output of the second call, shown in order.",
+        "format": "Two labelled text stages",
+        "schema_notes": "Each agent's role is stated before the run. The page notes that the two-call limit is a quota-conserving choice. Includes a short overview of the pattern."
+      },
+      "success_criteria": [
+        "Exactly two model calls are made per run.",
+        "The second call demonstrably receives the first call's output.",
+        "Both intermediate and final outputs are visible.",
+        "Agent roles are shown before the run."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The first call fails or returns nothing usable",
+          "likelihood": "medium",
+          "mitigation": "Stop before the second call and say so."
+        },
+        {
+          "mode": "Visitors believe the pattern is limited to two calls",
+          "likelihood": "low",
+          "mitigation": "State that the limit is for this demo only."
+        },
+        {
+          "mode": "Shared usage cap reached",
+          "likelihood": "medium",
+          "mitigation": "Explain the cap and keep earlier results visible."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Request",
+        "Agent Role",
+        "Intermediate Output",
+        "Final Output"
+      ],
+      "references": []
+    },
+    {
+      "id": "planning_agent_example_app",
+      "name": "Planning_Agent_Example_App",
+      "purpose": "Teaches the planning agent pattern with a trip-day planner: a planner call produces a plan, the visitor reviews it, and executor calls carry out the steps and compose a one-day itinerary. It contrasts a fixed plan-first approach with the interleaved ReAct Loop example.",
+      "invocation": {
+        "trigger": "The visitor submits a city and interests, then later chooses Next to run the displayed plan."
+      },
+      "inputs": [
+        {
+          "name": "City",
+          "type": "text",
+          "description": "Destination for the day.",
+          "required": true
+        },
+        {
+          "name": "Interests",
+          "type": "text",
+          "description": "What the visitor enjoys.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A displayed plan, then each executor step's result as it completes, ending in a one-day itinerary.",
+        "format": "Ordered plan followed by progressively revealed step results",
+        "schema_notes": "Plan consists of research steps using shared web search plus a final synthesis step. Roughly 1 planner call and 2-3 executor calls per run. Visitor runs per visit are limited. The overview cross-references the ReAct Loop example and notes that real planning agents can use any number of steps."
+      },
+      "success_criteria": [
+        "The plan is shown in full before any executor step runs.",
+        "Executor steps run in sequence only after the visitor chooses Next, each result appearing as it completes.",
+        "The final itinerary draws on the research results.",
+        "Per-run model-call and per-visit run limits are enforced and stated on the page.",
+        "The overview contrasts plan-first with ReAct Loop."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The planner produces too many or malformed steps",
+          "likelihood": "medium",
+          "mitigation": "Enforce the fixed step count and report a failed plan clearly."
+        },
+        {
+          "mode": "A research step finds nothing useful",
+          "likelihood": "medium",
+          "mitigation": "Show the step as unresolved and let synthesis acknowledge the gap."
+        },
+        {
+          "mode": "Run limit or shared cap reached",
+          "likelihood": "medium",
+          "mitigation": "Disable input with a message that tells the two limits apart and keep earlier results visible."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "tool_use_integration"
+      ],
+      "entities": [
+        "City",
+        "Interest",
+        "Plan",
+        "Plan Step",
+        "Itinerary",
+        "Run Allowance"
+      ],
+      "references": []
+    },
+    {
+      "id": "orchestrated_subagents_example_app",
+      "name": "Orchestrated_Subagents_Example_App",
+      "purpose": "Teaches orchestrated subagents: an orchestrator picks two specialists from Technical, Financial, Historical and Practical, briefs each, runs them in parallel and merges their answers.",
+      "invocation": {
+        "trigger": "The visitor submits a preset or free-form question, then later chooses Next to dispatch the specialists."
+      },
+      "inputs": [
+        {
+          "name": "Question",
+          "type": "text",
+          "description": "A curated preset chosen to exercise different pairings, or the visitor's own question.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "The delegation decision (two specialists, rationale, a brief for each), two parallel specialist columns with live status, and a merged final answer.",
+        "format": "Decision panel, two parallel columns, final answer panel",
+        "schema_notes": "Exactly three model calls per run: one orchestrator delegation, two specialists, plus the merge is by the orchestrator within the stated call budget. Specialists have no tool access. 3 runs per visit with a visible runs-remaining counter. The overview explains that subagents are independent and can run in parallel."
+      },
+      "success_criteria": [
+        "The orchestrator chooses exactly two distinct specialists and shows rationale and briefs before anything is dispatched.",
+        "The specialists run concurrently with visible individual status.",
+        "A single merged answer follows once both return.",
+        "Runs remaining is always visible; at zero the input and Next are disabled while earlier results stay.",
+        "The message distinguishes the app's 3-run limit from the shared daily cap."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The orchestrator selects fewer or more than two specialists, or an unknown one",
+          "likelihood": "medium",
+          "mitigation": "Validate against the fixed roster and report a failed delegation."
+        },
+        {
+          "mode": "One specialist fails while the other succeeds",
+          "likelihood": "medium",
+          "mitigation": "Show which failed and have the merge state it relied on one specialist only, or end clearly."
+        },
+        {
+          "mode": "Run limit or shared cap reached",
+          "likelihood": "medium",
+          "mitigation": "Disable input with a message naming the right limit."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Question",
+        "Specialist",
+        "Delegation Decision",
+        "Brief",
+        "Specialist Answer",
+        "Merged Answer",
+        "Run Allowance"
+      ],
+      "references": []
+    },
+    {
+      "id": "multi_agent_collaboration_example_app",
+      "name": "Multi_Agent_Collaboration_Example_App",
+      "purpose": "Teaches multi-agent collaboration across a staged trust boundary: a Buyer agent negotiates with two rival Seller agents holding private constraints, in one negotiation round, using an A2A-shaped data model passed in-process.",
+      "invocation": {
+        "trigger": "The visitor selects a preset procurement scenario, sets priorities and starts the negotiation."
+      },
+      "inputs": [
+        {
+          "name": "Scenario",
+          "type": "choice among presets",
+          "description": "A procurement scenario pre-tuned so the sellers' bids are not directly comparable.",
+          "required": true
+        },
+        {
+          "name": "Priority weighting",
+          "type": "choice or weights",
+          "description": "What matters most (e.g. speed over price, full quantity, longest warranty).",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "Two parallel seller columns with live status, a buyer track (request for quotation, counter-offers, award with rationale), a private-position reveal, and an optional raw message log.",
+        "format": "Parallel columns plus a buyer track and an optional chronological message view",
+        "schema_notes": "Exactly six model calls per run: two initial bids, one buyer review with two counter-offers, two best-and-final bids, one award. The request for quotation is composed without a model call. Each agent has an inspectable Agent Card. Exchanges are Task/Message/Artifact-shaped. Peers can only see messages addressed to them, enforced in code. Includes an overview with a candid note on the staged trust boundary and what a real deployment would add."
+      },
+      "success_criteria": [
+        "Exactly six model calls occur per run.",
+        "Sellers never see each other's messages or private constraints, and the message log shows no seller-to-seller traffic.",
+        "Different priorities can produce a different winner for the same scenario.",
+        "The award rationale is weighed against the visitor's priorities.",
+        "The final reveal shows each party's hidden constraints and why sellers held firm or conceded.",
+        "Agent Cards are viewable for all three agents."
+      ],
+      "failure_modes": [
+        {
+          "mode": "A seller bid breaks its own private constraints",
+          "likelihood": "medium",
+          "mitigation": "Validate bids against constraints and flag or correct violations."
+        },
+        {
+          "mode": "A bid is malformed",
+          "likelihood": "medium",
+          "mitigation": "Detect it, show it as a failed bid and let the buyer proceed with what is valid, or end clearly."
+        },
+        {
+          "mode": "Visitors mistake the staged boundary for a real one",
+          "likelihood": "low",
+          "mitigation": "State in the overview that all agents share one owner and the boundary is for teaching."
+        },
+        {
+          "mode": "Hourly or daily shared cap reached",
+          "likelihood": "medium",
+          "mitigation": "Refuse before starting with a message naming the cap."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Scenario",
+        "Priority Weighting",
+        "Buyer Agent",
+        "Seller Agent",
+        "Agent Card",
+        "Request for Quotation",
+        "Bid",
+        "Counter-offer",
+        "Award",
+        "Private Constraint",
+        "Message"
+      ],
+      "references": []
+    },
+    {
+      "id": "react_loop_example_app",
+      "name": "ReAct_Loop_Example_App",
+      "purpose": "Teaches the ReAct (Reason, Act, Observe) loop with multi-hop questions where each next search can only be written after reading the previous result. It is deliberately contrasted with Tool Use and the plan-first Planning Agent example.",
+      "invocation": {
+        "trigger": "The visitor chooses one of five preset questions or types one, and starts the run."
+      },
+      "inputs": [
+        {
+          "name": "Question",
+          "type": "text",
+          "description": "One of five curated multi-hop questions (questions only, no stored answers) or the visitor's own.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "A live trace of cycles (thought, action as search query or decision to answer, observation snippets), ending in either a final answer card citing the observations used or a budget-exhausted card.",
+        "format": "Progressively revealed trace followed by a closing card",
+        "schema_notes": "No plan is shown and nothing is approved mid-run. At most about 8 searches plus one final answer call. A live counter such as 'search 3 of 8' shows budget use. The budget-exhausted card shows the partial trace and what remained unresolved. 2 runs per visit with a runs-remaining indicator. The overview explains the contrast with Tool Use and Planning Agent, and that a model may state a first hop from its own knowledge on presets 4 and 5."
+      },
+      "success_criteria": [
+        "Each cycle shows thought, action and observation in order, and each new thought builds on the last observation.",
+        "The exact search query issued is displayed.",
+        "Every run ends in a final answer card or a budget-exhausted card, never a partial result presented as an answer.",
+        "The cycle counter advances live and the cap is never exceeded.",
+        "At zero runs the input and start are disabled with a message that tells the 2-run limit from the shared cap, and earlier results remain visible.",
+        "Presets 1-3 can show every hop coming from an observation."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The loop reaches the cycle cap before the model is confident",
+          "likelihood": "low",
+          "mitigation": "End with the budget-exhausted card naming what is unresolved."
+        },
+        {
+          "mode": "Search returns nothing useful",
+          "likelihood": "medium",
+          "mitigation": "Show the observation as is and let the model reformulate within the budget."
+        },
+        {
+          "mode": "The model repeats the same search",
+          "likelihood": "medium",
+          "mitigation": "Detect repeats and steer it to a different query or to answering."
+        },
+        {
+          "mode": "A preset question goes stale or no longer parses",
+          "likelihood": "low",
+          "mitigation": "Periodic sanity check of presets; answers are never stored."
+        },
+        {
+          "mode": "Run limit or shared cap reached",
+          "likelihood": "medium",
+          "mitigation": "Disable input with a message naming the right limit."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "tool_use_integration"
+      ],
+      "entities": [
+        "Question",
+        "Thought",
+        "Action",
+        "Search Query",
+        "Observation",
+        "Final Answer",
+        "Run Allowance"
+      ],
+      "references": []
+    },
+    {
+      "id": "self_hosted_deployment",
+      "name": "Self_Hosted_Deployment",
+      "purpose": "Makes BWS4 available as one always-on instance that serves the web client and shared services at a trusted secure public address, preserving all current behaviour while removing the cold-start delay and memory pressure of the previous host.",
+      "invocation": {
+        "trigger": "A release of BWS4 is put into service, or a visitor requests the public address."
+      },
+      "inputs": [
+        {
+          "name": "Built application",
+          "type": "complete application bundle",
+          "description": "The web client and shared services to be made available.",
+          "required": true
+        },
+        {
+          "name": "Existing data location",
+          "type": "connection details",
+          "description": "Where the relational and vector data lives, which stays external to the host.",
+          "required": true
+        }
+      ],
+      "outputs": {
+        "primary": "BWS4 reachable by visitors at a secure public address with a certificate browsers trust, always on and warm.",
+        "format": "Live public site",
+        "schema_notes": "Embedding capability and its 2D projection are prepared once at startup and stay ready. No example app behaviour, usage cap or visitor-facing message changes. The previous host is retired entirely."
+      },
+      "success_criteria": [
+        "The site loads in a browser over a secure connection with no certificate warnings.",
+        "A first visit has no cold-start delay.",
+        "Every example app behaves as before, with unchanged caps and messages.",
+        "The embedding example responds immediately after startup.",
+        "The previous host no longer serves any traffic."
+      ],
+      "failure_modes": [
+        {
+          "mode": "Certificate becomes invalid or expires",
+          "likelihood": "medium",
+          "mitigation": "Renew automatically and alert before expiry."
+        },
+        {
+          "mode": "The instance runs short of memory",
+          "likelihood": "low",
+          "mitigation": "Monitor memory use and alert on sustained high use."
+        },
+        {
+          "mode": "Behaviour differs from the previous host after the move",
+          "likelihood": "medium",
+          "mitigation": "Verify every example app against its pre-move behaviour before retiring the old host."
+        },
+        {
+          "mode": "The instance becomes unavailable",
+          "likelihood": "low",
+          "mitigation": "Monitor availability and bring the service back automatically."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services"
+      ],
+      "entities": [
+        "Deployment",
+        "Public Address",
+        "Certificate",
+        "Shared Service"
+      ],
+      "references": []
+    },
+    {
+      "id": "router_example_app",
+      "name": "Router_Example_App",
+      "purpose": "Teaches routing: one cheap classification call chooses among four existing paths and then deterministic code dispatches to the chosen path, with the model that decided taking no further part. It shows decisions, honest agreement history and real cost savings.",
+      "invocation": {
+        "trigger": "The visitor chooses one of six preset requests or types their own and starts the run; or chooses to re-run a misrouted preset through its expected route."
+      },
+      "inputs": [
+        {
+          "name": "Request",
+          "type": "text",
+          "description": "One of six curated presets (request only, each with an expected route and one-line reason) or free text.",
+          "required": true
+        },
+        {
+          "name": "Route descriptions",
+          "type": "list of four one-line descriptions",
+          "description": "Told to the router and displayed exactly as given. The deterministic line lists supported operations and unit families from the same table the evaluator validates against. The RAG line lists subjects derived at startup from the indexed document titles.",
+          "required": true
+        },
+        {
+          "name": "Decision margin and cost order",
+          "type": "fixed settings",
+          "description": "Margin for low-confidence decisions and cost order (deterministic, single call, RAG, search plus generation), shown on the page.",
+          "required": true
+        },
+        {
+          "name": "Re-run choice",
+          "type": "choice",
+          "description": "Offered once per eligible preset run to re-run through the expected route.",
+          "required": false
+        }
+      ],
+      "outputs": {
+        "primary": "A decision card (chosen route, one-line rationale, all four scores, agreement statement for presets: agreed, 'misrouted' or 'declined'), the answer from the dispatched path labelled with its path, a cost strip, an agreement history, and for eligible runs a side-by-side re-run.",
+        "format": "Decision card, answer in the corresponding example app's layout, comparison strip, per-preset and overall history",
+        "schema_notes": "Routes: no-model evaluator over allowed arithmetic and length, speed, temperature conversions; single call; RAG retrieval; web search plus one generation. Model-produced text is never executed. If the top two scores are within the margin, the run is low-confidence: it dispatches to the cheaper of the two with the caveat shown. If a deterministic choice cannot be computed, dispatch goes to single call and the card says so; for a low-confidence tie the other torn route is used. Cost strip compares the route taken with a 'no router' baseline (search plus generation) by model calls, searches, retrievals and time, with router overhead shown separately. Baseline time is labelled 'typical' and is the median of real search-route runs, shown only after at least five observations, with sample size, otherwise counts only. Per-preset agreed, disagreed and declined counts and rates (agreed divided by all three) show counts only until five observations. Free-text runs, re-runs and lucky tie-breaks earn no history credit. Re-run costs one run, shows router overhead as zero, and never feeds histories. Overview states the scores are uncalibrated self-report and the agreement rate is the one calibrated number."
+      },
+      "success_criteria": [
+        "Route descriptions on the page match byte for byte what the router received, with the margin beside them.",
+        "Every run ends in exactly one of a routed answer or a low-confidence card; a refused-before-start run is not an ending.",
+        "All four scores appear on every decision card.",
+        "A deterministic result is only released after the evaluator accepts the expression, and model text is never executed.",
+        "No run exceeds 2 model-call units, plus one search on the search route; units are reserved before the router runs and the second is released once the evaluator accepts.",
+        "The cost strip never presents the baseline's time as this run's time and never shows a hard-coded figure.",
+        "Histories survive interruptions of the service and respect the five-observation rule.",
+        "A re-run is offered once, only when a preset's dispatched route differs from expected, and never for free text.",
+        "5 runs per visit with a visible counter; at zero the input and run controls are disabled with a message that tells the 5-run limit from the shared cap, and earlier results remain."
+      ],
+      "failure_modes": [
+        {
+          "mode": "The router returns a malformed or incomplete decision",
+          "likelihood": "medium",
+          "mitigation": "Treat it as declined for presets, show it candidly and dispatch via the low-confidence path or a clear failure."
+        },
+        {
+          "mode": "The evaluator cannot compute the router's expression",
+          "likelihood": "medium",
+          "mitigation": "Fall back as specified and state the misroute plainly on the card."
+        },
+        {
+          "mode": "Visitors read the scores as calibrated probabilities",
+          "likelihood": "medium",
+          "mitigation": "State that they are uncalibrated self-report and highlight the measured agreement rate."
+        },
+        {
+          "mode": "Too little history for a meaningful rate or typical time",
+          "likelihood": "high",
+          "mitigation": "Show counts only and an explanatory note until five observations exist."
+        },
+        {
+          "mode": "Shared cap is too close for a complete run",
+          "likelihood": "medium",
+          "mitigation": "Refuse before anything runs, with a message naming the shared cap."
+        },
+        {
+          "mode": "Route description list goes out of date with the dataset or evaluator",
+          "likelihood": "low",
+          "mitigation": "Generate the lines from the retriever's indexed titles and the evaluator's own table."
+        }
+      ],
+      "dependencies": [
+        "shared_framework_services",
+        "tool_use_integration",
+        "rag_example_app",
+        "single_call_example_app"
+      ],
+      "entities": [
+        "Request",
+        "Route",
+        "Routing Decision",
+        "Score",
+        "Expression",
+        "Expected Route",
+        "Cost Strip",
+        "Agreement History",
+        "Latency History",
+        "Run Allowance"
+      ],
+      "references": []
+    }
+  ],
+  "nfr_goals": [
+    "First visit is fast with no cold-start delay, including the embedding explorer.",
+    "The gallery is always available to visitors.",
+    "Total model, search and embedding spend stays within shared hourly and daily caps.",
+    "Per-app run limits are visible and enforced, and messages always tell app-level limits from shared caps.",
+    "Streaming progress such as live status and trace entries appears as steps complete.",
+    "Works in current desktop and mobile browsers.",
+    "All example apps share a consistent layout and navigation.",
+    "Visitor-facing history and statistics remain available over time.",
+    "Failures are always shown candidly and never replaced with invented results."
+  ]
+}

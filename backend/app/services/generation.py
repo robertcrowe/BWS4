@@ -45,6 +45,7 @@ def generate_text(
     system_prompt: str,
     user_prompt: str,
     response_format: dict[str, Any] | None = None,
+    max_tokens: int | None = None,
 ) -> GenerationResult:
     """Generate text over the shared free-model generation chain.
 
@@ -81,6 +82,9 @@ def generate_text(
             silently turn a constrained request into an unconstrained one, and
             a caller that asked for a schema is better served by a failure
             that trips the fallback chain than by a quiet downgrade.
+        max_tokens: Optional cap on the response length, passed straight
+            through when supplied and omitted otherwise, so existing callers
+            are unaffected.
 
     Returns:
         The model's raw text response and the slug that served it.
@@ -99,6 +103,8 @@ def generate_text(
     optional: dict[str, Any] = {}
     if response_format is not None:
         optional["response_format"] = response_format
+    if max_tokens is not None:
+        optional["max_tokens"] = max_tokens
 
     try:
         response = litellm.completion(

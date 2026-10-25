@@ -486,3 +486,56 @@ class ReactRun(Base):
     terminal_card: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     hop_annotations: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     cycle_timings: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+
+class RouterAgreementRecord(Base):
+    """One qualifying Router preset run's agreement outcome. Append-only.
+
+    Shared across visitors and kept in the database so the agreement history
+    survives restarts. Written only for a router-routed or low-confidence
+    preset run; free text, comparison re-runs and malformed fallbacks write
+    nothing. Rates are computed in SQL from these rows.
+    """
+
+    __tablename__ = "router_agreement_records"
+    __table_args__ = (
+        CheckConstraint(
+            "outcome IN ('agreed', 'disagreed', 'declined')",
+            name="ck_router_agreement_records_outcome",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    #: A preset id, 'p1'..'p6'. Never request text.
+    preset_id: Mapped[str] = mapped_column(String(8), index=True)
+    outcome: Mapped[str] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class RouterLatencyObservation(Base):
+    """One real search-route run's measured time. Append-only.
+
+    The cost strip's "typical" baseline is the rolling median of the most
+    recent rows. Comparison re-runs never write one.
+    """
+
+    __tablename__ = "router_latency_observations"
+    __table_args__ = (
+        CheckConstraint(
+            "route = 'search_generation'",
+            name="ck_router_latency_observations_route",
+        ),
+        CheckConstraint(
+            "duration_ms >= 0", name="ck_router_latency_observations_duration"
+        ),
+        Index("ix_router_latency_observations_route_created", "route", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    route: Mapped[str] = mapped_column(String(32))
+    duration_ms: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )

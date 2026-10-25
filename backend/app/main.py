@@ -14,12 +14,14 @@ from backend.app.api.orchestrated import router as orchestrated_router
 from backend.app.api.planning import router as planning_router
 from backend.app.api.rag import router as rag_router
 from backend.app.api.react import router as react_router
+from backend.app.api.router import router as router_router
 from backend.app.api.single_call import router as single_call_router
 from backend.app.api.tools import router as tools_router
 from backend.app.core.config import get_settings
 from backend.app.core.logging import configure_logging
 from backend.app.core.observability import configure_sentry
 from backend.app.embeddings.service import ensure_built
+from backend.app.router.state import warm_route_descriptions
 
 configure_logging()
 
@@ -50,6 +52,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         ensure_built()
     except Exception:  # noqa: BLE001 - warm-up is best-effort by design
         logger.exception("embeddings_projection_warmup_failed")
+    await warm_route_descriptions()
     yield
 
 
@@ -75,3 +78,4 @@ app.include_router(planning_router)
 app.include_router(orchestrated_router)
 app.include_router(collab_router)
 app.include_router(react_router)
+app.include_router(router_router)

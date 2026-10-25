@@ -1,0 +1,563 @@
+# code_scanner review emission failed validation (first emission)
+# schema_version 2; 3 error(s):
+#   review.load_bearing.4: 'contract' is a required property
+#   review.load_bearing.6: 'contract' is a required property
+#   review.load_bearing.7: 'contract' is a required property
+
+```json
+{
+  "review": {
+    "is_software_project": true,
+    "project_type": "web application: FastAPI backend and React SPA gallery of AI pattern example apps",
+    "existing_self_description": {
+      "text": "Built with Spec4 (BWS4) is a living showcase of common AI application patterns, presented as a collection of small, self-contained example apps behind a single landing page.",
+      "source": "README.md"
+    },
+    "architecture": {
+      "summary": "Each example app has its own backend package and API router, mounted in one FastAPI app, and all apps draw on shared services in backend/app/services/ and a common db layer. The frontend is a set of per-example lazy-loaded routes.",
+      "pattern": "layered",
+      "inferred_from": "backend/app/main.py"
+    },
+    "languages": [
+      {"name": "Python", "source": "pyproject.toml"},
+      {"name": "TypeScript", "source": "frontend/package.json"},
+      {"name": "JavaScript", "source": "frontend/postcss.config.js"}
+    ],
+    "frameworks": [
+      {"name": "FastAPI", "source": "pyproject.toml"},
+      {"name": "PydanticAI", "source": "pyproject.toml"},
+      {"name": "SQLAlchemy", "source": "pyproject.toml"},
+      {"name": "React", "source": "frontend/package.json"},
+      {"name": "React Router", "source": "frontend/package.json"},
+      {"name": "TanStack Query", "source": "frontend/package.json"},
+      {"name": "Tailwind CSS", "source": "frontend/package.json"},
+      {"name": "react-markdown", "source": "frontend/package.json"},
+      {"name": "react-plotly.js", "source": "frontend/package.json"}
+    ],
+    "protocols_implemented": [
+      {
+        "name": "A2A Protocol (data model and interaction pattern, without network transport)",
+        "location": "backend/app/collab/",
+        "source": "README.md"
+      }
+    ],
+    "runtime_versions": {
+      "python": ">=3.12",
+      "node": "20",
+      "_source": "pyproject.toml / README.md"
+    },
+    "build_system": {
+      "tool": "uv",
+      "manifest": "pyproject.toml"
+    },
+    "dependencies": [
+      {"name": "fastapi", "purpose": "REST API framework", "source": "pyproject.toml"},
+      {"name": "uvicorn", "purpose": "ASGI server", "source": "pyproject.toml"},
+      {"name": "sqlalchemy", "purpose": "Data access and ORM", "source": "pyproject.toml"},
+      {"name": "asyncpg", "purpose": "Async PostgreSQL driver", "source": "pyproject.toml"},
+      {"name": "alembic", "purpose": "Database migrations", "source": "pyproject.toml"},
+      {"name": "pgvector", "purpose": "pgvector support for SQLAlchemy", "source": "pyproject.toml"},
+      {"name": "litellm", "purpose": "LiteLLM lane: completion with fallback chains", "source": "pyproject.toml"},
+      {"name": "pydantic-ai", "purpose": "PydanticAI lane: typed agent outputs", "source": "pyproject.toml"},
+      {"name": "sentence-transformers", "purpose": "In-process embeddings", "source": "pyproject.toml"},
+      {"name": "torch", "purpose": "Runtime for sentence-transformers", "source": "pyproject.toml"},
+      {"name": "scikit-learn", "purpose": "PCA projection of preset embeddings", "source": "pyproject.toml"},
+      {"name": "numpy", "purpose": "Numerical arrays", "source": "pyproject.toml"},
+      {"name": "httpx", "purpose": "HTTP client", "source": "pyproject.toml"},
+      {"name": "pydantic", "purpose": "Data validation and schemas", "source": "pyproject.toml"},
+      {"name": "pydantic-settings", "purpose": "Settings from environment", "source": "pyproject.toml"},
+      {"name": "sentry-sdk", "purpose": "Backend error tracking", "source": "pyproject.toml"},
+      {"name": "structlog", "purpose": "Structured logging", "source": "pyproject.toml"},
+      {"name": "tenacity", "purpose": "Retry logic", "source": "pyproject.toml"},
+      {"name": "sse-starlette", "purpose": "Server-sent event streaming", "source": "pyproject.toml"},
+      {"name": "@microsoft/fetch-event-source", "purpose": "SSE client for streamed runs", "source": "frontend/package.json"},
+      {"name": "@sentry/react", "purpose": "Frontend error tracking", "source": "frontend/package.json"},
+      {"name": "@tanstack/react-query", "purpose": "Server state management", "source": "frontend/package.json"},
+      {"name": "react-router", "purpose": "Client-side routing", "source": "frontend/package.json"},
+      {"name": "react-markdown", "purpose": "Renders model-written markdown", "source": "frontend/package.json"},
+      {"name": "plotly.js", "purpose": "Scatter plot for embeddings example", "source": "frontend/package.json"},
+      {"name": "react-plotly.js", "purpose": "React wrapper for Plotly", "source": "frontend/package.json"},
+      {"name": "pytest", "purpose": "Backend test runner (dev)", "source": "pyproject.toml"},
+      {"name": "ruff", "purpose": "Python linter and formatter (dev)", "source": "pyproject.toml"},
+      {"name": "mypy", "purpose": "Python type checker (dev)", "source": "pyproject.toml"},
+      {"name": "vitest", "purpose": "Frontend test runner (dev)", "source": "frontend/package.json"},
+      {"name": "oxlint", "purpose": "Frontend linter (dev)", "source": "frontend/package.json"},
+      {"name": "vite", "purpose": "Frontend build tool (dev)", "source": "frontend/package.json"},
+      {"name": "typescript", "purpose": "Type checker for frontend (dev)", "source": "frontend/package.json"},
+      {"name": "tailwindcss", "purpose": "Styling (dev)", "source": "frontend/package.json"}
+    ],
+    "commands": {
+      "build": "npm run build --prefix frontend",
+      "test": "uv run pytest backend/tests",
+      "lint": "npm run lint --prefix frontend",
+      "dev": "uv run uvicorn backend.app.main:app --reload --port 8000",
+      "deploy": "/srv/bws4/deploy/deploy.sh"
+    },
+    "entrypoints": {
+      "wsgi_app": "backend.app.main:app",
+      "dev_server": "uv run uvicorn backend.app.main:app --reload --port 8000",
+      "ui_root": "frontend/src/main.tsx"
+    },
+    "directory_map": [
+      {"path": "backend/app/api/", "role": "One FastAPI router per example app, plus health and tools"},
+      {"path": "backend/app/services/", "role": "Shared framework services: model registry, LiteLLM and PydanticAI lanes, embedding, web search, moderation, storage, usage gating"},
+      {"path": "backend/app/db/", "role": "SQLAlchemy models, session, and Alembic migrations"},
+      {"path": "backend/app/db/migrations/versions/", "role": "Alembic migrations 0001 to 0014"},
+      {"path": "backend/app/chained_calls/", "role": "Chained-calls example app package"},
+      {"path": "backend/app/collab/", "role": "Multi-agent collaboration example app package"},
+      {"path": "backend/app/embeddings/", "role": "Embeddings example app package and PCA projection"},
+      {"path": "backend/app/orchestrated/", "role": "Orchestrated-subagents example app package"},
+      {"path": "backend/app/planning/", "role": "Planning-agent example app package"},
+      {"path": "backend/app/rag/", "role": "RAG example app package: chunking, retrieval, citations"},
+      {"path": "backend/app/react/", "role": "ReAct-loop example app package"},
+      {"path": "backend/app/router/", "role": "Router example app package"},
+      {"path": "backend/app/single_call/", "role": "Single-call example app package"},
+      {"path": "backend/app/tools/", "role": "Tool-use example app package"},
+      {"path": "backend/app/core/", "role": "Settings, logging, Sentry setup"},
+      {"path": "backend/tests/", "role": "pytest suite with golden fixtures under golden/ subdirectories"},
+      {"path": "frontend/src/api/", "role": "Typed API clients and TanStack Query hooks"},
+      {"path": "frontend/src/apps/", "role": "One directory per example app"},
+      {"path": "frontend/src/screens/", "role": "One screen component per example app"},
+      {"path": "frontend/src/components/", "role": "Shared shell, nav, and markdown components"},
+      {"path": "frontend/src/data/", "role": "example-apps.ts, single source of truth for the gallery directory"},
+      {"path": "frontend/src/seo/", "role": "Per-route meta handling"},
+      {"path": "frontend/tests/", "role": "Vitest suite"},
+      {"path": "deploy/", "role": "Caddyfile, systemd unit, release script"}
+    ],
+    "persistence": {
+      "databases": [
+        {"engine": "PostgreSQL", "role": "primary", "source": "README.md"}
+      ],
+      "orm": {"name": "SQLAlchemy", "source": "pyproject.toml"},
+      "migration_tool": {"name": "Alembic", "source": "pyproject.toml"},
+      "migrations_path": "backend/app/db/migrations/"
+    },
+    "env_vars": [
+      {"name": "DATABASE_URL", "purpose": "Postgres connection string (Neon)", "required": true, "source": ".env.example"},
+      {"name": "CORS_ORIGIN", "purpose": "Single origin allowed for cross-origin API requests", "required": true, "source": ".env.example"},
+      {"name": "OPENROUTER_API_KEY", "purpose": "OpenRouter model provider credential", "required": true, "source": ".env.example"},
+      {"name": "EXA_API_KEY", "purpose": "Exa web search credential", "required": true, "source": ".env.example"},
+      {"name": "GROQ_API_KEY", "purpose": "Groq model provider credential (optional second provider)", "required": false, "source": ".env.example"},
+      {"name": "OPENAI_API_KEY", "purpose": "OpenAI Moderation API credential for the moderation gate", "required": false, "source": ".env.example"},
+      {"name": "PORT", "purpose": "Backend listen port", "required": false, "source": ".env.example"},
+      {"name": "EMBEDDING_MODEL_NAME", "purpose": "sentence-transformers model name", "required": false, "source": ".env.example"},
+      {"name": "SENTRY_DSN", "purpose": "Backend Sentry error tracking DSN", "required": false, "source": ".env.example"},
+      {"name": "SENTRY_ENVIRONMENT", "purpose": "Sentry environment label", "required": false, "source": ".env.example"},
+      {"name": "VITE_API_BASE_URL", "purpose": "Frontend API base URL (build-time)", "required": false, "source": ".env.example"},
+      {"name": "VITE_SENTRY_DSN", "purpose": "Frontend Sentry DSN (build-time only)", "required": false, "source": ".env.example"}
+    ],
+    "api_surface": [
+      {"protocol": "http", "path_or_method": "GET /health", "handler": "backend/app/api/health.py", "source": "backend/app/main.py"},
+      {"protocol": "http", "path_or_method": "POST /api/react/run", "summary": "Starts a ReAct run; response streams SSE events", "handler": "backend/app/api/react.py", "source": "backend/app/react/schemas.py"},
+      {"protocol": "http", "path_or_method": "GET /api/react/presets", "handler": "backend/app/api/react.py", "source": "backend/app/react/schemas.py"},
+      {"protocol": "http", "path_or_method": "GET /api/router/presets", "handler": "backend/app/api/router.py", "source": "frontend/src/api/router.ts"},
+      {"protocol": "http", "path_or_method": "GET /api/router/history", "handler": "backend/app/api/router.py", "source": "frontend/src/api/router.ts"},
+      {"protocol": "http", "path_or_method": "GET /api/orchestrated/roster", "handler": "backend/app/api/orchestrated.py", "source": "backend/app/orchestrated/schemas.py"},
+      {"protocol": "http", "path_or_method": "GET /api/embeddings/presets", "handler": "backend/app/api/embeddings.py", "source": "backend/app/embeddings/schemas.py"},
+      {"protocol": "http", "path_or_method": "POST /api/embeddings/place", "handler": "backend/app/api/embeddings.py", "source": "backend/app/embeddings/schemas.py"}
+    ],
+    "auth": {
+      "model": "none",
+      "source": "deploy/Caddyfile"
+    },
+    "ai_capabilities": [
+      {
+        "name": "litellm",
+        "kind": "llm_api",
+        "description": "Runs one completion() call per generation with fallback chains over free OpenRouter and Groq models",
+        "location": "backend/app/services/generation.py",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pydantic-ai",
+        "kind": "agent_framework",
+        "description": "Typed-output agents over a FallbackModel for the chained-calls, planning, orchestrated, collab, react, and router apps",
+        "location": "backend/app/services/agent_runtime.py",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "sentence-transformers",
+        "kind": "embedding",
+        "description": "In-process all-MiniLM-L6-v2 embeddings for the RAG and embeddings apps",
+        "location": "backend/app/services/embedding.py",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "scikit-learn",
+        "kind": "ml_model",
+        "description": "PCA projection of the 24 preset embeddings to 2D, fitted once at startup for the embeddings plot",
+        "location": "backend/app/embeddings/service.py",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "pgvector",
+        "kind": "vector_store",
+        "description": "Cosine-distance retrieval over the dataset_embeddings table for the RAG app",
+        "location": "backend/app/rag/retriever.py",
+        "source": "pyproject.toml"
+      },
+      {
+        "name": "OpenAI Moderation API",
+        "kind": "other",
+        "description": "Screens free-form visitor questions before the orchestrated-subagents app dispatches them",
+        "location": "backend/app/services/moderation.py",
+        "source": ".env.example"
+      }
+    ],
+    "load_bearing": [
+      {
+        "module": "backend/app/services/agent_runtime.py",
+        "symbol": "run_typed_step",
+        "role": "The PydanticAI lane: runs one typed model step over a fallback chain for any app that coordinates typed calls",
+        "contract": {
+          "inputs": ["label, instructions, user_prompt, output_type, optional chain, optional tools, request_limit"],
+          "outputs": ["StepResult carrying the typed output and the serving model"],
+          "invariants": ["provider keys are passed directly to each model and never written to os.environ"]
+        },
+        "inferred_from": "backend/app/services/agent_runtime.py"
+      },
+      {
+        "module": "frontend/src/api/router.ts",
+        "symbol": "startRouterRun",
+        "role": "Client for the Router run stream, presets, and shared history",
+        "contract": {
+          "inputs": ["run options (StartRouterRunOptions)"],
+          "outputs": ["delivers each RouterRunEvent as it arrives"]
+        },
+        "inferred_from": "frontend/src/api/router.ts"
+      },
+      {
+        "module": "backend/app/core/config.py",
+        "symbol": "get_settings",
+        "role": "Cached, validated application settings loaded from environment variables and .env",
+        "contract": {
+          "inputs": ["environment variables"],
+          "outputs": ["Settings instance"]
+        },
+        "inferred_from": "backend/app/core/config.py"
+      },
+      {
+        "module": "backend/app/db/session.py",
+        "symbol": "get_db_session",
+        "role": "Yields one async SQLAlchemy session per request",
+        "contract": {
+          "outputs": ["AsyncSession scoped to a single request"]
+        },
+        "inferred_from": "backend/app/db/session.py"
+      },
+      {
+        "module": "backend/app/db/models.py",
+        "role": "Shared SQLAlchemy models for dataset embeddings, usage limits, moderation log, negotiation runs, ReAct runs, and router histories",
+        "inferred_from": "backend/app/db/models.py"
+      },
+      {
+        "module": "frontend/src/components/Markdown.tsx",
+        "symbol": "Markdown",
+        "role": "Renders model-written markdown safely for every example app that shows model prose",
+        "contract": {
+          "inputs": ["MarkdownProps"],
+          "outputs": ["React elements"]
+        },
+        "inferred_from": "frontend/src/components/Markdown.tsx"
+      },
+      {
+        "module": "backend/app/collab/scenarios.py",
+        "role": "The collaboration app's fixed cast (one buyer, two rival sellers), scenarios, and sealed constraints",
+        "inferred_from": "backend/app/collab/scenarios.py"
+      },
+      {
+        "module": "backend/app/router/constants.py",
+        "role": "Route ids, cost order, decision margin, and run limits for the Router app",
+        "inferred_from": "backend/app/router/constants.py"
+      },
+      {
+        "module": "backend/app/services/moderation.py",
+        "symbol": "moderate",
+        "role": "Screens free-form text before it is used and returns a verdict",
+        "contract": {
+          "inputs": ["text", "calling_context", "optional session", "max_chars"],
+          "outputs": ["ModerationVerdict"],
+          "invariants": ["the moderation log records a salted hash of the question, never the question text"]
+        },
+        "inferred_from": "backend/app/services/moderation.py"
+      },
+      {
+        "module": "backend/app/services/prompt_loader.py",
+        "symbol": "load_prompt",
+        "role": "Loads a versioned prompt template from the repository for the example apps",
+        "contract": {
+          "inputs": ["prompts_dir", "version"],
+          "outputs": ["raw prompt template content"]
+        },
+        "inferred_from": "backend/app/services/prompt_loader.py"
+      }
+    ],
+    "implemented": [
+      {
+        "id": "embeddings_projection",
+        "name": "Embeddings example app",
+        "description": "Embeds 24 curated preset texts and projects them to 2D with a PCA fitted once; visitor text is placed without moving existing points",
+        "status": "complete",
+        "paths": ["backend/app/embeddings/", "backend/app/api/embeddings.py", "frontend/src/apps/embeddings/"],
+        "prior_feature_ids": ["embeddings_example_app"],
+        "inferred_from": "backend/app/embeddings/service.py"
+      },
+      {
+        "id": "single_call_example",
+        "name": "Single-call example app",
+        "description": "One prompt, one response, in simple mode or structured mode with server-side JSON Schema validation",
+        "status": "complete",
+        "paths": ["backend/app/single_call/", "backend/app/api/single_call.py", "frontend/src/apps/single-call/"],
+        "prior_feature_ids": ["single_call_example_app"],
+        "inferred_from": "backend/app/single_call/presets.py"
+      },
+      {
+        "id": "chained_calls_example",
+        "name": "Chained-calls example app",
+        "description": "Two sequential calls where a writer persona's draft is critiqued by a critic persona, with the quoted phrase checked against the draft",
+        "status": "complete",
+        "paths": ["backend/app/chained_calls/", "backend/app/api/chained_calls.py", "frontend/src/apps/chained-calls/"],
+        "prior_feature_ids": ["chained_calls_example_app"],
+        "inferred_from": "backend/app/chained_calls/pipeline.py"
+      },
+      {
+        "id": "rag_question_answering",
+        "name": "RAG question answering",
+        "description": "Chunks, embeds, and indexes a reference dataset, retrieves passages by pgvector cosine distance, and audits citations against retrieved passages",
+        "status": "complete",
+        "paths": ["backend/app/rag/", "backend/app/api/rag.py", "frontend/src/apps/rag/"],
+        "prior_feature_ids": ["rag_example_app"],
+        "inferred_from": "backend/app/rag/retriever.py"
+      },
+      {
+        "id": "tool_use_web_search",
+        "name": "Tool-use web search",
+        "description": "Function-calling loop in which the model decides whether to call an Exa web search tool",
+        "status": "complete",
+        "paths": ["backend/app/tools/", "backend/app/api/tools.py", "frontend/src/apps/tooluse/"],
+        "prior_feature_ids": ["tool_use_integration"],
+        "inferred_from": "backend/app/tools/agent.py"
+      },
+      {
+        "id": "planning_agent",
+        "name": "Planning-agent example app",
+        "description": "Two-phase flow: a planner call produces a plan the visitor approves, then research and synthesis steps execute and compose an itinerary",
+        "status": "complete",
+        "paths": ["backend/app/planning/", "backend/app/api/planning.py", "frontend/src/apps/planning/"],
+        "prior_feature_ids": ["planning_agent_example_app"],
+        "inferred_from": "backend/app/planning/service.py"
+      },
+      {
+        "id": "orchestrated_subagents",
+        "name": "Orchestrated-subagents example app",
+        "description": "A coordinator picks two of four specialists, briefs each, runs them concurrently, and merges their answers",
+        "status": "complete",
+        "paths": ["backend/app/orchestrated/", "backend/app/api/orchestrated.py", "frontend/src/apps/orchestrated/"],
+        "prior_feature_ids": ["orchestrated_subagents_example_app"],
+        "inferred_from": "backend/app/orchestrated/service.py"
+      },
+      {
+        "id": "multi_agent_collaboration",
+        "name": "Multi-agent collaboration example app",
+        "description": "Buyer agent negotiates with two rival seller agents under structural opacity, followed by post-award explanation calls",
+        "status": "complete",
+        "paths": ["backend/app/collab/", "backend/app/api/collab.py", "frontend/src/apps/collab/"],
+        "prior_feature_ids": ["multi_agent_collaboration_example_app"],
+        "inferred_from": "backend/app/collab/service.py"
+      },
+      {
+        "id": "react_loop",
+        "name": "ReAct-loop example app",
+        "description": "Think, act, observe cycles with verbatim search observations, a duplicate-query guard, and grounding re-derived from the trace",
+        "status": "complete",
+        "paths": ["backend/app/react/", "backend/app/api/react.py", "frontend/src/apps/react/"],
+        "prior_feature_ids": ["react_loop_example_app"],
+        "inferred_from": "backend/app/react/schemas.py"
+      },
+      {
+        "id": "router",
+        "name": "Router example app",
+        "description": "Deterministic and LLM-classified routing across four routes, with a decision card, shared history, cost strip, and comparison re-run",
+        "status": "complete",
+        "paths": ["backend/app/router/", "backend/app/api/router.py", "frontend/src/apps/router/", "frontend/src/api/router.ts"],
+        "prior_feature_ids": ["router_example_app", "landing_page"],
+        "inferred_from": "backend/app/router/constants.py"
+      },
+      {
+        "id": "shared_framework_services",
+        "name": "Shared framework services",
+        "description": "Model registry with fallback chains, LiteLLM and PydanticAI lanes, embedding, web search, storage, and moderation reused by all example apps",
+        "status": "complete",
+        "paths": ["backend/app/services/"],
+        "prior_feature_ids": ["shared_framework_services"],
+        "inferred_from": "backend/app/services/agent_runtime.py"
+      },
+      {
+        "id": "free_tier_usage_guardrails",
+        "name": "Free-tier usage guardrails",
+        "description": "Per-UTC-hour usage caps enforced before provider calls, with reserve, redeem, and refund holds",
+        "status": "complete",
+        "paths": ["backend/app/services/allowance_holds.py", "backend/app/db/migrations/versions/"],
+        "inferred_from": "backend/app/services/allowance_holds.py"
+      },
+      {
+        "id": "landing_gallery",
+        "name": "Landing page and example-app gallery",
+        "description": "Example-app directory, navigation, and per-route SEO metadata",
+        "status": "complete",
+        "paths": ["frontend/src/screens/landing/", "frontend/src/data/example-apps.ts", "frontend/src/routes.tsx", "frontend/src/seo/"],
+        "prior_feature_ids": ["landing_page"],
+        "inferred_from": "frontend/src/data/example-apps.ts"
+      },
+      {
+        "id": "self_hosted_deployment",
+        "name": "Self-hosted VPS deployment",
+        "description": "Release script, systemd unit, and Caddy site configuration serving the SPA and reverse-proxying the API on one VPS",
+        "status": "complete",
+        "paths": ["deploy/"],
+        "prior_feature_ids": ["self_hosted_deployment"],
+        "inferred_from": "deploy/Caddyfile"
+      },
+      {
+        "id": "error_observability",
+        "name": "Optional error observability",
+        "description": "Sentry error tracking on backend and frontend, no-op when the DSN is unset",
+        "status": "complete",
+        "paths": ["backend/app/core/observability.py", "frontend/src/main.tsx"],
+        "inferred_from": "backend/app/core/observability.py"
+      }
+    ],
+    "integrations": [
+      {
+        "name": "OpenRouter",
+        "kind": "llm_provider",
+        "client_module": "backend/app/services/agent_runtime.py",
+        "config_env_vars": ["OPENROUTER_API_KEY"],
+        "purpose": "Free-tier model calls through LiteLLM and PydanticAI",
+        "inferred_from": "backend/app/services/agent_runtime.py"
+      },
+      {
+        "name": "Groq",
+        "kind": "llm_provider",
+        "client_module": "backend/app/services/agent_runtime.py",
+        "config_env_vars": ["GROQ_API_KEY"],
+        "purpose": "Free-tier model calls through LiteLLM and PydanticAI",
+        "inferred_from": "backend/app/services/agent_runtime.py"
+      },
+      {
+        "name": "Exa",
+        "kind": "web_search",
+        "client_module": "backend/app/services/web_search.py",
+        "config_env_vars": ["EXA_API_KEY"],
+        "purpose": "Live web search for the tool-use and ReAct apps",
+        "inferred_from": "backend/app/services/web_search.py"
+      },
+      {
+        "name": "PostgreSQL",
+        "kind": "database",
+        "client_module": "backend/app/db/session.py",
+        "config_env_vars": ["DATABASE_URL"],
+        "purpose": "Primary relational store and pgvector index, hosted on Neon",
+        "inferred_from": "backend/app/db/session.py"
+      },
+      {
+        "name": "OpenAI Moderation API",
+        "kind": "third_party_api",
+        "client_module": "backend/app/services/moderation.py",
+        "config_env_vars": ["OPENAI_API_KEY"],
+        "purpose": "Screens free-form visitor questions before dispatch",
+        "inferred_from": "backend/app/services/moderation.py"
+      },
+      {
+        "name": "Sentry",
+        "kind": "third_party_api",
+        "client_module": "backend/app/core/observability.py",
+        "config_env_vars": ["SENTRY_DSN", "SENTRY_ENVIRONMENT", "VITE_SENTRY_DSN"],
+        "purpose": "Error tracking and LLM call performance spans",
+        "inferred_from": "backend/app/core/observability.py"
+      },
+      {
+        "name": "Hugging Face model hub",
+        "kind": "third_party_api",
+        "client_module": "backend/app/services/embedding.py",
+        "config_env_vars": [],
+        "purpose": "Downloads the sentence-transformers model on boot",
+        "inferred_from": "deploy/bws4-api.service"
+      }
+    ],
+    "ui_summary": {
+      "has_ui": true,
+      "kind": "spa",
+      "framework": "React 19 with React Router",
+      "styling": "Tailwind CSS with class-based light/dark theming",
+      "routing": "React Router route table in frontend/src/routes.tsx with lazy per-example chunks",
+      "entry_files": ["frontend/src/main.tsx", "frontend/src/App.tsx", "frontend/src/routes.tsx"]
+    },
+    "coding_style": {
+      "linter": {"value": "ruff", "source": "pyproject.toml"},
+      "type_checker": {"value": "mypy", "source": "pyproject.toml"},
+      "indentation": {"value": "4 spaces", "inferred_from": "backend/app/main.py"},
+      "quotes": {"value": "single", "inferred_from": "frontend/src/App.tsx"},
+      "line_length": {"value": 88, "source": "pyproject.toml"},
+      "naming_conventions": {
+        "functions": {"value": "snake_case", "inferred_from": "backend/app/services/agent_runtime.py"},
+        "classes": {"value": "PascalCase", "inferred_from": "backend/app/services/agent_runtime.py"}
+      }
+    },
+    "notes": {
+      "test_coverage": {
+        "has_tests": true,
+        "framework": "pytest",
+        "coverage_summary": "Backend pytest subdirectories exist for chained_calls, collab, embeddings, orchestrated, react, router, services, and single_call; no test directory is shown for planning, rag, tools, or api. Frontend Vitest suite of 40 files under frontend/tests/ with module-level coverage not shown.",
+        "inferred_from": "backend/tests/ and frontend/tests/ directory listings"
+      },
+      "ci_cd": {
+        "present": false,
+        "type": null,
+        "path": null
+      },
+      "incomplete_or_dead_code": [
+        "CLAUDE.md lists GROQ_API_KEY and OPENAI_API_KEY as required, but .env.example marks both optional; the two documents disagree on the environment contract.",
+        "The backend/app/main.py lifespan docstring refers to Render's free tier, but production runs on a netcup VPS; the comment is stale.",
+        "No canonical backend lint or typecheck command is documented: commands.lint covers the frontend only (oxlint), and ruff and mypy are developer-run gates with no documented invocation."
+      ],
+      "change_risks": [
+        {
+          "area": "single-worker process state",
+          "risk": "The in-process peer message bus, fitted PCA projection, and ReAct duplicate-guard cache are per-process; adding uvicorn workers breaks them.",
+          "mitigation_hint": "Keep the API at --workers 1 as documented in CLAUDE.md; do not suggest Gunicorn with multiple workers."
+        },
+        {
+          "area": "LiteLLM credential handling",
+          "risk": "Passing api_key= to the LiteLLM lane applies one key to every fallback, including the other provider's.",
+          "mitigation_hint": "Use model_registry.ensure_provider_credentials() to export keys to the environment; pass keys per model only in the PydanticAI lane."
+        },
+        {
+          "area": "model slug lists",
+          "risk": "AGENT_LANE_KNOWN_BAD, TOOL_LANE_KNOWN_BAD, and the registry chains rot as providers withdraw free models.",
+          "mitigation_hint": "Re-probe the slugs before assuming a code fault when a step fails."
+        },
+        {
+          "area": "moderation telemetry",
+          "risk": "Recording question text in the moderation log would leak visitor input.",
+          "mitigation_hint": "Log only hash_question() output, as moderation.py and the ModerationLogEntry model do."
+        }
+      ],
+      "security_observations": [
+        "Runtime secrets live in /etc/bws4/bws4.env, root-owned with mode 0600 outside the repository, and reach the API only through the systemd EnvironmentFile.",
+        "The application has no accounts or authentication; abuse is bounded by server-side per-hour usage caps."
+      ],
+      "other_notes": [
+        "Frontend dev server: `npm run dev --prefix frontend`",
+        "Frontend tests: `npm run test --prefix frontend`",
+        "Frontend preview: `npm run preview --prefix frontend`",
+        "Production runtime: systemd unit `bws4-api` runs uvicorn with one worker bound to 127.0.0.1:8000; Caddy serves frontend/dist and reverse-proxies /api/* (deploy/bws4-api.service, deploy/Caddyfile)",
+        "Release procedure: `deploy/deploy.sh` runs pull, rebuild, migrate, and restart of bws4-api; quality gates are developer-run before push, with no CI",
+        "py.typed marker not observed in the shown evidence",
+        "Backend imports always use the backend.app.xxx form (CONTRIBUTING.md)",
+        "New files carry a single Spec4 attribution line at the top (CONTRIBUTING.md)"
+      ]
+    }
+  }
+}
+```

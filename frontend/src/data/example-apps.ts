@@ -134,4 +134,15 @@ export const exampleApps: ExampleApp[] = [
     status: 'live',
     route: '/react',
   },
+  {
+    id: 'router_example_app',
+    name: 'Router',
+    description:
+      'One cheap classification call picks which of four existing paths should answer a request; code dispatches and the model that decided steps aside.',
+    patternTag: 'Router',
+    patternSummary:
+      'A router answers each request with the cheapest path that can answer it well. One small model call reads the request and scores four existing paths — a no-model calculator, a single call, retrieval over the space dataset, and web search plus one generation — and then ordinary code dispatches to the winner. The model that decided emits a label and stops: it never sees the result, and no further step follows. That is what separates it from Tool Use, where one model decides inside its own turn whether to call a tool, and from the Planning Agent and ReAct Loop, where one model keeps control across several steps. Routing is not a tier of its own: the decision is a single call returning a typed object, and everything after it is dispatch to patterns shown elsewhere in this gallery. To conserve shared usage, each run here costs at most 2 model-call units (1 on the deterministic route, 2 on the others, plus one search on the search route) and you get five runs per visit, separate from the showcase’s shared hourly cap. Routers in general can choose among any number of paths; this one has four.',
+    status: 'live',
+    route: '/router',
+  },
 ]

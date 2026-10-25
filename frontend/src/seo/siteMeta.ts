@@ -38,9 +38,10 @@ export const DEFAULT_TITLE = 'Built with Spec4 — a working gallery of AI appli
  * "orchestrated subagents" would actually type.
  */
 export const DEFAULT_DESCRIPTION =
-  'Nine small example apps, each demonstrating one AI application pattern end to end and ' +
+  'Ten small example apps, each demonstrating one AI application pattern end to end and ' +
   'every one built with Spec4: embeddings, single-call, RAG, tool use, chained calls, a ' +
-  'planning agent, orchestrated subagents, multi-agent collaboration, and the ReAct loop. ' +
+  'planning agent, orchestrated subagents, multi-agent collaboration, the ReAct loop, and a ' +
+  'router. ' +
   'Open any of them and watch the pattern actually run.'
 
 /** What a page's `<head>` should say. */

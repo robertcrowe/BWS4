@@ -1,0 +1,2148 @@
+{
+  "stack_spec": {
+    "name": "Built with Spec4 (BWS4)",
+    "description": "A unified, self-hosted web app that showcases Spec4 through a gallery of example apps demonstrating agentic AI patterns: RAG, tool use, an embeddings explorer, single call, chained calls, a plan-first planning agent, a ReAct loop, orchestrated subagents, multi-agent collaboration (A2A-shaped) and a Router with measured agreement history and a no-router cost comparison.",
+    "languages": [
+      {
+        "name": "Python",
+        "version": "3.12",
+        "role": "backend service: REST API, shared framework services (generation, embedding, search, storage, usage limiting, moderation, peer message bus), every example app's server-side logic, SSE streaming, and the Alembic SQL migrations for Neon Postgres; run as a single always-on Uvicorn process under systemd",
+        "linter": "Ruff (no extend-exclude entries: every package, router, service, test and main.py under backend/ is linted)",
+        "formatter": "Ruff format",
+        "type_checker": "mypy (strict, no exclusions: the whole backend including main.py, older routers, services and tests is checked)",
+        "indentation": "4 spaces",
+        "line_length": 88,
+        "quotes": "double",
+        "trailing_commas": "in multi-line expressions",
+        "naming_conventions": {
+          "variables": "snake_case",
+          "functions": "snake_case",
+          "classes": "PascalCase",
+          "constants": "UPPER_SNAKE_CASE",
+          "files": "snake_case"
+        }
+      },
+      {
+        "name": "TypeScript",
+        "version": "6.0",
+        "role": "browser client: single-page app presenting the landing page and all example apps (built with Node 20+)",
+        "linter": "oxlint",
+        "formatter": "none (no formatter installed; style kept by convention and review)",
+        "type_checker": "tsc",
+        "indentation": "2 spaces",
+        "line_length": 100,
+        "quotes": "single",
+        "semicolons": "yes",
+        "trailing_commas": "in multi-line structures",
+        "naming_conventions": {
+          "variables": "camelCase",
+          "functions": "camelCase",
+          "components": "PascalCase",
+          "constants": "UPPER_SNAKE_CASE",
+          "files": "kebab-case, PascalCase for component files"
+        }
+      }
+    ],
+    "deployment": {
+      "targets": [
+        {
+          "name": "web_client",
+          "kind": "spa",
+          "purpose": "the browser UI presenting the landing page and every example app, with per-example-app code-splitting so the gallery can grow without bloating the initial load",
+          "language": "TypeScript",
+          "hosting": "static files served directly by Caddy from the netcup VPS at the canonical public origin, same origin as the API",
+          "build": "Vite build producing a hashed static bundle with route-based lazy-loaded chunks per example app, built on the VPS by the deploy script (npm ci && npm run build) into dist/, which Caddy serves with SPA history fallback; VITE_* variables (VITE_API_BASE_URL, VITE_SENTRY_DSN) are build-time only and must be supplied in the shell that runs the frontend build, because the systemd EnvironmentFile does not reach npm run build",
+          "distribution": "served at the app's root domain, the gallery's single canonical public address",
+          "exposure": {
+            "transport": "HTTPS only, with automatic Let's Encrypt certificate issuance and renewal by Caddy and automatic HTTP to HTTPS redirection"
+          }
+        },
+        {
+          "name": "api",
+          "kind": "rest_api",
+          "purpose": "serves the SPA's data needs: shared framework services plus every example app's endpoints (RAG, tool use, embeddings, single call, chained calls, planning agent, ReAct loop, orchestrated subagents, multi-agent collaboration, Router), moderation, Exa search integration, usage limiting and SSE streaming",
+          "language": "Python",
+          "runtime": "Python 3.12 under Uvicorn as a single always-on process (--workers 1, async concurrency only; never multiple workers or Gunicorn, because the loaded embedding model, fitted PCA projection, in-process peer message bus and ReAct duplicate-guard cache are per-process state) on a netcup VPS 500 G12 (2 vCores, 4 GB RAM, 128 GB NVMe); startup refuses to proceed if GROQ_API_KEY or OPENAI_API_KEY is missing; the FastAPI lifespan warm-up then loads the embedding model, fits the 2D projection and derives the Router's route descriptions once at boot, each step best-effort (a failure is logged and the API still boots)",
+          "hosting": "self-hosted on the project's netcup VPS 500 G12, supervised by systemd (Restart=always, enabled at boot, EnvironmentFile on a root-owned 0600 file outside the repository), fronted by Caddy which reverse-proxies /api/* to Uvicorn on localhost",
+          "build": "deploy script run on the VPS (ssh -t rcrowe@<vps> '/srv/bws4/deploy/deploy.sh'): git pull, uv sync from pyproject.toml/uv.lock, frontend build, uv run alembic upgrade head, then systemctl restart of the service unit",
+          "api_contract": "REST; OpenAPI schema auto-generated by FastAPI; long-running run endpoints (planning, ReAct, orchestrated, collab, Router) stream JSON envelopes as server-sent events over POST; the ReAct trace is also retrievable via GET /api/react/run/{run_id}; the Router exposes POST run (staged SSE: decision card, routed answer or low-confidence card, cost strip, end-of-run event), POST rerun, GET presets (route descriptions, margin, cost order, and an availability flag that is false while route descriptions are not ready), GET history (agreement counts, typical-latency baseline with sample size) and a Retry action that re-attempts the route-description warm-up without an API restart; runs that never began (moderation flagged, fail-closed, shared cap too close, Router descriptions unavailable) return ordinary error responses instead of a stream and reserve no usage units",
+          "exposure": {
+            "transport": "HTTPS only, terminated by Caddy at the edge with automatic Let's Encrypt certificates; Uvicorn binds only to localhost and is never directly reachable from the network",
+            "cors": "allow only the single non-wildcard configured browser origin (CORS_ORIGIN); the SPA is served from the same origin as the API, so the policy is exercised chiefly in local development"
+          }
+        }
+      ]
+    },
+    "providers": {
+      "Groq (via LiteLLM and PydanticAI)": {
+        "capabilities": [
+          {
+            "tier": "rag",
+            "capability_class": "a capable general-purpose model for grounded, structured-output answers",
+            "role": "primary",
+            "serves_features": [
+              "rag_example_app"
+            ],
+            "serves_capabilities": [
+              "rag_example_app"
+            ],
+            "satisfies_nfr": [
+              "nfr_every_example_app_stays_within_the_shared_hourly_and_daily_usage_limits_so_total_spend_is_bounded"
+            ]
+          },
+          {
+            "tier": "single_call",
+            "capability_class": "a fast model with reliable JSON-schema-conforming output for single prompt/response work: the single-call demo, the Router's route classification (output retries zero), the ReAct suitability check and hop-source annotation, the disagreement note, and the collaboration reveal and sensitivity explanations",
+            "role": "primary",
+            "serves_features": [
+              "single_call_example_app",
+              "router_example_app",
+              "react_loop_example_app",
+              "orchestrated_subagents_example_app",
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "single_call_generation",
+              "request_route_classification",
+              "search_route_answer_generation",
+              "router_free_text_request_answering",
+              "react_question_suitability_check",
+              "hop_source_annotation",
+              "specialist_disagreement_note",
+              "private_position_reveal_explanation",
+              "priority_sensitivity_explanation"
+            ],
+            "satisfies_nfr": [
+              "nfr_every_example_app_stays_within_the_shared_hourly_and_daily_usage_limits_so_total_spend_is_bounded"
+            ]
+          },
+          {
+            "tier": "chained_calls",
+            "capability_class": "a capable model able to sustain a distinct role-played persona across a two-step sequential chain",
+            "role": "primary",
+            "serves_features": [
+              "chained_calls_example_app"
+            ],
+            "serves_capabilities": [
+              "chained_role_play_generation"
+            ]
+          },
+          {
+            "tier": "planning_agent",
+            "capability_class": "a capable model with reliable structured output (and native tool-calling for the planning agent) able to decompose a goal into a validated small plan, and to emit per-cycle typed thought and action for the ReAct loop",
+            "role": "primary",
+            "serves_features": [
+              "planning_agent_example_app",
+              "react_loop_example_app"
+            ],
+            "serves_capabilities": [
+              "trip_day_planning_agent",
+              "react_search_loop"
+            ]
+          },
+          {
+            "tier": "orchestrated_subagents",
+            "capability_class": "a capable model with reliable structured output able to choose two specialists from a fixed roster and brief them, answer a briefed sub-question as a knowledge-only specialist, and merge two answers",
+            "role": "primary",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer"
+            ]
+          },
+          {
+            "tier": "multi_agent_collaboration",
+            "capability_class": "a capable model with reliable structured output and persona adherence able to hold a private-constraint-bound negotiating position across bid, counter and best-and-final turns and to award against stated priorities",
+            "role": "primary",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run"
+            ]
+          }
+        ],
+        "model_family": "Llama",
+        "credentials_env": "GROQ_API_KEY (required in every environment: production, local development and the test suite; the API refuses to start without it; no placeholder value and no opt-out flag)",
+        "fallback": "OpenRouter free models take over through the shared ordered model chain (services/model_registry.py and agent_runtime.py, used by both the LiteLLM and PydanticAI lanes) when Groq is rate-limited, metered out for that model, retired, or unavailable; a Router classification call that fails or returns a schema-invalid object is not retried (output retries zero)"
+      },
+      "OpenRouter free models (via LiteLLM and PydanticAI)": {
+        "capabilities": [
+          {
+            "tier": "rag",
+            "capability_class": "a capable free general-purpose model for grounded, structured-output answers",
+            "role": "fallback",
+            "serves_features": [
+              "rag_example_app"
+            ],
+            "serves_capabilities": [
+              "rag_example_app"
+            ]
+          },
+          {
+            "tier": "single_call",
+            "capability_class": "a fast free model with reliable typed or JSON-schema output for all single-call work, including the Router's classification call",
+            "role": "fallback",
+            "serves_features": [
+              "single_call_example_app",
+              "router_example_app",
+              "react_loop_example_app",
+              "orchestrated_subagents_example_app",
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "single_call_generation",
+              "request_route_classification",
+              "search_route_answer_generation",
+              "router_free_text_request_answering",
+              "react_question_suitability_check",
+              "hop_source_annotation",
+              "specialist_disagreement_note",
+              "private_position_reveal_explanation",
+              "priority_sensitivity_explanation"
+            ]
+          },
+          {
+            "tier": "chained_calls",
+            "capability_class": "a free model able to sustain a role-played persona across a two-step chain",
+            "role": "fallback",
+            "serves_features": [
+              "chained_calls_example_app"
+            ],
+            "serves_capabilities": [
+              "chained_role_play_generation"
+            ]
+          },
+          {
+            "tier": "planning_agent",
+            "capability_class": "a free model with reliable structured output and tool-calling for planner, executor and ReAct cycle calls",
+            "role": "fallback",
+            "serves_features": [
+              "planning_agent_example_app",
+              "react_loop_example_app"
+            ],
+            "serves_capabilities": [
+              "trip_day_planning_agent",
+              "react_search_loop"
+            ]
+          },
+          {
+            "tier": "orchestrated_subagents",
+            "capability_class": "a free model with reliable structured output for delegation, specialist and merge calls",
+            "role": "fallback",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer"
+            ]
+          },
+          {
+            "tier": "multi_agent_collaboration",
+            "capability_class": "a free model with reliable structured output and persona adherence for any of the six negotiation turns",
+            "role": "fallback",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run"
+            ]
+          }
+        ],
+        "model_family": "Llama",
+        "credentials_env": "OPENROUTER_API_KEY"
+      }
+    },
+    "integrations": [
+      {
+        "name": "Exa Search API",
+        "kind": "third_party_api",
+        "purpose": "ranked real web search results (title, snippet, source) through the single shared wrapper services/web_search.py, called directly in-process (no MCP) by the tool-use integration, the planning agent's research steps, the ReAct loop's act step, and the Router's search_generation route",
+        "protocol": "REST over HTTPS",
+        "auth": "API key; EXA_API_KEY, read from the systemd EnvironmentFile on the VPS, never committed",
+        "serves_features": [
+          "tool_use_integration",
+          "planning_agent_example_app",
+          "react_loop_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "trip_day_planning_agent",
+          "react_search_loop"
+        ]
+      },
+      {
+        "name": "OpenAI Moderation API (omni-moderation-latest)",
+        "kind": "third_party_api",
+        "purpose": "pre-dispatch safety screening of free-form visitor input only (orchestrated subagents, ReAct loop, Router free text), free of charge so it does not consume model quota; runs before any allowance hold and fails closed; preset input skips it and the collaboration app never calls it",
+        "protocol": "REST over HTTPS; POST /v1/moderations via httpx, parsed into a Pydantic ModerationVerdict",
+        "auth": "API key; OPENAI_API_KEY, required in every environment (production, local development and the test suite) with no placeholder and no opt-out flag; read from the systemd EnvironmentFile, never committed",
+        "serves_features": [
+          "shared_framework_services",
+          "orchestrated_subagents_example_app",
+          "react_loop_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "question_moderation"
+        ]
+      },
+      {
+        "name": "Sentry",
+        "kind": "error_tracking",
+        "purpose": "optional error tracking and model-call performance spans (token usage, latency, error rate) on backend and frontend; no-ops when the DSN is unset",
+        "protocol": "HTTPS via the Sentry SDKs",
+        "auth": "DSN; SENTRY_DSN and SENTRY_ENVIRONMENT (backend), VITE_SENTRY_DSN (frontend, build-time only)"
+      }
+    ],
+    "persistence": {
+      "primary_store": {
+        "choice": "PostgreSQL (Neon-hosted) + pgvector",
+        "purpose": "durable relational store for everything the app writes, doubling as the vector index for the RAG example (whose retriever the Router reuses unchanged) and holding the Router's two shared append-only histories; external and managed, so the VPS migration does not change where data lives",
+        "durability": "source of truth; survives restarts, redeploys and the host migration because it is external to the VPS",
+        "satisfies_nfr": [
+          "nfr_routing_and_agreement_history_persists_across_service_interruptions"
+        ],
+        "satisfies_infra": [
+          "vector_index"
+        ],
+        "collections": [
+          {
+            "name": "dataset_embeddings",
+            "entities": [
+              "Document",
+              "Passage",
+              "Embedding"
+            ],
+            "physical": [
+              "vector(384) column (all-MiniLM-L6-v2 dimension)",
+              "HNSW index"
+            ],
+            "serves_features": [
+              "rag_example_app",
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "rag_example_app"
+            ]
+          },
+          {
+            "name": "rag_interactions",
+            "entities": [
+              "Answer",
+              "Passage",
+              "Question"
+            ],
+            "physical": [
+              "id (primary)",
+              "index on submitted_at"
+            ],
+            "serves_features": [
+              "rag_example_app"
+            ],
+            "serves_capabilities": [
+              "rag_example_app"
+            ]
+          },
+          {
+            "name": "generation_results",
+            "entities": [
+              "Generation Request",
+              "Response"
+            ],
+            "physical": [
+              "id (primary)"
+            ],
+            "serves_features": [
+              "shared_framework_services",
+              "single_call_example_app"
+            ]
+          },
+          {
+            "name": "text_representations",
+            "entities": [
+              "Embedding"
+            ],
+            "physical": [
+              "id (primary)"
+            ],
+            "serves_features": [
+              "shared_framework_services"
+            ]
+          },
+          {
+            "name": "search_queries",
+            "entities": [
+              "Search Query",
+              "Search Result"
+            ],
+            "physical": [
+              "id (primary)"
+            ],
+            "serves_features": [
+              "tool_use_integration",
+              "planning_agent_example_app",
+              "react_loop_example_app",
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "trip_day_planning_agent",
+              "react_search_loop"
+            ]
+          },
+          {
+            "name": "stored_records",
+            "entities": [],
+            "purpose": "the shared storage abstraction's generic key-addressed retention records for apps that keep small pieces of information through the shared retention capability",
+            "physical": [
+              "key (primary)"
+            ],
+            "serves_features": [
+              "shared_framework_services"
+            ]
+          },
+          {
+            "name": "usage_limits",
+            "entities": [
+              "Usage Cap"
+            ],
+            "purpose": "the showcase-wide model/search allowance gate enforced server-side before every provider call by every example app, windowed per UTC hour and per UTC day",
+            "physical": [
+              "id (primary)",
+              "index on capability",
+              "usage window column keyed to the current UTC hour, plus the per-UTC-day cap window"
+            ],
+            "serves_features": [
+              "shared_framework_services",
+              "chained_calls_example_app",
+              "planning_agent_example_app",
+              "orchestrated_subagents_example_app",
+              "multi_agent_collaboration_example_app",
+              "react_loop_example_app",
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "chained_role_play_generation",
+              "trip_day_planning_agent",
+              "orchestrated_specialist_answer",
+              "procurement_negotiation_run",
+              "react_search_loop",
+              "react_question_suitability_check",
+              "hop_source_annotation",
+              "request_route_classification"
+            ],
+            "satisfies_nfr": [
+              "nfr_every_example_app_stays_within_the_shared_hourly_and_daily_usage_limits_so_total_spend_is_bounded",
+              "nfr_visitors_are_told_clearly_which_limit__per_app_visit_limit_or_shared_cap__stopped_them"
+            ]
+          },
+          {
+            "name": "allowance_holds",
+            "entities": [
+              "Run Allowance"
+            ],
+            "purpose": "reserve/redeem/refund records against the shared usage gate so a run's full call budget is held before its first model call and a run that cannot finish is never started; the Router holds 2 units after moderation and before the router call and releases the second once the evaluator accepts; a comparison re-run holds only the expected route's dispatch cost; a Router run refused because route descriptions are unavailable takes no hold",
+            "physical": [
+              "hold key (primary)",
+              "index on capability and usage window",
+              "state column (reserved / redeemed / refunded)"
+            ],
+            "serves_features": [
+              "shared_framework_services",
+              "orchestrated_subagents_example_app",
+              "multi_agent_collaboration_example_app",
+              "react_loop_example_app",
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer",
+              "procurement_negotiation_run",
+              "react_search_loop",
+              "request_route_classification"
+            ],
+            "satisfies_nfr": [
+              "nfr_every_example_app_stays_within_the_shared_hourly_and_daily_usage_limits_so_total_spend_is_bounded",
+              "nfr_per_run_model_call_counts_are_fixed_and_clearly_stated_in_each_app"
+            ]
+          },
+          {
+            "name": "moderation_log",
+            "entities": [],
+            "purpose": "safety-gate telemetry for free-form input: a salted hash of the question (never raw text), category, confidence, latency and whether the call failed closed",
+            "physical": [
+              "id (primary)",
+              "index on created_at",
+              "salted question hash column; no raw question text column"
+            ],
+            "serves_features": [
+              "orchestrated_subagents_example_app",
+              "react_loop_example_app",
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "question_moderation"
+            ]
+          },
+          {
+            "name": "negotiation_runs",
+            "entities": [
+              "Request for Quotation",
+              "Bid",
+              "Counter-offer",
+              "Award",
+              "Private Constraint"
+            ],
+            "purpose": "the immutable per-run negotiation record written at run end: scenario, priority weighting, RFQ, both bid rounds, counters, award, reveal and sensitivity payloads, stage timings, model_calls_used and degradation flags",
+            "physical": [
+              "id (primary)",
+              "index on created_at",
+              "index on scenario_id",
+              "negotiation_stage_call_count and total_model_calls_used columns (queryable)",
+              "JSONB columns for stage payloads",
+              "JSONB stage-timing column"
+            ],
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run",
+              "private_position_reveal_explanation",
+              "priority_sensitivity_explanation"
+            ]
+          },
+          {
+            "name": "peer_messages",
+            "entities": [
+              "Message"
+            ],
+            "purpose": "one row per A2A-shaped peer message, foreign-keyed to negotiation_runs, so the message log is a stored projection and the no-seller-to-seller claim is a single SQL predicate",
+            "physical": [
+              "id (primary)",
+              "foreign key to negotiation_runs.id",
+              "sequence column, unique per run",
+              "sender and recipient columns (indexed together)",
+              "stage column",
+              "JSONB work-item column carrying the Task/Message/Artifact payload"
+            ],
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run"
+            ]
+          },
+          {
+            "name": "react_runs",
+            "entities": [
+              "Thought",
+              "Action",
+              "Observation",
+              "Final Answer",
+              "Question",
+              "Search Query",
+              "Search Result"
+            ],
+            "purpose": "the per-run ReAct trace record written at run end and read back whole by GET /api/react/run/{run_id}: ordered cycles, terminal card, suitability verdict and hop-source annotations",
+            "physical": [
+              "id (primary, the run_id)",
+              "index on created_at",
+              "queryable header columns: question_origin, searches_used, cycle_budget, ending, duplicate_queries_blocked, empty_observations, suitability verdict fields, annotation_outcome",
+              "JSONB ordered cycle-trace column",
+              "JSONB terminal-card column",
+              "JSONB hop-annotation column",
+              "JSONB per-cycle timing column"
+            ],
+            "serves_features": [
+              "react_loop_example_app"
+            ],
+            "serves_capabilities": [
+              "react_search_loop",
+              "react_question_suitability_check",
+              "hop_source_annotation"
+            ]
+          },
+          {
+            "name": "router_agreement_records",
+            "entities": [
+              "AgreementHistory"
+            ],
+            "purpose": "Append-only, shared-across-visitors record of one row per qualifying preset run, from which per-preset agreed/disagreed/declined counts, rates and the overall rate are computed in SQL; free-text runs, comparison re-runs and malformed-decision fallbacks write no row; a low-confidence tie-break landing on the expected route is recorded 'declined' and earns no credit; cells show counts only until 5 observations",
+            "physical": [
+              "id (primary)",
+              "preset_id column, indexed",
+              "outcome column constrained to agreed / disagreed / declined",
+              "created_at timestamp",
+              "added by the same single Alembic migration as router_latency_observations"
+            ],
+            "serves_features": [
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "request_route_classification"
+            ],
+            "satisfies_nfr": [
+              "nfr_routing_and_agreement_history_persists_across_service_interruptions"
+            ]
+          },
+          {
+            "name": "router_latency_observations",
+            "entities": [
+              "LatencyHistory"
+            ],
+            "purpose": "Append-only, shared-across-visitors record of one row per real search_generation-route run (comparison re-runs excluded), from which the rolling median behind the cost strip's 'typical' baseline is computed in SQL over the most recent N rows; sample size is the row count; below 5 observations the baseline is shown as counts only",
+            "physical": [
+              "id (primary)",
+              "route column holding the route id (search_generation)",
+              "duration_ms column",
+              "created_at timestamp",
+              "index on route and created_at",
+              "added by the same single Alembic migration as router_agreement_records"
+            ],
+            "serves_features": [
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "request_route_classification"
+            ],
+            "satisfies_nfr": [
+              "nfr_routing_and_agreement_history_persists_across_service_interruptions"
+            ]
+          },
+          {
+            "name": "service_log_entries",
+            "entities": [],
+            "purpose": "the shared services' per-call log: which capability was invoked, by which example app, outcome and usage accounting, for every generation, embedding, search and moderation call",
+            "physical": [
+              "id (primary)",
+              "index on timestamp"
+            ],
+            "serves_features": [
+              "shared_framework_services",
+              "single_call_example_app",
+              "chained_calls_example_app",
+              "planning_agent_example_app",
+              "orchestrated_subagents_example_app",
+              "multi_agent_collaboration_example_app",
+              "react_loop_example_app",
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "single_call_generation",
+              "chained_role_play_generation",
+              "trip_day_planning_agent",
+              "orchestrated_specialist_answer",
+              "question_moderation",
+              "procurement_negotiation_run",
+              "private_position_reveal_explanation",
+              "priority_sensitivity_explanation",
+              "react_search_loop",
+              "react_question_suitability_check",
+              "hop_source_annotation",
+              "request_route_classification"
+            ]
+          }
+        ]
+      },
+      "embedding_projection_cache": {
+        "choice": "in-process NumPy array of preconfigured embeddings + fitted scikit-learn PCA model (all-MiniLM-L6-v2 vectors), loaded and fitted once in the FastAPI lifespan at boot",
+        "purpose": "fills the vector_index substrate for the embeddings example: holds the preconfigured examples' embeddings and fitted projection so custom text is transformed into the same stable 2D layout without recomputation and without persisting visitor text; built once at boot on the always-on VPS and kept warm",
+        "durability": "ephemeral in-process derived state, rebuildable from bundled_assets' preconfigured_text_examples; never a source of truth; custom text embeddings exist only for the request",
+        "satisfies_infra": [
+          "vector_index"
+        ],
+        "satisfies_nfr": [
+          "nfr_the_first_visit_loads_without_a_cold_start_delay_because_the_embedding_capability_is_ready_at_startup"
+        ],
+        "collections": [
+          {
+            "name": "preconfigured_example_embeddings",
+            "entities": [
+              "TextItem",
+              "Embedding",
+              "2D Projection",
+              "Category"
+            ],
+            "physical": [
+              "in-process NumPy array, 384-dim per preconfigured example",
+              "fitted PCA model held in memory, reused via .transform() for custom text"
+            ],
+            "serves_features": [
+              "embeddings_example_app"
+            ],
+            "serves_capabilities": [
+              "custom_text_semantic_placement"
+            ]
+          }
+        ]
+      },
+      "react_query_guard_cache": {
+        "choice": "in-process NumPy array of the current run's issued-query embeddings (all-MiniLM-L6-v2 via the shared service), held for one run",
+        "purpose": "backs the semantic near-duplicate query guard so a rephrased repeat is blocked before it spends a search",
+        "durability": "ephemeral; exists only for one run, discarded at its end, never persisted",
+        "collections": [
+          {
+            "name": "issued_query_embeddings",
+            "entities": [
+              "Search Query",
+              "Embedding"
+            ],
+            "physical": [
+              "in-process NumPy array, 384-dim per query issued so far in the run",
+              "cosine-similarity comparison against a tuned duplicate threshold (REACT_DUPLICATE_SIMILARITY_THRESHOLD)"
+            ],
+            "serves_features": [
+              "react_loop_example_app"
+            ],
+            "serves_capabilities": [
+              "react_search_loop"
+            ],
+            "satisfies_nfr": [
+              "nfr_every_example_app_stays_within_the_shared_hourly_and_daily_usage_limits_so_total_spend_is_bounded"
+            ]
+          }
+        ]
+      },
+      "bundled_assets": {
+        "choice": "static content bundled at build time (typed Python literals and in-repo files)",
+        "purpose": "read-only content that changes only by code change and redeploy",
+        "durability": "read-only; changes only by redeploy",
+        "collections": [
+          {
+            "name": "example_app_directory",
+            "entities": [
+              "Example App"
+            ],
+            "purpose": "the single shared catalogue from which the landing-page listing and the site navigation are both driven, so they cannot disagree; includes 'ReAct Loop' and 'Router'",
+            "serves_features": [
+              "landing_page"
+            ],
+            "satisfies_nfr": [
+              "nfr_consistent_layout_and_navigation_across_all_example_apps"
+            ]
+          },
+          {
+            "name": "reference_dataset",
+            "entities": [
+              "Document"
+            ],
+            "serves_features": [
+              "rag_example_app"
+            ]
+          },
+          {
+            "name": "preconfigured_text_examples",
+            "entities": [
+              "TextItem",
+              "Category"
+            ],
+            "purpose": "the curated words, short phrases and sentences across categories that seed the embeddings plot",
+            "serves_features": [
+              "embeddings_example_app"
+            ]
+          },
+          {
+            "name": "preset_prompts",
+            "entities": [
+              "Prompt",
+              "Response Shape"
+            ],
+            "purpose": "curated example prompts (summarize, classify, extract) with their labelled intent, offered as one-click choices",
+            "serves_features": [
+              "single_call_example_app"
+            ],
+            "serves_capabilities": [
+              "single_call_generation"
+            ]
+          },
+          {
+            "name": "persona_prompt_templates",
+            "entities": [],
+            "purpose": "static, versioned system-prompt templates for the 'struggling writer' and 'harsh critic' personas",
+            "serves_features": [
+              "chained_calls_example_app"
+            ],
+            "serves_capabilities": [
+              "chained_role_play_generation"
+            ]
+          },
+          {
+            "name": "planning_prompt_templates",
+            "entities": [],
+            "purpose": "static, versioned planner and synthesis prompt templates for the planning agent",
+            "serves_features": [
+              "planning_agent_example_app"
+            ],
+            "serves_capabilities": [
+              "trip_day_planning_agent"
+            ]
+          },
+          {
+            "name": "specialist_roster_config",
+            "entities": [
+              "Specialist"
+            ],
+            "purpose": "the fixed roster of four knowledge-only specialists (Technical, Financial, Historical, Practical), the closed set the coordinator must choose two from and against which the delegation decision is validated",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer"
+            ]
+          },
+          {
+            "name": "curated_presets",
+            "entities": [
+              "Question"
+            ],
+            "purpose": "curated preset questions chosen to produce different specialist pairings; pre-vetted so they bypass moderation",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer"
+            ]
+          },
+          {
+            "name": "orchestration_prompt_templates",
+            "entities": [],
+            "purpose": "static, versioned coordinator delegation, specialist and merge prompt templates",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer",
+              "specialist_disagreement_note"
+            ]
+          },
+          {
+            "name": "procurement_scenario_catalog",
+            "entities": [
+              "Scenario",
+              "Priority Weighting"
+            ],
+            "purpose": "pre-tuned procurement scenarios and selectable priority weightings, authored as version-controlled typed Python literals so mypy strict checks them",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run"
+            ]
+          },
+          {
+            "name": "sealed_private_constraints",
+            "entities": [
+              "Private Constraint"
+            ],
+            "purpose": "per scenario and per seller hidden negotiating position (cost floor, capacity ceiling, delivery capability, warranty liability limit) plus reveal seeds, authored as typed literals; sealing is enforced by the message bus's opacity policy at access time",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run",
+              "private_position_reveal_explanation"
+            ]
+          },
+          {
+            "name": "agent_identity_cards",
+            "entities": [
+              "Agent Card",
+              "Buyer Agent",
+              "Seller Agent"
+            ],
+            "purpose": "the three A2A-shaped identity cards (buyer plus two rival sellers): name, provider, skills, capabilities, and tool access of none",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run"
+            ]
+          },
+          {
+            "name": "collaboration_prompt_templates",
+            "entities": [],
+            "purpose": "static, versioned seller bid and best-and-final, buyer counter and award, and the two explanation prompt templates",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run",
+              "private_position_reveal_explanation",
+              "priority_sensitivity_explanation"
+            ]
+          },
+          {
+            "name": "react_preset_catalog",
+            "entities": [
+              "Question"
+            ],
+            "purpose": "the five curated multi-hop preset questions with maintainer metadata (expected hops, which need observation); stores questions only, never answers",
+            "serves_features": [
+              "react_loop_example_app"
+            ],
+            "serves_capabilities": [
+              "react_search_loop"
+            ]
+          },
+          {
+            "name": "react_prompt_templates",
+            "entities": [],
+            "purpose": "static, versioned per-cycle, final-answer, suitability and hop-annotation prompt templates",
+            "serves_features": [
+              "react_loop_example_app"
+            ],
+            "serves_capabilities": [
+              "react_search_loop",
+              "react_question_suitability_check",
+              "hop_source_annotation"
+            ]
+          },
+          {
+            "name": "router_preset_catalog",
+            "entities": [
+              "Request",
+              "Expected Route"
+            ],
+            "purpose": "The six curated Router requests, each with an expected route and a one-line reason, including the two control/near-miss pairs; stores requests only, never answers; expected_route uses exactly the route ids deterministic_evaluator, single_call, retrieval and search_generation; typed Python literals",
+            "serves_features": [
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "request_route_classification"
+            ]
+          },
+          {
+            "name": "router_unit_table",
+            "entities": [
+              "Expression"
+            ],
+            "purpose": "The single source of truth for the deterministic evaluator's accepted language (operators, unit names and factors in length, speed and temperature, input length and nesting caps), read by the validator, the evaluator and the generated route description so they cannot drift",
+            "serves_features": [
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "request_route_classification"
+            ]
+          },
+          {
+            "name": "router_route_descriptions",
+            "entities": [
+              "Route"
+            ],
+            "purpose": "The four one-line route descriptions generated at startup (never hand-written) from the unit table, the retriever's indexed document titles, the search tool's declared schema and the single-call capability's description, each with its cost_rank; shown byte for byte as the router received them; held in Router-module in-process state that is either ready or unavailable: a failed best-effort warm-up leaves it unavailable (the API still boots, the Router page shows 'temporarily unavailable' with Retry) and a successful Retry fills it without a restart",
+            "serves_features": [
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "request_route_classification"
+            ],
+            "satisfies_nfr": [
+              "nfr_a_failure_in_one_example_app_or_optional_startup_step_does_not_affect_the_other_apps"
+            ]
+          },
+          {
+            "name": "router_prompt_templates",
+            "entities": [],
+            "purpose": "The static, versioned route-classification prompt (request delimited as untrusted data) with its typed decision schema",
+            "serves_features": [
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "request_route_classification"
+            ]
+          },
+          {
+            "name": "educational_overviews",
+            "entities": [],
+            "purpose": "per-app short educational overview content, quota rationale and cross-references (Planning Agent and ReAct Loop; Router's contrast with Tool Use, Planning Agent and ReAct Loop and its uncalibrated-scores statement)",
+            "serves_features": [
+              "react_loop_example_app",
+              "planning_agent_example_app",
+              "rag_example_app",
+              "embeddings_example_app",
+              "single_call_example_app",
+              "chained_calls_example_app",
+              "orchestrated_subagents_example_app",
+              "multi_agent_collaboration_example_app",
+              "router_example_app"
+            ]
+          }
+        ]
+      },
+      "browser_local_storage": {
+        "choice": "browser localStorage",
+        "purpose": "keeps small per-device visitor state and each app's advisory run counter and prior results so they survive navigating away and back",
+        "durability": "per-device/browser only; not a source of truth; resettable by the visitor; hard quota protection is always the server-side usage gate",
+        "satisfies_nfr": [
+          "nfr_visitors_are_told_clearly_which_limit__per_app_visit_limit_or_shared_cap__stopped_them"
+        ],
+        "collections": [
+          {
+            "name": "theme_preference",
+            "entities": [],
+            "purpose": "the visitor's chosen light/dark theme"
+          },
+          {
+            "name": "run_allowance",
+            "entities": [
+              "Visitor",
+              "Run Allowance"
+            ],
+            "purpose": "advisory per-session run counter for the planning agent",
+            "serves_features": [
+              "planning_agent_example_app"
+            ],
+            "serves_capabilities": [
+              "trip_day_planning_agent"
+            ]
+          },
+          {
+            "name": "orchestrated_run_allowance",
+            "entities": [
+              "Visitor",
+              "Run Allowance",
+              "Brief",
+              "Specialist"
+            ],
+            "purpose": "the orchestrated-subagents three-run counter plus the visitor's prior run records, stamped with the UTC hour",
+            "serves_features": [
+              "orchestrated_subagents_example_app"
+            ],
+            "serves_capabilities": [
+              "orchestrated_specialist_answer"
+            ]
+          },
+          {
+            "name": "last_negotiation_run",
+            "entities": [
+              "Award",
+              "Message"
+            ],
+            "purpose": "a cache of the visitor's most recent collaboration run, layered over the authoritative negotiation_runs and peer_messages persistence",
+            "serves_features": [
+              "multi_agent_collaboration_example_app"
+            ],
+            "serves_capabilities": [
+              "procurement_negotiation_run"
+            ]
+          },
+          {
+            "name": "react_run_allowance",
+            "entities": [
+              "Visitor",
+              "Run Allowance"
+            ],
+            "purpose": "the ReAct loop's two-run session counter plus the run_id and rendered trace of prior runs; the run_id lets the full trace be re-fetched from the server",
+            "serves_features": [
+              "react_loop_example_app"
+            ],
+            "serves_capabilities": [
+              "react_search_loop"
+            ]
+          },
+          {
+            "name": "router_run_allowance",
+            "entities": [
+              "Run Allowance",
+              "Routing Decision",
+              "Cost Strip"
+            ],
+            "purpose": "The Router's advisory five-run counter plus the visitor's retained decision cards, routed answers and cost strips, stamped with the UTC hour; a comparison re-run costs one run and a refused run (including one refused because route descriptions are unavailable) costs none; the client decrements from the end-of-run event",
+            "serves_features": [
+              "router_example_app"
+            ],
+            "serves_capabilities": [
+              "request_route_classification"
+            ]
+          }
+        ]
+      }
+    },
+    "infrastructure": {
+      "chunking_pipeline": {
+        "choice": "hand-rolled paragraph/fixed-window text splitter, in application code",
+        "purpose": "splits reference_dataset documents into passages before embedding; kept simple and transparent for teaching clarity",
+        "serves_features": [
+          "rag_example_app"
+        ],
+        "serves_capabilities": [
+          "rag_example_app"
+        ]
+      },
+      "embedding_pipeline": {
+        "choice": "sentence-transformers (all-MiniLM-L6-v2), in-process, loaded once in the FastAPI lifespan at boot",
+        "purpose": "fills the embedding_pipeline substrate for RAG, the embeddings example and the ReAct near-duplicate guard: one shared model, never a second; stays resident for the process's lifetime so no visitor pays the load cost; the package is listed under libraries",
+        "serves_features": [
+          "rag_example_app",
+          "embeddings_example_app",
+          "react_loop_example_app",
+          "shared_framework_services"
+        ],
+        "serves_capabilities": [
+          "rag_example_app",
+          "custom_text_semantic_placement",
+          "react_search_loop"
+        ],
+        "satisfies_nfr": [
+          "nfr_the_first_visit_loads_without_a_cold_start_delay_because_the_embedding_capability_is_ready_at_startup"
+        ]
+      },
+      "retriever": {
+        "choice": "SQLAlchemy query using pgvector's cosine-distance operator against dataset_embeddings",
+        "purpose": "finds the top-N passages for a question's embedding; the Router's retrieval route calls this existing retriever through its existing entry point, unmodified",
+        "serves_features": [
+          "rag_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "rag_example_app"
+        ]
+      },
+      "pipeline_runner": {
+        "choice": "PydanticAI, using its OpenRouterProvider and native FallbackModel (slugs from the shared model registry) to run fixed sequences",
+        "purpose": "fills the pipeline_runner substrate for the chained-calls writer-to-critic sequence (first response passed directly as the second call's input) and for the Router's classify, code-dispatch, optional-generation flow (one typed classification call with output retries zero, then code-owned dispatch); the usage gate checks every call exactly as on the LiteLLM path; no new dependency",
+        "serves_features": [
+          "chained_calls_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "chained_role_play_generation",
+          "request_route_classification"
+        ]
+      },
+      "agent_loop_runtime": {
+        "choice": "PydanticAI agent runs (FallbackModel over the shared chain) in two shapes: (a) planning agent: one structured-output planner call produces a validated Plan capped at 2-3 executor steps, executor steps run sequentially only after the visitor's Next; (b) ReAct loop: a hand-rolled bounded while-loop in backend/app/react/ where each cycle is one PydanticAI call returning a validated ReactStep, the slice executes the search between cycles and terminates on the model's answer decision or the ~8-search ceiling",
+        "purpose": "fills the agent_loop_runtime substrate; the ReAct loop is hand-rolled so the cycle count is a code invariant the allowance hold can reserve against, every cycle boundary is an SSE emission point, and the duplicate guard runs between the chosen query and the search; the usage gate is checked before every model call",
+        "serves_features": [
+          "planning_agent_example_app",
+          "react_loop_example_app"
+        ],
+        "serves_capabilities": [
+          "trip_day_planning_agent",
+          "react_search_loop"
+        ]
+      },
+      "tool_execution_harness": {
+        "choice": "(a) planning agent: PydanticAI native tool-calling wrapping the shared Exa client (httpx) as a typed web-search tool; (b) ReAct loop and Router search_generation route: a direct in-process call to the shared Exa wrapper backend/app/services/web_search.py, with no tool registration and no MCP, the duplicate guard interposed for ReAct",
+        "purpose": "fills the tool_execution_harness substrate; the run-allowance check is a direct service-layer call, never a model-exposed tool, so the model cannot decide whether quota is spent; the Router reuses the shared wrapper rather than adding a harness",
+        "serves_features": [
+          "planning_agent_example_app",
+          "react_loop_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "trip_day_planning_agent",
+          "react_search_loop"
+        ]
+      },
+      "subagent_orchestration_runtime": {
+        "choice": "PydanticAI agents dispatched in-process and fanned out with asyncio.gather(..., return_exceptions=True): a coordinator agent returns a validated DelegationDecision, then after the visitor's dispatch the two knowledge-only specialists run concurrently, then the coordinator merges",
+        "purpose": "fills the subagent_orchestration_runtime substrate; dispatching in code rather than a model-driven loop guarantees exactly three calls and genuine parallelism, and return_exceptions=True lets one specialist fail while the other's answer stays visible",
+        "serves_features": [
+          "orchestrated_subagents_example_app"
+        ],
+        "serves_capabilities": [
+          "orchestrated_specialist_answer",
+          "specialist_disagreement_note"
+        ]
+      },
+      "agent_message_bus": {
+        "choice": "hand-rolled in-process message bus at backend/app/services/message_bus.py (append-only envelope store, deliver(message), context_for(agent_id) filtering strictly on recipient equality, chronological log projection) with a slice-local opacity policy layer in the collaboration app",
+        "purpose": "fills the agent_message_bus substrate; peer opacity is enforced structurally in code, not by prompt; in-process state is one more reason for a single Uvicorn worker; injected via FastAPI Depends so tests can substitute it",
+        "serves_features": [
+          "multi_agent_collaboration_example_app"
+        ],
+        "serves_capabilities": [
+          "procurement_negotiation_run"
+        ]
+      },
+      "protocol_runtime": {
+        "choice": "hand-rolled A2A-shaped Pydantic models in backend/app/collab/protocol.py (AgentCard with AgentProvider/AgentSkill/AgentCapabilities, Task with TaskStatus/TaskState, Message with Role and Part/DataPart, Artifact), serialised camelCase, carried over the in-process bus with no HTTP, JSON-RPC or gRPC transport",
+        "purpose": "fills the protocol_runtime substrate: implements A2A's data model and interaction pattern while deliberately omitting transport bindings; the overview states this plainly and what a real cross-owner deployment would add",
+        "serves_features": [
+          "multi_agent_collaboration_example_app"
+        ],
+        "serves_capabilities": [
+          "procurement_negotiation_run"
+        ]
+      },
+      "tls_termination_and_static_serving": {
+        "choice": "Caddy 2 on the netcup VPS, serving the Vite dist/ bundle with SPA history fallback and reverse-proxying /api/* to Uvicorn on localhost, with automatic Let's Encrypt issuance and renewal and HTTP to HTTPS redirection, configured by a Caddyfile in deploy/",
+        "purpose": "one canonical public HTTPS origin that browsers trust, with certificate renewal built into the server; same-origin serving removes cross-origin traffic in production; Caddy does not buffer proxied responses, keeping the SSE example apps streaming progressively",
+        "serves_features": [
+          "self_hosted_deployment",
+          "landing_page"
+        ],
+        "satisfies_nfr": [
+          "nfr_all_traffic_is_served_over_a_secure_public_address_with_a_valid_certificate"
+        ]
+      },
+      "process_supervision": {
+        "choice": "systemd service unit on the netcup VPS running a single Uvicorn process (--workers 1) under uv, Restart=always, enabled at boot, EnvironmentFile pointing at a root-owned 0600 secrets file outside the repository; logs to the journal alongside structlog JSON; Caddy runs under its own packaged unit",
+        "purpose": "keeps the always-on instance running across crashes and reboots so the boot-time model load and PCA fit stay warm; holds the environment contract (DATABASE_URL, OPENROUTER_API_KEY, GROQ_API_KEY, EXA_API_KEY, OPENAI_API_KEY, CORS_ORIGIN, optional SENTRY_DSN) outside the repository, with GROQ_API_KEY and OPENAI_API_KEY enforced as required at startup; a single worker is mandatory because the loaded model, fitted projection, message bus and duplicate-guard cache are per-process state; the lifespan keeps embedding and Router route-description warm-ups best-effort so one failed optional step never blocks boot",
+        "serves_features": [
+          "self_hosted_deployment",
+          "shared_framework_services"
+        ],
+        "satisfies_nfr": [
+          "nfr_the_first_visit_loads_without_a_cold_start_delay_because_the_embedding_capability_is_ready_at_startup",
+          "nfr_the_service_refuses_to_start_when_a_required_credential_is_missing",
+          "nfr_a_failure_in_one_example_app_or_optional_startup_step_does_not_affect_the_other_apps"
+        ]
+      },
+      "release_delivery": {
+        "choice": "a shell deploy script in deploy/, run on the VPS: git pull, uv sync, npm ci && npm run build (VITE_* variables supplied in that shell), uv run alembic upgrade head, systemctl restart of the service unit; Node 20 and uv are installed on the host",
+        "purpose": "one readable, version-controlled release procedure replacing the retired managed platform's pipeline; quality gates (ruff, mypy, pytest, oxlint, tsc, vitest) remain developer-run before push, as no CI exists; ruff and mypy now cover the whole backend with no exclusions",
+        "serves_features": [
+          "self_hosted_deployment"
+        ]
+      }
+    },
+    "ai_conventions": {
+      "prompt_versioning": "every prompt-bearing slice stores its templates as versioned files in-repo under backend/app/<slice>/prompts/, tagged with a semantic version in the filename/header and loaded by a thin resolver function, with structured-output schemas defined alongside as versioned Pydantic models: rag/ (answer_v1.md), single_call/ (presets plus per-preset schema models), chained_calls/ (writer_v1.md, critic_v1.md), planning/ (planner_v1.md, synthesis_v1.md), orchestrated/ (delegation_v1.md, specialist_v1.md, merge_v1.md), collab/ (seller_bid_v1.md, seller_final_v1.md, buyer_counter_v1.md, buyer_award_v1.md, reveal_explanation_v1.md, sensitivity_v1.md), react/ (cycle_v1.md, final_answer_v1.md, suitability_v1.md, hop_annotation_v1.md) and router/ (route_v1.md with the typed RoutingDecision schema); schemas are kept narrow per call so a non-conforming response degrades only its own panel; no external prompt-management tool."
+    },
+    "libraries": [
+      {
+        "name": "FastAPI",
+        "purpose": "REST API framework, async-native, generates OpenAPI from Pydantic models",
+        "category": "web framework",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "uvicorn",
+        "purpose": "ASGI server running the app as a single always-on process under systemd, bound to localhost behind Caddy",
+        "category": "asgi server",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "SQLAlchemy",
+        "purpose": "async ORM/toolkit for Neon Postgres including pgvector types, JSONB run records and the Router's SQL-computed agreement counts and rolling median",
+        "category": "orm",
+        "language": "Python",
+        "foundational": true,
+        "satisfies_nfr": [
+          "nfr_routing_and_agreement_history_persists_across_service_interruptions"
+        ]
+      },
+      {
+        "name": "asyncpg",
+        "purpose": "async PostgreSQL driver for SQLAlchemy's async engine",
+        "category": "database driver",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "Alembic",
+        "purpose": "versioned schema migrations (backend/app/db/migrations/versions/), applied by the deploy script; one migration adds the Router's two history tables",
+        "category": "database migrations",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "httpx",
+        "purpose": "async HTTP client for the shared Exa wrapper (tool use, planning, ReAct, Router search route) and the OpenAI Moderation call",
+        "category": "http client",
+        "language": "Python",
+        "serves_features": [
+          "tool_use_integration",
+          "planning_agent_example_app",
+          "shared_framework_services",
+          "orchestrated_subagents_example_app",
+          "react_loop_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "trip_day_planning_agent",
+          "question_moderation",
+          "react_search_loop"
+        ]
+      },
+      {
+        "name": "Pydantic",
+        "purpose": "request/response validation and every slice's structured-output schemas, typed fixtures and the collaboration app's A2A-shaped protocol models",
+        "category": "validation",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "LiteLLM",
+        "purpose": "unified interface to Groq and OpenRouter free models with retry and ordered fallback via model_registry.py; used by RAG, the single-call app and the Router's single_call and search_generation routes through the existing generation service",
+        "category": "ai",
+        "language": "Python",
+        "serves_features": [
+          "rag_example_app",
+          "shared_framework_services",
+          "single_call_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "rag_example_app",
+          "single_call_generation"
+        ]
+      },
+      {
+        "name": "PydanticAI",
+        "purpose": "agent framework (second model lane) returning validated Pydantic models via FallbackModel over the shared chain: chained calls, planning agent, orchestrated subagents, collaboration agents, ReAct per-cycle calls and annotation, and the Router's single typed classification call (output retries zero)",
+        "category": "agent framework",
+        "language": "Python",
+        "serves_features": [
+          "chained_calls_example_app",
+          "planning_agent_example_app",
+          "orchestrated_subagents_example_app",
+          "multi_agent_collaboration_example_app",
+          "react_loop_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "chained_role_play_generation",
+          "trip_day_planning_agent",
+          "orchestrated_specialist_answer",
+          "specialist_disagreement_note",
+          "procurement_negotiation_run",
+          "private_position_reveal_explanation",
+          "priority_sensitivity_explanation",
+          "react_search_loop",
+          "react_question_suitability_check",
+          "hop_source_annotation",
+          "request_route_classification"
+        ]
+      },
+      {
+        "name": "sse-starlette",
+        "purpose": "server-sent events responses with keep-alive and client-disconnect detection so an abandoned run stops spending quota; streams the planning, orchestrated, collaboration, ReAct and Router runs",
+        "category": "streaming",
+        "language": "Python",
+        "serves_features": [
+          "planning_agent_example_app",
+          "orchestrated_subagents_example_app",
+          "multi_agent_collaboration_example_app",
+          "react_loop_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "trip_day_planning_agent",
+          "orchestrated_specialist_answer",
+          "procurement_negotiation_run",
+          "react_search_loop"
+        ]
+      },
+      {
+        "name": "tenacity",
+        "purpose": "bounded retry with backoff around outbound calls, including the moderation call before it fails closed",
+        "category": "resilience",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "sentence-transformers",
+        "purpose": "in-process embedding model (all-MiniLM-L6-v2) shared by RAG (including the Router's retrieval route), the embeddings example and the ReAct duplicate guard; no second embedding model is introduced",
+        "category": "ai",
+        "language": "Python",
+        "serves_features": [
+          "rag_example_app",
+          "shared_framework_services",
+          "embeddings_example_app",
+          "react_loop_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "rag_example_app",
+          "custom_text_semantic_placement",
+          "react_search_loop"
+        ],
+        "satisfies_nfr": [
+          "nfr_the_first_visit_loads_without_a_cold_start_delay_because_the_embedding_capability_is_ready_at_startup"
+        ]
+      },
+      {
+        "name": "torch",
+        "purpose": "inference backend beneath sentence-transformers, loaded at boot in the lifespan and kept resident",
+        "category": "ai",
+        "language": "Python",
+        "serves_features": [
+          "rag_example_app",
+          "embeddings_example_app",
+          "react_loop_example_app",
+          "shared_framework_services"
+        ],
+        "serves_capabilities": [
+          "rag_example_app",
+          "custom_text_semantic_placement",
+          "react_search_loop"
+        ]
+      },
+      {
+        "name": "scikit-learn",
+        "purpose": "PCA projection fitted once at boot on the preconfigured examples and reused via .transform() for custom text so the 2D layout stays stable",
+        "category": "machine learning",
+        "language": "Python",
+        "serves_features": [
+          "embeddings_example_app"
+        ],
+        "serves_capabilities": [
+          "custom_text_semantic_placement"
+        ],
+        "satisfies_nfr": [
+          "nfr_the_first_visit_loads_without_a_cold_start_delay_because_the_embedding_capability_is_ready_at_startup"
+        ]
+      },
+      {
+        "name": "numpy",
+        "purpose": "numeric arrays for embedding and PCA maths, the in-process projection cache and the ReAct cosine-similarity guard",
+        "category": "numerics",
+        "language": "Python",
+        "serves_features": [
+          "embeddings_example_app",
+          "rag_example_app",
+          "react_loop_example_app"
+        ],
+        "serves_capabilities": [
+          "custom_text_semantic_placement",
+          "rag_example_app",
+          "react_search_loop"
+        ]
+      },
+      {
+        "name": "pgvector",
+        "purpose": "Python/SQLAlchemy client for the pgvector extension: vector columns and similarity queries, including the RAG retriever the Router reuses",
+        "category": "database client",
+        "language": "Python",
+        "serves_features": [
+          "rag_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "rag_example_app"
+        ]
+      },
+      {
+        "name": "pydantic-settings",
+        "purpose": "typed environment-based configuration; GROQ_API_KEY and OPENAI_API_KEY are non-optional fields so startup fails with an error naming the missing credential (no placeholder, no opt-out flag, in production, local development and tests); on the VPS values arrive from the systemd EnvironmentFile with unchanged variable names",
+        "category": "configuration",
+        "language": "Python",
+        "foundational": true,
+        "satisfies_nfr": [
+          "nfr_the_service_refuses_to_start_when_a_required_credential_is_missing"
+        ]
+      },
+      {
+        "name": "structlog",
+        "purpose": "structured JSON logging for application events, service-log entries and per-run telemetry including the Router's online signals and logged warm-up failures; stdout captured by the systemd journal",
+        "category": "logging and observability",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "sentry-sdk",
+        "purpose": "backend error tracking and model-call spans (token usage, latency, error rates); optional, no-ops when SENTRY_DSN is unset",
+        "category": "logging and observability",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "pytest",
+        "purpose": "backend test runner; every run needs real GROQ_API_KEY and OPENAI_API_KEY; live-provider tests (-m live) stay opt-in and deselected by default",
+        "category": "testing",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "Ruff",
+        "purpose": "Python linter and formatter, configured with no extend-exclude entries so the whole backend is gated",
+        "category": "linting and formatting",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "mypy",
+        "purpose": "strict static type checking over the whole backend with no exclusions, and the reason scenario, preset and unit-table fixtures are typed Python literals",
+        "category": "type checking",
+        "language": "Python",
+        "foundational": true
+      },
+      {
+        "name": "React",
+        "purpose": "UI framework for the single-page app",
+        "category": "ui framework",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "react-dom",
+        "purpose": "React DOM renderer",
+        "category": "ui framework",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "Vite",
+        "purpose": "frontend build tool and dev server with code-splitting; the production build runs in place during deploy and emits dist/",
+        "category": "build tool",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "@vitejs/plugin-react",
+        "purpose": "Vite React plugin",
+        "category": "build tool",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "React Router",
+        "purpose": "client-side routing with lazy-loaded routes, one per example app, resolved by Caddy's SPA history fallback",
+        "category": "routing",
+        "language": "TypeScript",
+        "foundational": true,
+        "satisfies_nfr": [
+          "nfr_consistent_layout_and_navigation_across_all_example_apps"
+        ]
+      },
+      {
+        "name": "TanStack Query",
+        "purpose": "server-state fetching, caching and loading/error state, retries disabled on quota-spending calls; used for Router presets, route descriptions, availability and history reads",
+        "category": "data fetching",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "@microsoft/fetch-event-source",
+        "purpose": "fetch-based SSE client supporting POST bodies and abort (native EventSource is GET-only); abort stops an abandoned run from spending quota",
+        "category": "streaming",
+        "language": "TypeScript",
+        "serves_features": [
+          "planning_agent_example_app",
+          "orchestrated_subagents_example_app",
+          "multi_agent_collaboration_example_app",
+          "react_loop_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "trip_day_planning_agent",
+          "orchestrated_specialist_answer",
+          "procurement_negotiation_run",
+          "react_search_loop"
+        ]
+      },
+      {
+        "name": "Tailwind CSS",
+        "purpose": "utility-first styling giving every example app one consistent layout and light/dark theming",
+        "category": "styling",
+        "language": "TypeScript",
+        "foundational": true,
+        "satisfies_nfr": [
+          "nfr_consistent_layout_and_navigation_across_all_example_apps"
+        ]
+      },
+      {
+        "name": "postcss",
+        "purpose": "CSS processing pipeline for Tailwind",
+        "category": "styling",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "autoprefixer",
+        "purpose": "PostCSS vendor prefixing for browser compatibility",
+        "category": "styling",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "react-markdown",
+        "purpose": "renders model-produced markdown as React elements (no dangerouslySetInnerHTML) on this unauthenticated public surface: specialist and merged answers, award rationales, ReAct thoughts and observations, Router rationale and routed answers",
+        "category": "markdown rendering",
+        "language": "TypeScript",
+        "serves_features": [
+          "orchestrated_subagents_example_app",
+          "multi_agent_collaboration_example_app",
+          "react_loop_example_app",
+          "router_example_app"
+        ],
+        "serves_capabilities": [
+          "orchestrated_specialist_answer",
+          "procurement_negotiation_run",
+          "private_position_reveal_explanation",
+          "priority_sensitivity_explanation",
+          "react_search_loop"
+        ]
+      },
+      {
+        "name": "plotly.js",
+        "purpose": "charting engine for the embeddings example's interactive 2D scatter plot, confined to that route's lazy chunk",
+        "category": "visualization",
+        "language": "TypeScript",
+        "serves_features": [
+          "embeddings_example_app"
+        ],
+        "serves_capabilities": [
+          "custom_text_semantic_placement"
+        ]
+      },
+      {
+        "name": "react-plotly.js",
+        "purpose": "React wrapper around plotly.js for the embeddings scatter plot",
+        "category": "visualization",
+        "language": "TypeScript",
+        "serves_features": [
+          "embeddings_example_app"
+        ],
+        "serves_capabilities": [
+          "custom_text_semantic_placement"
+        ]
+      },
+      {
+        "name": "typescript",
+        "purpose": "TypeScript compiler and type checker",
+        "category": "type checking",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "oxlint",
+        "purpose": "TypeScript/React linter (the repo's linter; replaces the previously planned ESLint)",
+        "category": "linting and formatting",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "Vitest",
+        "purpose": "Vite-native frontend test runner",
+        "category": "testing",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "jsdom",
+        "purpose": "DOM environment for Vitest",
+        "category": "testing",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "React Testing Library",
+        "purpose": "component testing focused on user-visible behaviour (@testing-library/react)",
+        "category": "testing",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "@testing-library/jest-dom",
+        "purpose": "DOM matchers for component tests",
+        "category": "testing",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "@testing-library/user-event",
+        "purpose": "user interaction simulation in component tests",
+        "category": "testing",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "@types/node",
+        "purpose": "Node type definitions",
+        "category": "type definitions",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "@types/react",
+        "purpose": "React type definitions",
+        "category": "type definitions",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "@types/react-dom",
+        "purpose": "React DOM type definitions",
+        "category": "type definitions",
+        "language": "TypeScript",
+        "foundational": true
+      },
+      {
+        "name": "@sentry/react",
+        "purpose": "frontend error tracking; never initialised when VITE_SENTRY_DSN is unset",
+        "category": "logging and observability",
+        "language": "TypeScript",
+        "foundational": true
+      }
+    ],
+    "project_structure": [
+      {
+        "path": "deploy/",
+        "purpose": "self-hosted deployment artifacts: the Caddyfile (single canonical origin, static dist/ with SPA history fallback, /api/* reverse proxy to Uvicorn on localhost, automatic Let's Encrypt TLS), the systemd unit template for the single-worker Uvicorn process (EnvironmentFile referencing a root-owned 0600 file outside the repo), deploy.sh (git pull, uv sync, npm ci && npm run build, alembic upgrade head, systemctl restart) and a README for first-time VPS provisioning; render.yaml is deleted from the repo root and no file may cite Render except to record its retirement"
+      },
+      {
+        "path": "CLAUDE.md",
+        "purpose": "repository guidance for the coding agent; states the same environment contract as config and .env.example (GROQ_API_KEY and OPENAI_API_KEY required in every environment, no placeholder, no opt-out; live smoke run opt-in)"
+      },
+      {
+        "path": ".env.example",
+        "purpose": "example environment file listing every variable name (never values), with GROQ_API_KEY and OPENAI_API_KEY marked required, consistent with CLAUDE.md and backend/app/core/config.py"
+      },
+      {
+        "path": "backend/app/api/",
+        "purpose": "thin FastAPI routers, one module per feature (landing, RAG, tool use, embeddings, single call, chained calls, planning, ReAct, orchestrated, collab, Router, shared services, health)"
+      },
+      {
+        "path": "backend/app/api/collab.py",
+        "purpose": "thin SSE router for the collaboration run (GET identity-cards, POST run) streaming one event per negotiation stage plus the explanation panels"
+      },
+      {
+        "path": "backend/app/api/react.py",
+        "purpose": "thin router for the ReAct app: POST run streaming SSE envelopes (own DB session inside the generator, never Depends), GET run/{run_id}, GET presets (questions only), POST suitability"
+      },
+      {
+        "path": "backend/app/api/router.py",
+        "purpose": "Thin router for the Router app: POST run (moderation for free text only, then the 2-unit hold, then staged SSE with its own DB session inside the generator), POST rerun, GET presets (including route-description availability), GET history, and a Retry action that re-attempts the route-description warm-up; refused runs, including those refused while descriptions are unavailable, return ordinary error responses with no hold; covered by ruff and mypy"
+      },
+      {
+        "path": "backend/app/services/",
+        "purpose": "shared framework services: LiteLLM generation wrapper, embedding, Exa web search (web_search.py), storage abstraction, model_registry.py and agent_runtime.py (all model calls go through these), and the usage-limit gate with reserve/redeem/refund holds; the Router calls these entry points unmodified apart from behaviour-neutral lint and type fixes"
+      },
+      {
+        "path": "backend/app/services/moderation.py",
+        "purpose": "shared moderation service: moderate(text, calling_context) over httpx with tenacity retry, failing closed, logging only a salted hash, injected via Depends"
+      },
+      {
+        "path": "backend/app/services/message_bus.py",
+        "purpose": "shared in-process peer message bus with recipient-equality context filtering and a chronological log projection, injected via Depends"
+      },
+      {
+        "path": "backend/app/main.py",
+        "purpose": "FastAPI entrypoint (now linted and type-checked): router registration, CORS pinned to the single configured origin, Sentry wiring, and the lifespan whose docstring describes the always-on VPS (embedding model and 2D projection load once at boot and stay warm); the embeddings warm-up and warm_route_descriptions() are both best-effort (failure logged via structlog, API still starts)"
+      },
+      {
+        "path": "backend/app/rag/",
+        "purpose": "RAG logic: chunking, retriever, citation auditing, versioned prompts, curated dataset and indexing script"
+      },
+      {
+        "path": "backend/app/embeddings/",
+        "purpose": "embeddings app logic: bundled TextItem set, in-process embedding and PCA fit/transform, custom-text route"
+      },
+      {
+        "path": "backend/app/single_call/",
+        "purpose": "single-call app logic: preset prompts, per-preset schema models and the route over the shared generation service"
+      },
+      {
+        "path": "backend/app/chained_calls/",
+        "purpose": "chained-calls logic: PydanticAI agents, the two-step writer-to-critic run (200 plus status 'critique_failed' contract preserved) and the route"
+      },
+      {
+        "path": "backend/app/chained_calls/prompts/",
+        "purpose": "versioned persona prompt templates"
+      },
+      {
+        "path": "backend/app/planning/",
+        "purpose": "planning-agent logic: planner agent, plan validation and trimming to 2-3 steps, Exa tool registration, user-advanced executor run and SSE route"
+      },
+      {
+        "path": "backend/app/planning/prompts/",
+        "purpose": "versioned planner and synthesis prompts with Plan/StepResult/Itinerary schemas"
+      },
+      {
+        "path": "backend/app/react/",
+        "purpose": "ReAct logic: preset catalog (questions only), moderation and suitability check, the hand-rolled bounded loop, per-cycle typed call, direct Exa calls, worst-case allowance reservation and refund, terminal-card selection, hop annotation, react_runs persistence and SSE emission"
+      },
+      {
+        "path": "backend/app/react/duplicate_guard.py",
+        "purpose": "pure-function semantic near-duplicate query guard over (candidate, prior embeddings, threshold)"
+      },
+      {
+        "path": "backend/app/react/prompts/",
+        "purpose": "versioned ReAct prompts with their schemas"
+      },
+      {
+        "path": "backend/app/orchestrated/",
+        "purpose": "orchestrated-subagents logic: roster and presets, moderation gate, coordinator, asyncio.gather fan-out, merge, three-call reservation and SSE route"
+      },
+      {
+        "path": "backend/app/orchestrated/prompts/",
+        "purpose": "versioned delegation, specialist and merge prompts with schemas"
+      },
+      {
+        "path": "backend/app/collab/",
+        "purpose": "collaboration logic: opacity policy over the bus, deterministic RFQ composer, buyer and seller agents, bid rounds, counter and award turns, explanation calls, eight-call reservation, NegotiationRecord persistence and SSE emission"
+      },
+      {
+        "path": "backend/app/collab/protocol.py",
+        "purpose": "hand-rolled A2A-shaped Pydantic models (AgentCard, Task, Message, Part, Artifact), camelCase"
+      },
+      {
+        "path": "backend/app/collab/scenarios.py",
+        "purpose": "typed literal fixtures: scenarios, per-seller sealed constraints, priority presets and the three agent cards"
+      },
+      {
+        "path": "backend/app/collab/prompts/",
+        "purpose": "versioned negotiation prompts with Bid/CounterOffer/Award and explanation schemas"
+      },
+      {
+        "path": "backend/app/router/",
+        "purpose": "Router logic (one-time check confirms it is covered by ruff and mypy): typed preset catalog, route-id constants (constants.py), generated route descriptions with a ready/unavailable state and a retryable warm_route_descriptions(), the classification agent (one PydanticAI call, output retries zero), margin check and fixed cost-order tie-break, malformed-decision handling, dispatch to existing single-call, RAG retriever and Exa-plus-generation entry points, comparison re-run, cost strip and baseline, history queries, 2-unit hold and release, staged SSE; named constants (margin, cost order, median window N) live here"
+      },
+      {
+        "path": "backend/app/router/evaluator.py",
+        "purpose": "Deterministic evaluator: closed-grammar tokenizer rejecting anything outside numbers, + - x /, parentheses, % and unit-table names, with length and nesting caps, and a recursive-descent evaluator; no ast, no eval, never executes model text; reads the unit table as the single source"
+      },
+      {
+        "path": "backend/app/router/prompts/",
+        "purpose": "Versioned route_v1.md with the typed RoutingDecision schema"
+      },
+      {
+        "path": "backend/app/db/",
+        "purpose": "SQLAlchemy models, async session factory and the Alembic migration tree (backend/app/db/migrations/versions/, including the migration for the Router's two history tables)"
+      },
+      {
+        "path": "backend/app/core/",
+        "purpose": "configuration (pydantic-settings, with GROQ_API_KEY and OPENAI_API_KEY as required fields), structlog and Sentry setup (observability.py)"
+      },
+      {
+        "path": "backend/tests/",
+        "purpose": "pytest suites mirroring the package layout, now gated by ruff and mypy like all backend code, including message-bus, collaboration-opacity and ReAct-loop invariant tests; all runs need real GROQ_API_KEY and OPENAI_API_KEY; live-provider tests (-m live) opt-in; a type fix that would require changing a test is flagged, not made quietly"
+      },
+      {
+        "path": "backend/tests/router/",
+        "purpose": "Router tests: evaluator grammar acceptance and rejection, caps, unit-table single-source and description generation, margin and cost-order tie-break, malformed-decision fallback, hold and release accounting, moderation-before-hold ordering, history inclusion rules, baseline thresholds, warm-up failure boot and Retry recovery, unavailable-state no-hold behaviour"
+      },
+      {
+        "path": "frontend/src/screens/",
+        "purpose": "one folder per screen: visitor (landing and example app tab strip) and maintainer"
+      },
+      {
+        "path": "frontend/src/apps/",
+        "purpose": "one folder per example app (rag, tool-use, embeddings, single-call, chained-calls, planning, react, orchestrated, collab, router), each lazy-loaded via its own route"
+      },
+      {
+        "path": "frontend/src/apps/embeddings/",
+        "purpose": "embeddings route module: react-plotly.js plot, custom-text input, overview"
+      },
+      {
+        "path": "frontend/src/apps/single-call/",
+        "purpose": "single-call route module: prompt input and presets, Simple/Structured toggle, request/response views, overview"
+      },
+      {
+        "path": "frontend/src/apps/chained-calls/",
+        "purpose": "chained-calls route module: request input, upfront role description, labelled intermediate and final outputs, quota notice, overview"
+      },
+      {
+        "path": "frontend/src/apps/planning/",
+        "purpose": "planning route module: city/interests input, plan display, Next button, progressive step results, itinerary, run allowance, limit notices, overview cross-referencing ReAct Loop"
+      },
+      {
+        "path": "frontend/src/apps/react/",
+        "purpose": "ReAct route module: overview, preset selector and free-form input, start control with no plan and no mid-run approval, cycle trace, live cycle counter, runs-remaining indicator, terminal cards, hop-source panel; its frontend tests are inspected and documented in the review note"
+      },
+      {
+        "path": "frontend/src/apps/orchestrated/",
+        "purpose": "orchestrated route module: presets and free-form input, delegation panel, Next dispatch, two parallel specialist columns, merged answer, runs-remaining counter, disabled state, overview"
+      },
+      {
+        "path": "frontend/src/apps/collab/",
+        "purpose": "collaboration route module: scenario and priority selectors, agent cards, buyer track, two seller columns, reveal and sensitivity panels, message log, stated call cost, candid overview"
+      },
+      {
+        "path": "frontend/src/apps/collab/message-log.tsx",
+        "purpose": "hand-rolled Tailwind message-log table, one row per envelope with expandable JSON, making the absence of seller-to-seller rows visible"
+      },
+      {
+        "path": "frontend/src/apps/router/",
+        "purpose": "Router route module: overview, knowledge panel with route descriptions byte for byte beside the decision margin, six presets and free text, runs-remaining counter and exhausted state, a 'temporarily unavailable' state with a Retry button (shown instead of the input when the presets endpoint reports descriptions unavailable; a successful retry restores the page without reload of the API), decision card, Router-local wrappers importing existing Single Call, RAG and Tool Use presentational components unchanged, deterministic-result view, cost strip, comparison re-run view, agreement table with overall rate, and its own SSE consumption; the four route ids mirror backend/app/router/constants.py in frontend/src/api/router.ts and change together"
+      },
+      {
+        "path": "frontend/src/components/",
+        "purpose": "shared UI: nav bar, theme toggle, layout shell and the shared markdown renderer wrapper"
+      },
+      {
+        "path": "frontend/src/api/",
+        "purpose": "typed API client and TanStack Query hooks calling same-origin /api/*, plus SSE hooks for the planning, ReAct, orchestrated, collaboration and Router runs"
+      },
+      {
+        "path": "frontend/src/routes.tsx",
+        "purpose": "route configuration with lazy imports per example app and the per-route SEO installer with canonicals at the single VPS origin (site and SEO metadata inspected and documented in the review note)"
+      },
+      {
+        "path": "frontend/tests/",
+        "purpose": "Vitest and React Testing Library suites for each app's user-visible behaviour"
+      }
+    ],
+    "coding_style": {
+      "patterns": [
+        "functional core / imperative shell: pure functions for chunking, retrieval scoring, PCA, schema validation, plan and delegation validation, the ReAct duplicate guard and terminal-card selection, RFQ composition, bus recipient filtering and opacity checks, and the Router's tokenizer, evaluator, margin check, tie-break, route-description generation and cost-strip arithmetic, with thin FastAPI handlers as the imperative shell",
+        "dependency injection for shared services (LiteLLM client, PydanticAI agents, DB session, Exa client, embedding service, moderation service, message bus) via FastAPI Depends so tests substitute them through app.dependency_overrides",
+        "concurrent agent work and iterative loops are owned by application code (asyncio.gather with return_exceptions=True; the hand-rolled ReAct loop), not a model-driven tool loop, so call counts are code invariants the allowance reservation can rely on",
+        "peer visibility is enforced structurally, never by prompt: an agent's turn context is assembled only from envelopes the bus returns for that agent",
+        "routing is decided by the model and executed by code: the router makes exactly one typed call and stops; the low-confidence rule, torn-between pair (from the scores), cost-order tie-break and all dispatch live in code",
+        "model-produced text is never executed: the Router evaluator accepts only a closed grammar enforced by a tokenizer before parsing, with a hand-written recursive-descent evaluator and no ast or eval",
+        "Router run order is fixed: availability check (unavailable descriptions refuse the run with no hold), moderation (free text only), then the 2-unit hold before the first SSE event, then the router call, then staged events; a run refused before it begins consumes no run, takes no hold, has no ending state and writes no history row",
+        "Router history rules: only router-routed preset runs write an agreement row; free-text runs, comparison re-runs, malformed-decision fallbacks and lucky tie-breaks earn no credit; only real search_generation runs write a latency row; baseline time is always labelled 'typical'",
+        "routed answers reuse existing presentational components unchanged inside Router-local wrappers fed by props; the Router never reaches into another app's state or API hooks",
+        "zero lint and type exclusions: nothing may be added to Ruff or mypy exclusion lists; all backend code including main.py, older routers, services and tests is gated; cleanup fixes are behaviour-preserving, real bugs surfaced by findings are listed separately for the owner's decision, and no ongoing guard (pre-commit, CI) is added",
+        "optional startup steps are best-effort: the embeddings warm-up and warm_route_descriptions() each log failure via structlog and let the API start; required credentials are the only startup condition that is fatal",
+        "streaming routes open their own DB session inside the async generator via async_session_factory and never use Depends(get_db_session)",
+        "exactly one Uvicorn worker: in-memory state (embedding model, PCA projection, message bus, duplicate-guard cache, Router route-description state) is per-process by design; never add Gunicorn or multiple workers",
+        "all new model calls go through services/model_registry.py or services/agent_runtime.py so the shared allowance gate cannot be bypassed; free-tier model slug chains are refreshed periodically and never pinned in the spec",
+        "secrets are read only from the environment via pydantic-settings and never committed; no placeholder credential values exist anywhere, including tests; on the VPS they live in a root-owned 0600 file outside the repository",
+        "React: function components and hooks only, no class components; custom hooks for shared logic (useExampleApps, useTheme, useRunAllowance)",
+        "TypeScript has no formatter: oxlint, tsc and review enforce style; semicolons, trailing commas in multi-line structures and the 100-character line length are conventions"
+      ],
+      "documentation": [
+        "Google-style docstrings on every public Python function",
+        "JSDoc on every exported TypeScript function",
+        "every source file, Python and TypeScript, opens with the header comment 'Built with Spec4 AI - https://spec4.ai'",
+        "heavy explanatory comments stating why a decision was made; the deploy artifacts (Caddyfile, systemd unit, deploy script) follow the same convention",
+        "CLAUDE.md, backend configuration and .env.example must state the same environment contract"
+      ]
+    },
+    "additional_decisions": [
+      {
+        "name": "groq_primary_supersedes_openrouter_only_constraint",
+        "description": "How the Groq provider relates to the vision's constraint that LiteLLM access only free OpenRouter models.",
+        "value": "Groq is recorded as primary and OpenRouter free models as fallback for every capability tier, matching the code (agent_runtime.py, GROQ_API_KEY). The vision constraint 'Must use LiteLLM to access only free LLMs provided by OpenRouter' is superseded by this and should be reworded in the next vision revision. Model slugs are not pinned in this spec; the developer pins current ones in the shared model registry."
+      },
+      {
+        "name": "collaboration_run_call_budget",
+        "description": "The declared per-run model-call budget for the multi-agent collaboration example app and how it is policed.",
+        "value": "8 calls per run, disclosed as 6 negotiation calls (2 opening bids, 1 buyer counter, 2 best-and-final bids, 1 award) plus 2 post-award explanation calls (reveal, priority sensitivity); all 8 reserved via allowance_holds before the deterministic RFQ is composed; telemetry alerts when the negotiation-stage count differs from 6."
+      },
+      {
+        "name": "react_run_call_budget",
+        "description": "The declared per-run model-call budget for the ReAct loop and how it is reserved and released.",
+        "value": "Worst case 10 calls per run (up to 8 search-cycle calls, 1 final-answer call, 1 post-run hop-source annotation); the full worst case is reserved before the first cycle and the unspent remainder refunded when the loop answers early. The custom-question suitability check is 1 further call charged only on free-form input."
+      },
+      {
+        "name": "router_run_call_budget",
+        "description": "The per-run model-call budget for the Router and how it is reserved, released and counted against the visitor's five runs.",
+        "value": "At most 2 model-call units per run including the classification call: 1 on deterministic_evaluator, 2 on other routes, plus one Exa search on search_generation. 2 units are reserved after moderation and before the router call; the second is released only once the evaluator has accepted the expression. Output retries are zero. Visitors get 5 runs per session (advisory localStorage counter); a comparison re-run counts as one, reserves only the expected route's dispatch cost, shows router overhead as an explicit zero and feeds no history; a refused run costs no run."
+      },
+      {
+        "name": "router_malformed_decision_rule",
+        "description": "How a malformed router decision and evaluator rejections are handled; the AI spec supersedes the product spec's wording.",
+        "value": "A malformed or schema-invalid decision (no retry) dispatches to single_call with a plain card note, inside the routed-answer ending, with no agreement row; it is not 'declined', which is only the low-confidence outcome. If deterministic is chosen and the evaluator rejects the expression, dispatch goes to single_call with the unit held and the card states it as the router's own misroute; if a low-confidence tie-break lands on deterministic and the evaluator rejects, the other tied route is used and the card remains the low-confidence ending."
+      },
+      {
+        "name": "router_route_ids",
+        "description": "Canonical spellings of the four Router route ids.",
+        "value": "deterministic_evaluator, single_call, retrieval, search_generation (cost order in that sequence), used identically in presets, the cost-order constant, the latency table, schemas and generated descriptions; defined in backend/app/router/constants.py and mirrored by hand in frontend/src/api/router.ts, changed together."
+      },
+      {
+        "name": "router_named_constants",
+        "description": "Router tunables that are named constants in code so the page can print them.",
+        "value": "Decision margin, fixed cost order, rolling-median window N, the 5-observation minimum for baseline latency and each agreement cell, the evaluator's input length and nesting-depth caps, and the per-session run limit of 5."
+      },
+      {
+        "name": "router_observability_signals",
+        "description": "Where the Router's online evaluation signals go.",
+        "value": "Schema-failure rate, argmax route distribution, margin distribution, evaluator fallback rate, router latency and route-description warm-up failures are emitted as structlog events and Sentry spans only; no table beyond the two history tables."
+      },
+      {
+        "name": "router_warmup_unavailable_state",
+        "description": "How the Router behaves when its startup route-description warm-up fails, and how it recovers.",
+        "value": "warm_route_descriptions() is wrapped in the same best-effort handling as the embeddings warm-up: failure is logged and the API starts. The Router module holds a ready/unavailable state reported by GET presets; while unavailable the page shows 'temporarily unavailable' with a Retry button, no run starts and no usage units are reserved or spent. Retry re-attempts the warm-up without an API restart: success restores normal operation, failure keeps the same message. The other nine example apps are unaffected. No background retry timer is used."
+      },
+      {
+        "name": "required_credentials_contract",
+        "description": "How GROQ_API_KEY and OPENAI_API_KEY are enforced and documented.",
+        "value": "Both are non-optional pydantic-settings fields, required in production, local development and the test suite; startup fails with an error naming the missing key. No placeholder values and no opt-out flag exist, so every pytest run needs real credentials; the live smoke run (-m live) remains opt-in. CLAUDE.md, backend/app/core/config.py and .env.example state the same contract. This is the one deliberate exception to the no-visible-change rule and affects only a misconfigured deployment."
+      },
+      {
+        "name": "lint_type_gate_scope",
+        "description": "Scope and handling of the Ruff and mypy gate after the cleanup.",
+        "value": "All Ruff and mypy exclusions are removed so every backend package, router, service, test and main.py is gated; all findings are fixed and affected files reformatted; behaviour, routes, response shapes, usage caps and visitor messages (including Chained Calls' 200 with 'critique_failed' and the Router route-id contract) are unchanged; existing backend and frontend tests are the gate; a type fix that would require changing a test is flagged rather than made quietly; fixes for real bugs surfaced by findings are listed separately for the owner's decision. A one-time check confirms the Router package, api/router.py and backend/tests/router/ are covered; no pre-commit hook, CI job or other ongoing guard is added, and gates remain developer-run before push."
+      },
+      {
+        "name": "unrecorded_edits_review_note",
+        "description": "How previously unrecorded edits are handled in this cleanup.",
+        "value": "The SEO and site metadata (page head, sitemap, per-route metadata), the shared generation service, README, Claude Code settings, pyproject.toml and the ReAct frontend test changes are each inspected and documented in a written review note; intentional changes stay, and anything that looks unintended is flagged for the owner's decision rather than reverted silently."
+      },
+      {
+        "name": "deployment_downtime_posture",
+        "description": "How a release interacts with availability and warm start.",
+        "value": "A release is a plain systemctl restart: a brief outage while the embedding model load and PCA fit are re-paid at boot, borne by the deploy rather than a visitor. Zero-downtime deployment (a second warm instance and a Caddy upstream switch) was deliberately deferred."
+      },
+      {
+        "name": "retired_hosting_configuration",
+        "description": "What is removed as part of retiring the previous host and what stays unchanged.",
+        "value": "render.yaml is deleted and the previous host serves nothing; the main.py lifespan docstring and all code, docs, configuration and deploy files are swept so Render is cited only where recording its retirement. The environment contract (DATABASE_URL, CORS_ORIGIN, OPENROUTER_API_KEY, GROQ_API_KEY, EXA_API_KEY, OPENAI_API_KEY, optional SENTRY_DSN, SENTRY_ENVIRONMENT and VITE_SENTRY_DSN) carries over with no variable added, removed or renamed; GROQ_API_KEY and OPENAI_API_KEY are required in every environment."
+      }
+    ],
+    "references": [
+      {
+        "standard": "LiteLLM",
+        "url": "https://docs.litellm.ai/docs"
+      },
+      {
+        "standard": "OpenRouter",
+        "url": "https://openrouter.ai/docs"
+      },
+      {
+        "standard": "Groq API (via LiteLLM)",
+        "url": "https://console.groq.com/docs/litellm"
+      },
+      {
+        "standard": "netcup VPS (G12 line)",
+        "url": "https://www.netcup.com/en/server/vps",
+        "note": "target hosting platform; the specific plan is the VPS 500 G12 (2 vCores, 4 GB DDR5 ECC RAM, 128 GB NVMe, always-on)"
+      },
+      {
+        "standard": "Caddy",
+        "url": "https://caddyserver.com/docs/"
+      },
+      {
+        "standard": "systemd service units",
+        "url": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html"
+      },
+      {
+        "standard": "Let's Encrypt / ACME",
+        "url": "https://letsencrypt.org/docs/"
+      },
+      {
+        "standard": "uv",
+        "url": "https://docs.astral.sh/uv/"
+      },
+      {
+        "standard": "Uvicorn",
+        "url": "https://www.uvicorn.org/"
+      },
+      {
+        "standard": "Exa Search API",
+        "url": "https://exa.ai/docs/reference/search-api-guide"
+      },
+      {
+        "standard": "Neon",
+        "url": "https://neon.com/docs/introduction"
+      },
+      {
+        "standard": "pgvector",
+        "url": "https://github.com/pgvector/pgvector"
+      },
+      {
+        "standard": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks (Lewis et al.)",
+        "url": "https://arxiv.org/abs/2005.11401"
+      },
+      {
+        "standard": "JSON Schema",
+        "url": "https://json-schema.org/specification"
+      },
+      {
+        "standard": "OpenAI Structured Outputs guide",
+        "url": "https://platform.openai.com/docs/guides/structured-outputs"
+      },
+      {
+        "standard": "OpenAI Moderation API guide",
+        "url": "https://platform.openai.com/docs/guides/moderation"
+      },
+      {
+        "standard": "Prompt Engineering Guide (general single-call prompting reference)",
+        "url": "https://www.promptingguide.ai/",
+        "note": "unique to this project"
+      },
+      {
+        "standard": "PydanticAI",
+        "url": "https://ai.pydantic.dev/"
+      },
+      {
+        "standard": "PydanticAI - Output (structured/typed output)",
+        "url": "https://ai.pydantic.dev/output/"
+      },
+      {
+        "standard": "ReAct: Synergizing Reasoning and Acting in Language Models (Yao et al., ICLR 2023)",
+        "url": "https://arxiv.org/abs/2210.03629"
+      },
+      {
+        "standard": "ReAct project page (Yao et al.)",
+        "url": "https://react-lm.github.io"
+      },
+      {
+        "standard": "Building Effective Agents (Anthropic)",
+        "url": "https://www.anthropic.com/research/building-effective-agents"
+      },
+      {
+        "standard": "How we built our multi-agent research system (Anthropic)",
+        "url": "https://www.anthropic.com/engineering/built-multi-agent-research-system"
+      },
+      {
+        "standard": "Agent2Agent (A2A) Protocol specification",
+        "url": "https://a2a-protocol.org/latest/specification/"
+      },
+      {
+        "standard": "Agent2Agent (A2A) Protocol repository",
+        "url": "https://github.com/a2aproject/A2A"
+      },
+      {
+        "standard": "Counterfactual Explanations without Opening the Black Box (Wachter, Mittelstadt & Russell)",
+        "url": "https://arxiv.org/abs/1711.00399"
+      },
+      {
+        "standard": "Measuring Attribution in Natural Language Generation Models (Rashkin et al.)",
+        "url": "https://arxiv.org/abs/2112.12870"
+      },
+      {
+        "standard": "Server-Sent Events (WHATWG HTML Living Standard, section 9.2)",
+        "url": "https://html.spec.whatwg.org/multipage/server-sent-events.html"
+      },
+      {
+        "standard": "sse-starlette",
+        "url": "https://github.com/sysid/sse-starlette"
+      },
+      {
+        "standard": "@microsoft/fetch-event-source",
+        "url": "https://github.com/Azure/fetch-event-source"
+      },
+      {
+        "standard": "react-markdown",
+        "url": "https://github.com/remarkjs/react-markdown"
+      },
+      {
+        "standard": "sentence-transformers (all-MiniLM-L6-v2)",
+        "url": "https://www.sbert.net/"
+      },
+      {
+        "standard": "Model Context Protocol (MCP)",
+        "url": "https://modelcontextprotocol.io/",
+        "note": "referenced by the vision as a future example-app pattern; deliberately not used by any current example app, including the ReAct act step and the Router's search_generation route, which call the shared Exa wrapper directly"
+      },
+      {
+        "standard": "Spec4 pattern library - single_call tier",
+        "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/tiers/03_single_call.md",
+        "note": "unique to this project; the Router's classification call is one single call with structured output, composed by code over the gallery's existing paths"
+      },
+      {
+        "standard": "Spec4 pattern library - structured_outputs mechanism",
+        "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/mechanisms/structured_outputs.md",
+        "note": "unique to this project; the mechanism attached to the Router's classification call"
+      },
+      {
+        "standard": "Spec4 pattern library - chained_calls tier",
+        "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/tiers/06_chained_calls.md",
+        "note": "unique to this project"
+      },
+      {
+        "standard": "Spec4 pattern library - planning_agent tier",
+        "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/tiers/07_planning_agent.md",
+        "note": "unique to this project; covers both the Planning Agent and ReAct Loop example apps"
+      },
+      {
+        "standard": "Spec4 pattern library - orchestrated_subagents tier",
+        "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/tiers/08_orchestrated_subagents.md",
+        "note": "unique to this project"
+      },
+      {
+        "standard": "Spec4 pattern library - multi_agent_collaboration tier",
+        "url": "https://github.com/robertcrowe/Spec4/blob/dev/src/spec4/agentifier/patterns/tiers/09_multi_agent_collaboration.md",
+        "note": "unique to this project"
+      }
+    ]
+  },
+  "revision_removals": [
+    {
+      "block": "libraries",
+      "key": "Playwright",
+      "disposition": "requested_in_conversation",
+      "matched": "Please remove Playwright"
+    }
+  ]
+}

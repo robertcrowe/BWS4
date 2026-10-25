@@ -59,6 +59,11 @@ const ReactLoopScreen = lazy(() =>
     default: module.ReactLoopScreen,
   })),
 )
+const RouterScreen = lazy(() =>
+  import('./screens/router/RouterScreen').then((module) => ({
+    default: module.RouterScreen,
+  })),
+)
 
 /** Wraps a lazy-loaded route element in the fallback every route shares while its chunk loads. */
 function withSuspense(element: ReactNode) {
@@ -113,6 +118,10 @@ export const router = createBrowserRouter([
   {
     path: '/react',
     element: withSuspense(<ReactLoopScreen />),
+  },
+  {
+    path: '/router',
+    element: withSuspense(<RouterScreen />),
   },
   ...exampleApps
     .filter((app) => app.status === 'coming-soon')

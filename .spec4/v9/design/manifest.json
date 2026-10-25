@@ -1,0 +1,961 @@
+{
+  "entities": [
+    {
+      "name": "ExampleApp",
+      "fields": [
+        "name",
+        "pattern label",
+        "description",
+        "route",
+        "status"
+      ]
+    },
+    {
+      "name": "RunAllowance",
+      "fields": [
+        "app limit",
+        "runs remaining",
+        "model-call units reserved",
+        "shared hourly cap",
+        "shared daily cap"
+      ]
+    },
+    {
+      "name": "Route",
+      "fields": [
+        "id",
+        "one-line description",
+        "cost rank"
+      ]
+    },
+    {
+      "name": "RoutingDecision",
+      "fields": [
+        "chosen route",
+        "rationale",
+        "four scores",
+        "agreement statement",
+        "low-confidence flag",
+        "fallback note"
+      ]
+    },
+    {
+      "name": "PresetRequest",
+      "fields": [
+        "text",
+        "expected route (hidden)",
+        "expected-route reason"
+      ]
+    },
+    {
+      "name": "Expression",
+      "fields": [
+        "text",
+        "validated",
+        "result"
+      ]
+    },
+    {
+      "name": "CostStrip",
+      "fields": [
+        "model calls",
+        "search calls",
+        "retrievals",
+        "path time",
+        "router overhead",
+        "baseline typical time",
+        "sample size"
+      ]
+    },
+    {
+      "name": "AgreementHistory",
+      "fields": [
+        "preset",
+        "agreed",
+        "disagreed",
+        "declined",
+        "rate"
+      ]
+    },
+    {
+      "name": "LatencyHistory",
+      "fields": [
+        "search-route run times",
+        "median",
+        "sample size"
+      ]
+    },
+    {
+      "name": "Passage",
+      "fields": [
+        "document title",
+        "excerpt",
+        "similarity"
+      ]
+    },
+    {
+      "name": "TextItem",
+      "fields": [
+        "label",
+        "category",
+        "x",
+        "y",
+        "custom"
+      ]
+    },
+    {
+      "name": "Plan",
+      "fields": [
+        "steps",
+        "search query",
+        "kind"
+      ]
+    },
+    {
+      "name": "DelegationDecision",
+      "fields": [
+        "specialists",
+        "rationale",
+        "briefs"
+      ]
+    },
+    {
+      "name": "AgentCard",
+      "fields": [
+        "name",
+        "role",
+        "skills",
+        "tool access"
+      ]
+    },
+    {
+      "name": "Bid",
+      "fields": [
+        "seller",
+        "unit price",
+        "quantity",
+        "delivery days",
+        "warranty"
+      ]
+    },
+    {
+      "name": "Thought/Action/Observation",
+      "fields": [
+        "cycle",
+        "thought",
+        "query",
+        "snippets"
+      ]
+    },
+    {
+      "name": "UsageCap",
+      "fields": [
+        "scope",
+        "used",
+        "limit",
+        "resets"
+      ]
+    },
+    {
+      "name": "Deployment",
+      "fields": [
+        "public address",
+        "certificate expiry",
+        "uptime",
+        "memory"
+      ]
+    }
+  ],
+  "screens": [
+    {
+      "id": "visitor",
+      "audience": "Developers and learners evaluating Spec4 and agentic patterns (also educators/students)",
+      "purpose": "Gallery landing page plus all ten example apps behind one shared catalogue-driven navigation",
+      "surfaces": [
+        "Landing Gallery",
+        "Example App Navigation",
+        "RAG Example App",
+        "Embeddings Explorer",
+        "Custom Text Placement",
+        "Single Call Example App",
+        "Chained Calls Example App",
+        "Tool Use Example App",
+        "Planning Agent Example App",
+        "Orchestrated Subagents Example App",
+        "Multi-Agent Collaboration Example App",
+        "ReAct Loop Example App",
+        "ReAct Suitability Suggestion",
+        "Hop Source Annotation Notification",
+        "Router Example App",
+        "Router Knowledge Panel",
+        "Router Decision and Answer Card",
+        "Router Search Answer",
+        "Router Free Text Answer",
+        "Router Cost Strip",
+        "Router Comparison Re-run",
+        "Router Agreement Panel"
+      ]
+    },
+    {
+      "id": "maintainer",
+      "audience": "Spec4 team / maintainers",
+      "purpose": "Showcase health: shared services readiness, usage caps, deployment status",
+      "surfaces": [
+        "Shared Services Status",
+        "Usage Caps Monitor",
+        "Deployment Status"
+      ]
+    }
+  ],
+  "surfaces": [
+    {
+      "name": "Landing Gallery",
+      "kind": "non_ai",
+      "screen": "visitor",
+      "implements_features": [
+        "Landing_Page"
+      ],
+      "inputs": [
+        "app entry buttons"
+      ],
+      "output": "Spec4 attribution, audience explanation, one entry per app from the shared catalogue",
+      "states": [
+        "default"
+      ],
+      "reads": [
+        "ExampleApp"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "landing_page"
+      ]
+    },
+    {
+      "name": "Example App Navigation",
+      "kind": "non_ai",
+      "screen": "visitor",
+      "implements_features": [
+        "Landing_Page"
+      ],
+      "inputs": [
+        "nav tabs"
+      ],
+      "output": "Navigation generated from same catalogue as landing",
+      "states": [
+        "default",
+        "active"
+      ],
+      "reads": [
+        "ExampleApp"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "landing_page"
+      ]
+    },
+    {
+      "name": "RAG Example App",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "rag_example_app"
+      ],
+      "inputs": [
+        "question text",
+        "example chips"
+      ],
+      "output": "Distinct retrieval and generation stages, passages with titles, grounded answer",
+      "states": [
+        "idle",
+        "loading",
+        "no relevant passage",
+        "error"
+      ],
+      "reads": [
+        "Passage"
+      ],
+      "writes": [],
+      "depends_on": [
+        "Example App Navigation"
+      ],
+      "affordance": "synchronous staged progress",
+      "invocation": {
+        "trigger": "A visitor opens the RAG example app from the landing page and submits a natural-language question",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "rag_example_app",
+      "catalog_surface_id": "rag_example_app",
+      "implements_feature_ids": [
+        "rag_example_app"
+      ]
+    },
+    {
+      "name": "Embeddings Explorer",
+      "kind": "non_ai",
+      "screen": "visitor",
+      "implements_features": [
+        "Embeddings_Example_App"
+      ],
+      "inputs": [],
+      "output": "2D plot of curated categories",
+      "states": [
+        "ready",
+        "not ready"
+      ],
+      "reads": [
+        "TextItem"
+      ],
+      "writes": [],
+      "depends_on": [
+        "Example App Navigation"
+      ],
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "Custom Text Placement",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "embeddings_example_app"
+      ],
+      "inputs": [
+        "custom text"
+      ],
+      "output": "Highlighted custom point in distinct colour with nearest neighbours, curated points fixed",
+      "states": [
+        "idle",
+        "loading",
+        "empty rejected",
+        "too long"
+      ],
+      "reads": [
+        "TextItem"
+      ],
+      "writes": [
+        "TextItem"
+      ],
+      "depends_on": [
+        "Embeddings Explorer"
+      ],
+      "affordance": "synchronous",
+      "invocation": {
+        "trigger": "User submits custom text in the Embeddings Example App (preset examples are embedded and projected once at build/deploy time, not per-request)",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "custom_text_semantic_placement",
+      "catalog_surface_id": "custom_text_semantic_placement",
+      "implements_feature_ids": [
+        "embeddings_example_app"
+      ]
+    },
+    {
+      "name": "Single Call Example App",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "single_call_example_app"
+      ],
+      "inputs": [
+        "prompt",
+        "preset chips",
+        "mode"
+      ],
+      "output": "Response; structured request and reply",
+      "states": [
+        "idle",
+        "loading",
+        "nonconforming",
+        "cap reached"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [
+        "Example App Navigation"
+      ],
+      "affordance": "synchronous",
+      "invocation": {
+        "trigger": "User enters or selects a preset prompt, chooses a response mode (plain or structured), and submits the form.",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "single_call_generation",
+      "catalog_surface_id": "single_call_generation",
+      "implements_feature_ids": [
+        "single_call_example_app"
+      ]
+    },
+    {
+      "name": "Chained Calls Example App",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "Chained_Calls_Example_App"
+      ],
+      "inputs": [
+        "story prompt"
+      ],
+      "output": "Writer stage then critic stage with roles shown first",
+      "states": [
+        "idle",
+        "step progress",
+        "critic failed"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [
+        "Example App Navigation"
+      ],
+      "affordance": "multi-step progress",
+      "invocation": {
+        "trigger": "User submits a free-form story prompt in the Chained-Calls example app",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "chained_role_play_generation",
+      "catalog_surface_id": "chained_role_play_generation",
+      "implements_feature_ids": [
+        "chained_calls_example_app"
+      ]
+    },
+    {
+      "name": "Tool Use Example App",
+      "kind": "non_ai",
+      "screen": "visitor",
+      "implements_features": [
+        "Tool_Use_Integration"
+      ],
+      "inputs": [
+        "search query"
+      ],
+      "output": "Snippets with source, exact query shown",
+      "states": [
+        "idle",
+        "results",
+        "empty",
+        "unavailable"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [
+        "Example App Navigation"
+      ],
+      "implements_feature_ids": [
+        "tool_use_integration"
+      ]
+    },
+    {
+      "name": "Planning Agent Example App",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "planning_agent_example_app"
+      ],
+      "inputs": [
+        "city",
+        "interests",
+        "Next confirmation"
+      ],
+      "output": "Plan, then step results, then itinerary with completion notification",
+      "states": [
+        "idle",
+        "plan awaiting confirmation",
+        "executing",
+        "done",
+        "limit reached"
+      ],
+      "reads": [
+        "Plan"
+      ],
+      "writes": [],
+      "depends_on": [
+        "Example App Navigation"
+      ],
+      "affordance": "confirmation, background notification, multi-step progress",
+      "invocation": {
+        "trigger": "Two-phase: (1) user submits city + interests in the example app UI, which invokes the planner call and returns the displayed plan; (2) user's explicit advance signal triggers sequential execution of the planned steps.",
+        "mode": "asynchronous"
+      },
+      "catalog_surface": "trip_day_planning_agent",
+      "catalog_surface_id": "trip_day_planning_agent",
+      "implements_feature_ids": [
+        "planning_agent_example_app"
+      ]
+    },
+    {
+      "name": "Orchestrated Subagents Example App",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "orchestrated_subagents_example_app"
+      ],
+      "inputs": [
+        "question",
+        "preset chips",
+        "Next confirmation"
+      ],
+      "output": "Moderation verdict, delegation decision, two parallel specialist columns, merged answer with disagreement note",
+      "states": [
+        "idle",
+        "awaiting dispatch",
+        "streaming",
+        "done",
+        "runs exhausted"
+      ],
+      "reads": [
+        "DelegationDecision"
+      ],
+      "writes": [],
+      "depends_on": [
+        "Example App Navigation"
+      ],
+      "affordance": "streaming, confirmation, progress",
+      "invocation": {
+        "trigger": "Two-phase, visitor-driven. Phase 1: visitor submits a question (curated preset or free-form) from the example app page \u2192 coordinator produces the delegation decision. Phase 2: visitor clicks the explicit 'Dispatch specialists' confirmation \u2192 the two chosen specialists run in parallel and the coordinator emits the merged answer.",
+        "mode": "streaming"
+      },
+      "catalog_surface": "orchestrated_specialist_answer",
+      "catalog_surface_id": "orchestrated_specialist_answer",
+      "implements_feature_ids": [
+        "orchestrated_subagents_example_app"
+      ]
+    },
+    {
+      "name": "Multi-Agent Collaboration Example App",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "multi_agent_collaboration_example_app"
+      ],
+      "inputs": [
+        "scenario",
+        "priority weighting",
+        "Start negotiation"
+      ],
+      "output": "Seller columns, buyer track, private reveal explanation, priority sensitivity suggestion",
+      "states": [
+        "idle",
+        "streaming",
+        "done"
+      ],
+      "reads": [
+        "Bid",
+        "AgentCard"
+      ],
+      "writes": [],
+      "depends_on": [
+        "Example App Navigation"
+      ],
+      "affordance": "streaming, progress, suggestion",
+      "invocation": {
+        "trigger": "Visitor selects a preset scenario and a priority weighting on the Multi-Agent Collaboration example page and clicks 'Start negotiation'; a single POST /api/examples/multi-agent/runs call starts the run.",
+        "mode": "streaming"
+      },
+      "catalog_surface": "procurement_negotiation_run",
+      "catalog_surface_id": "procurement_negotiation_run",
+      "implements_feature_ids": [
+        "multi_agent_collaboration_example_app"
+      ]
+    },
+    {
+      "name": "ReAct Loop Example App",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "react_loop_example_app"
+      ],
+      "inputs": [
+        "preset chips",
+        "free question",
+        "Start"
+      ],
+      "output": "Live cycle trace with search counter and closing card",
+      "states": [
+        "idle",
+        "streaming",
+        "final answer",
+        "budget exhausted",
+        "limit reached"
+      ],
+      "reads": [
+        "Thought/Action/Observation"
+      ],
+      "writes": [],
+      "depends_on": [
+        "Example App Navigation"
+      ],
+      "affordance": "streaming, progress",
+      "invocation": {
+        "trigger": "Visitor opens the ReAct Loop example, selects one of five curated multi-hop presets or types their own question, sets a cycle budget, and presses Start; frontend calls POST /api/react/run",
+        "mode": "streaming"
+      },
+      "catalog_surface": "react_search_loop",
+      "catalog_surface_id": "react_search_loop",
+      "implements_feature_ids": [
+        "react_loop_example_app"
+      ]
+    },
+    {
+      "name": "ReAct Suitability Suggestion",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "react_loop_example_app"
+      ],
+      "inputs": [
+        "free question blur"
+      ],
+      "output": "Verdict suggestion with accept or dismiss",
+      "states": [
+        "hidden",
+        "shown",
+        "dismissed"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [
+        "ReAct Loop Example App"
+      ],
+      "affordance": "suggestion",
+      "invocation": {
+        "trigger": "Visitor submits or blurs the free-form question field in the ReAct Loop example (debounced), or presses Start with a custom question and no cached verdict exists. Skipped entirely when one of the five curated presets is selected \u2014 presets carry a hardcoded verdict.",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "react_question_suitability_check",
+      "catalog_surface_id": "react_question_suitability_check",
+      "implements_feature_ids": [
+        "react_loop_example_app"
+      ]
+    },
+    {
+      "name": "Hop Source Annotation Notification",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "react_loop_example_app"
+      ],
+      "inputs": [],
+      "output": "Background toast and per-hop source badges",
+      "states": [
+        "pending",
+        "ready"
+      ],
+      "reads": [
+        "Thought/Action/Observation"
+      ],
+      "writes": [],
+      "depends_on": [
+        "ReAct Loop Example App"
+      ],
+      "affordance": "background notification",
+      "invocation": {
+        "trigger": "Fired once by the ReAct run controller when a run reaches a terminal state (final answer card or budget-exhausted card). Issued as a separate call after the loop closes, never inside a cycle; it does not consume the run's cycle budget.",
+        "mode": "asynchronous"
+      },
+      "catalog_surface": "hop_source_annotation",
+      "catalog_surface_id": "hop_source_annotation",
+      "implements_feature_ids": [
+        "react_loop_example_app"
+      ]
+    },
+    {
+      "name": "Router Example App",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "router_example_app"
+      ],
+      "inputs": [
+        "six preset buttons",
+        "free-text field",
+        "run button"
+      ],
+      "output": "Run flow with reserved units, routed answer card or low-confidence card, with fallback variants",
+      "states": [
+        "idle",
+        "multi-step loading",
+        "routed answer",
+        "low-confidence",
+        "fallback note",
+        "runs exhausted",
+        "refused by shared cap"
+      ],
+      "reads": [
+        "PresetRequest",
+        "RoutingDecision",
+        "RunAllowance"
+      ],
+      "writes": [
+        "RoutingDecision"
+      ],
+      "depends_on": [
+        "Example App Navigation",
+        "Router Knowledge Panel"
+      ],
+      "affordance": "multi-step progress",
+      "invocation": {
+        "trigger": "Visitor selects one of six preset requests or types their own and starts a run; or opts to re-run a misrouted preset through its expected route (offered once, presets only).",
+        "mode": "synchronous"
+      },
+      "catalog_surface": "router_example_app",
+      "catalog_surface_id": "router_example_app",
+      "implements_feature_ids": [
+        "router_example_app"
+      ]
+    },
+    {
+      "name": "Router Decision and Answer Card",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "router_example_app"
+      ],
+      "inputs": [],
+      "output": "Four score bars, chosen route highlighted, rationale, answer labelled with path",
+      "states": [
+        "routed",
+        "low-confidence",
+        "fallback"
+      ],
+      "reads": [
+        "RoutingDecision",
+        "Expression",
+        "Passage"
+      ],
+      "writes": [],
+      "depends_on": [
+        "Router Example App"
+      ],
+      "affordance": "synchronous",
+      "invocation": "Run completion",
+      "catalog_surface": "request_route_classification",
+      "catalog_surface_id": "request_route_classification",
+      "implements_feature_ids": [
+        "router_example_app"
+      ]
+    },
+    {
+      "name": "Router Search Answer",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "router_example_app"
+      ],
+      "inputs": [],
+      "output": "2-5 sentence snippet-only answer with bracketed indices",
+      "states": [
+        "shown"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [
+        "Router Decision and Answer Card"
+      ],
+      "affordance": "synchronous",
+      "invocation": "Search route dispatched",
+      "catalog_surface": "search_route_answer_generation",
+      "catalog_surface_id": "search_route_answer_generation",
+      "implements_feature_ids": [
+        "router_example_app"
+      ]
+    },
+    {
+      "name": "Router Free Text Answer",
+      "kind": "ai",
+      "screen": "visitor",
+      "implements_features": [
+        "router_example_app"
+      ],
+      "inputs": [],
+      "output": "Concise direct answer from the request only",
+      "states": [
+        "shown"
+      ],
+      "reads": [],
+      "writes": [],
+      "depends_on": [
+        "Router Decision and Answer Card"
+      ],
+      "affordance": "synchronous",
+      "invocation": "Single call route dispatched",
+      "catalog_surface": "router_free_text_request_answering",
+      "catalog_surface_id": "router_free_text_request_answering",
+      "implements_feature_ids": [
+        "router_example_app"
+      ]
+    },
+    {
+      "name": "Router Knowledge Panel",
+      "kind": "non_ai",
+      "screen": "visitor",
+      "implements_features": [
+        "router_example_app"
+      ],
+      "inputs": [],
+      "output": "Four route descriptions verbatim plus margin and cost order",
+      "states": [
+        "default"
+      ],
+      "reads": [
+        "Route"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "router_example_app"
+      ]
+    },
+    {
+      "name": "Router Cost Strip",
+      "kind": "non_ai",
+      "screen": "visitor",
+      "implements_features": [
+        "router_example_app"
+      ],
+      "inputs": [],
+      "output": "Run cost vs no-router baseline, overhead separate, typical time only at n>=5",
+      "states": [
+        "counts only",
+        "with typical time"
+      ],
+      "reads": [
+        "CostStrip",
+        "LatencyHistory"
+      ],
+      "writes": [],
+      "depends_on": [
+        "Router Example App"
+      ],
+      "implements_feature_ids": [
+        "router_example_app"
+      ]
+    },
+    {
+      "name": "Router Comparison Re-run",
+      "kind": "non_ai",
+      "screen": "visitor",
+      "implements_features": [
+        "router_example_app"
+      ],
+      "inputs": [
+        "Run it the expected way button"
+      ],
+      "output": "Side-by-side original and expected-route result, overhead 0, not feeding history",
+      "states": [
+        "offered",
+        "used"
+      ],
+      "reads": [
+        "RoutingDecision"
+      ],
+      "writes": [],
+      "depends_on": [
+        "Router Decision and Answer Card"
+      ],
+      "implements_feature_ids": [
+        "router_example_app"
+      ]
+    },
+    {
+      "name": "Router Agreement Panel",
+      "kind": "non_ai",
+      "screen": "visitor",
+      "implements_features": [
+        "router_example_app"
+      ],
+      "inputs": [],
+      "output": "Per-preset agreed/disagreed/declined counts, rate only at 5+ observations, tie-break footnote",
+      "states": [
+        "counts only",
+        "rate shown"
+      ],
+      "reads": [
+        "AgreementHistory"
+      ],
+      "writes": [],
+      "depends_on": [
+        "Router Example App"
+      ],
+      "implements_feature_ids": [
+        "router_example_app"
+      ]
+    },
+    {
+      "name": "Shared Services Status",
+      "kind": "non_ai",
+      "screen": "maintainer",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [],
+      "output": "Readiness of generation, embedding, projection, search, data",
+      "states": [
+        "ready",
+        "not ready"
+      ],
+      "reads": [
+        "UsageCap"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    },
+    {
+      "name": "Usage Caps Monitor",
+      "kind": "non_ai",
+      "screen": "maintainer",
+      "implements_features": [
+        "Shared_Framework_Services"
+      ],
+      "inputs": [],
+      "output": "Hourly and daily shared cap usage",
+      "states": [
+        "ok",
+        "reached"
+      ],
+      "reads": [
+        "UsageCap"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "shared_framework_services"
+      ]
+    },
+    {
+      "name": "Deployment Status",
+      "kind": "non_ai",
+      "screen": "maintainer",
+      "implements_features": [
+        "Self_Hosted_Deployment"
+      ],
+      "inputs": [],
+      "output": "Public address, certificate, uptime, memory, previous host retired",
+      "states": [
+        "healthy"
+      ],
+      "reads": [
+        "Deployment"
+      ],
+      "writes": [],
+      "depends_on": [],
+      "implements_feature_ids": [
+        "self_hosted_deployment"
+      ]
+    }
+  ],
+  "shared_layout": {
+    "nav": "Top bar with brand, audience tabs (Visitor / Maintainer) and theme toggle; in the Visitor screen a catalogue-driven app tab strip with Home plus ten apps",
+    "shell": [
+      "top bar",
+      "audience tabs",
+      "app tab strip",
+      "page container (max width 880px)",
+      "toast area",
+      "footer with Built with Spec4 attribution"
+    ]
+  }
+}

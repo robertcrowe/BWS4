@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Built with Spec4 — a working gallery of AI application patterns</title>
+<style>
+:root{--bg:#f9fafb;--card:#fff;--card2:#f3f4f6;--bd:#e5e7eb;--tx:#111827;--mu:#6b7280;--ac:#4f46e5;--acs:#eef2ff;--ok:#059669;--okb:#ecfdf5;--wa:#b45309;--wab:#fffbeb;--er:#dc2626;--erb:#fef2f2}
+html.dark{--bg:#030712;--card:#111827;--card2:#1f2937;--bd:#1f2937;--tx:#f3f4f6;--mu:#9ca3af;--ac:#818cf8;--acs:#1e1b4b;--ok:#34d399;--okb:#052e24;--wa:#fbbf24;--wab:#2b2108;--er:#f87171;--erb:#2c0f12}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em}
+header.top{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--bd)}
+.bar{max-width:880px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-weight:700;cursor:pointer}.brand span{color:var(--ac)}
+.aud{display:flex;gap:4px;margin-left:auto}
+button{font:inherit;color:inherit;cursor:pointer}
+.tab,.btn,.chip,.ghost{border:1px solid var(--bd);background:var(--card);border-radius:8px;padding:6px 12px}
+.tab.on{background:var(--acs);color:var(--ac);border-color:var(--ac)}
+.btn{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:600}
+html.dark .btn{color:#0b0b1a}
+.btn:disabled,.chip:disabled,input:disabled,textarea:disabled{opacity:.45;cursor:not-allowed}
+.ghost:hover,.chip:hover:not(:disabled){border-color:var(--ac)}
+.apps{max-width:880px;margin:0 auto;padding:0 16px 8px;display:flex;gap:4px;overflow-x:auto}
+.apps button{border:0;background:none;padding:6px 10px;border-radius:6px;white-space:nowrap;color:var(--mu);font-size:13px}
+.apps button.on{background:var(--acs);color:var(--ac);font-weight:600}
+main{max-width:880px;margin:0 auto;padding:20px 16px 60px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+h1{font-size:26px;margin:0 0 6px}h2{font-size:18px;margin:0 0 6px}h3{font-size:12px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu)}
+p{margin:6px 0}.mu{color:var(--mu)}.sm{font-size:13px}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--acs);color:var(--ac)}
+.badge.ok{background:var(--okb);color:var(--ok)}.badge.wa{background:var(--wab);color:var(--wa)}.badge.er{background:var(--erb);color:var(--er)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.entry{text-align:left;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;display:block}
+.entry:hover{border-color:var(--ac)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.between{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=text],textarea,select{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;font:inherit}
+textarea{min-height:64px;resize:vertical}
+.presets{display:grid;gap:6px;margin:8px 0}
+.preset{text-align:left;border:1px solid var(--bd);background:var(--card);border-radius:8px;padding:8px 12px}
+.preset:hover:not(:disabled){border-color:var(--ac)}.preset.sel{border-color:var(--ac);background:var(--acs)}.preset:disabled{opacity:.5;cursor:not-allowed}
+.note{border-radius:8px;padding:8px 12px;font-size:13px;margin:8px 0;background:var(--card2)}
+.note.wa{background:var(--wab);color:var(--wa)}.note.er{background:var(--erb);color:var(--er)}.note.ok{background:var(--okb);color:var(--ok)}.note.ac{background:var(--acs);color:var(--ac)}
+.score{display:grid;grid-template-columns:150px 1fr 40px;gap:8px;align-items:center;font-size:13px;margin:4px 0}
+.track{height:8px;border-radius:4px;background:var(--card2);overflow:hidden}.fill{height:100%;background:var(--mu);border-radius:4px}
+.score.top .fill{background:var(--ac)}.score.top{font-weight:700;color:var(--ac)}.score.torn .fill{background:var(--wa)}
+.score span:last-child{text-align:right}
+.panel{border:1px solid var(--bd);border-radius:10px;padding:12px;margin:10px 0;background:var(--bg)}
+.panel.hi{border-color:var(--ac)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--bd)}th{color:var(--mu);font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:620px){.two{grid-template-columns:1fr}.score{grid-template-columns:110px 1fr 36px}}
+.steps{list-style:none;padding:0;margin:8px 0}.steps li{padding:4px 0;font-size:13px;color:var(--mu)}.steps li.done{color:var(--ok)}.steps li.act{color:var(--ac);font-weight:600}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.cur::after{content:"▍";animation:bl 1s steps(2) infinite}@keyframes bl{50%{opacity:0}}
+#toasts{position:fixed;right:14px;bottom:14px;display:grid;gap:8px;z-index:50}
+.toast{background:var(--card);border:1px solid var(--ac);border-radius:10px;padding:10px 14px;max-width:300px;font-size:13px;box-shadow:0 6px 20px #0005}
+footer{text-align:center;color:var(--mu);font-size:12px;padding:20px}
+.bar2{height:10px;border-radius:5px;background:var(--card2);overflow:hidden}.bar2 div{height:100%;background:var(--ac)}
+svg text{fill:var(--mu);font-size:9px}
+.hidden{display:none}
+blockquote{margin:6px 0;padding-left:10px;border-left:3px solid var(--bd);color:var(--mu);font-size:13px}
+</style>
+</head>
+<body>
+<header class="top">
+ <div class="bar">
+  <div class="brand" onclick="go('home')">Built with <span>Spec4</span> <small class="mu">BWS4</small></div>
+  <div class="aud">
+   <button class="tab on" id="t-visitor" onclick="screen('visitor')">Visitor</button>
+   <button class="tab" id="t-maintainer" onclick="screen('maintainer')">Maintainer</button>
+   <button class="ghost" onclick="document.documentElement.classList.toggle('dark')" aria-label="Toggle theme">◐</button>
+  </div>
+ </div>
+ <nav class="apps" id="appnav"></nav>
+</header>
+<main>
+ <section id="s-visitor"><div id="view"></div></section>
+ <section id="s-maintainer" class="hidden">
+  <h1>Maintainer console</h1>
+  <p class="mu">For the Spec4 team: how the showcase itself is running. Read-only.</p>
+  <div class="card"><h3>Shared Services Status</h3>
+   <table><tr><th>Service</th><th>State</th><th>Detail</th></tr>
+   <tr><td>Text generation (free models)</td><td><span class="badge ok">ready</span></td><td>1 of 3 fallbacks active; primary rate-limited 4 min ago</td></tr>
+   <tr><td>Embedding capability</td><td><span class="badge ok">ready</span></td><td>Prepared at startup, 0 ms first-visit delay</td></tr>
+   <tr><td>2D projection (fitted once)</td><td><span class="badge ok">ready</span></td><td>48 curated points</td></tr>
+   <tr><td>Web search</td><td><span class="badge ok">ready</span></td><td>Quota 71% remaining</td></tr>
+   <tr><td>Relational + vector data</td><td><span class="badge ok">ready</span></td><td>External, connected</td></tr></table></div>
+  <div class="card"><h3>Usage Caps Monitor</h3>
+   <p class="sm">Shared hourly cap · 142 / 300 model calls</p><div class="bar2"><div style="width:47%"></div></div>
+   <p class="sm">Shared daily cap · 1,210 / 2,500 model calls</p><div class="bar2"><div style="width:48%"></div></div>
+   <p class="sm mu">Per-app limits (Router 5, Orchestrated 3, Planning 3, ReAct 2 runs per visit) are separate from these caps and messages name which one applies.</p></div>
+  <div class="card"><h3>Deployment Status</h3>
+   <table><tr><td>Public address</td><td><code>https://bw.spec4.ai</code></td></tr>
+   <tr><td>Certificate</td><td><span class="badge ok">valid</span> expires in 61 days · auto-renewal on</td></tr>
+   <tr><td>Uptime</td><td>always on · 38 days</td></tr>
+   <tr><td>Memory</td><td>1.4 / 4 GB · alert above 85% sustained</td></tr>
+   <tr><td>Previous host</td><td><span class="badge">retired</span> serves no traffic</td></tr></table></div>
+ </section>
+</main>
+<div id="toasts"></div>
+<footer>Built with Spec4 AI · BWS4 and every example in it were built with Spec4</footer>
+<script>
+const $=s=>document.querySelector(s),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function toast(t){const d=document.createElement('div');d.className='toast';d.innerHTML=t;$('#toasts').appendChild(d);setTimeout(()=>d.remove(),5000)}
+/* ===== shared catalogue: drives nav AND landing ===== */
+const CAT=[
+{id:'embeddings',name:'Embeddings',pat:'Embeddings',d:'See meaning as geometry: words and sentences plotted by similarity.'},
+{id:'single',name:'Single Call',pat:'Single Call',d:'One request, one response — in Simple or Structured mode.'},
+{id:'rag',name:'RAG',pat:'RAG',d:'Retrieve passages first, then answer grounded in them.'},
+{id:'tool',name:'Tool Use',pat:'Tool Use',d:'A live web search whose snippets ground an answer.'},
+{id:'chain',name:'Chained Calls',pat:'Chained Calls',d:'A writer’s output becomes a critic’s input.'},
+{id:'plan',name:'Planning Agent',pat:'Planning',d:'Plan first, review, then execute: a one-day trip itinerary.'},
+{id:'orch',name:'Orchestrated Subagents',pat:'Orchestrator',d:'An orchestrator briefs two specialists and merges their answers.'},
+{id:'collab',name:'Multi-Agent Collaboration',pat:'Multi-Agent',d:'A buyer negotiates with two rival sellers holding private limits.'},
+{id:'react',name:'ReAct Loop',pat:'ReAct Loop',d:'Reason, act, observe — each search written after reading the last.'},
+{id:'router',name:'Router',pat:'Router',d:'One cheap call picks a path; code dispatches and the model steps aside.'}];
+let cur='home';
+function buildNav(){$('#appnav').innerHTML=`<button data-id="home" onclick="go('home')">Home</button>`+CAT.map(a=>`<button data-id="${a.id}" onclick="go('${a.id}')">${a.name}</button>`).join('')}
+function go(id){screen('visitor');cur=id;document.querySelectorAll('#appnav button').forEach(b=>b.classList.toggle('on',b.dataset.id==id));
+ const v=$('#view');if(id=='home')v.innerHTML=home();else if(id=='router'){v.innerHTML=routerShell();routerPaint()}else if(id=='embeddings'){v.innerHTML=embShell();embDraw()}else{v.innerHTML=genShell(id)}window.scrollTo(0,0)}
+function screen(s){['visitor','maintainer'].forEach(x=>{$('#s-'+x).classList.toggle('hidden',x!=s);$('#t-'+x).classList.toggle('on',x==s)})}
+function home(){return `<h1>A working gallery of AI application patterns</h1>
+<div class="note ac"><b>Built with Spec4.</b> BWS4 and every example app in it were built with Spec4 — a living demonstration of the tool it promotes.</div>
+<div class="card"><h3>Who this is for</h3><p class="sm">Developers evaluating Spec4 for agentic apps, developers learning agent patterns, and educators and students. Each app is small, honest about its limits, and shows the pattern actually running — failures included.</p></div>
+<div class="grid">${CAT.map(a=>`<button class="entry" onclick="go('${a.id}')"><div class="between"><b>${a.name}</b><span class="badge">${a.pat}</span></div><p class="sm mu">${a.d}</p></button>`).join('')}</div>`}
+/* ===== Router ===== */
+const ROUTES=[
+{id:'det',n:'Deterministic evaluator',d:'Arithmetic and length, speed or temperature unit conversions, computed by a no-model evaluator.'},
+{id:'single',n:'Single call',d:'A general request answered directly by one model call, with no outside information.'},
+{id:'rag',n:'RAG over the space dataset',d:'Questions about Apollo, Mars rovers, the ISS, Voyager and Hubble, answered from the indexed space documents.'},
+{id:'search',n:'Search + generate',d:'Current or time-sensitive questions that need live web results, answered by search plus one generation.'}];
+const MARGIN=0.15, RN=id=>ROUTES.find(r=>r.id==id).n;
+const PRE=[
+{t:'What is 18% of 2,450, plus 75?',exp:'det',route:'det',sc:[.96,.03,.01,.02],why:'Pure arithmetic with a computable expression.',expr:'0.18 * 2450 + 75',res:'516'},
+{t:'Convert 72 km/h to miles per hour.',exp:'det',route:'det',sc:[.94,.05,.02,.01],why:'A speed conversion the evaluator supports.',expr:'72 km/h → mph',res:'44.74 mph'},
+{t:'Why did the Apollo 13 crew use the lunar module as a lifeboat?',exp:'rag',route:'rag',sc:[.02,.12,.88,.31],why:'A question about a mission covered by the indexed space documents.',
+ ans:'After an oxygen tank ruptured in the service module, the command module lost power and oxygen. The crew moved into the lunar module, which had its own oxygen, water and power, and used it to sustain them and to steer the trip around the Moon and home [1][2].',
+ cites:[['Apollo 13','An oxygen tank in the service module failed 56 hours into the flight, crippling the command module’s power and life support.'],['Apollo Lunar Module','The lunar module carried independent oxygen, water and electrical power, and its descent engine could perform course corrections.']],t1:2.1},
+{t:'Rewrite “Send me the report now.” so it sounds friendlier.',exp:'single',route:'single',sc:[.01,.91,.06,.04],why:'A rewrite that needs only the request itself.',ans:'Hi! When you get a moment, could you send the report over to me? Thanks so much!',t1:1.4},
+{t:'What happened in the most recent Starship test flight?',exp:'search',route:'search',sc:[.01,.1,.22,.93],why:'Time-sensitive; needs live web results.',ans:'The latest Starship test flight lifted off from Starbase, completed stage separation, and the booster was caught by the launch tower [1]. The upper stage reached its planned splashdown target in the Indian Ocean [2].',cites:[['spaceflightnow.com','Starship booster returns to the pad…'],['space.com','Upper stage completes ocean splashdown…']],t1:4.6},
+{t:'Who walked on the Moon first, and what did the Eagle’s landing site look like?',exp:'search',route:'rag',sc:[.01,.09,.62,.55],why:'Space history, but a detailed “what does it look like” might want fresher sources.',low:['rag','search'],ans:'Neil Armstrong was first, stepping onto the Sea of Tranquility on 20 July 1969. The landing site was a flat, boulder-dotted plain [1].',cites:[['Apollo 11','Armstrong and Aldrin landed in the Sea of Tranquility; the site was a relatively flat plain with scattered rocks.']],t1:2.0,t2:4.7,ans2:'Armstrong was first on 20 July 1969 [1]. Recent lunar orbiter imagery still shows the descent stage and bootprint trails at the site [2].',cites2:[['nasa.gov','LRO images the Apollo 11 landing site…'],['space.com','Bootprints and the descent stage remain visible…']]}];
+const hist=PRE.map((p,i)=>[[7,0,0],[3,1,0],[5,1,0],[6,0,1],[4,1,0],[1,3,1]][i].slice());
+let lat=[4.1,4.8,5.2,4.6,5.0,4.9,4.4],runsLeft=4,selPre=2,running=false,last=null,rerun=null,rerunUsed=false;
+const med=a=>{const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2};
+last={i:2,pre:PRE[2],free:false,agree:'agreed'};
+function routerShell(){return `<div class="between"><div><h1>Router</h1><p class="mu">One cheap classification call decides the path; deterministic code dispatches and the model that decided takes no further part.</p></div><span class="badge">Router</span></div>
+<div class="card"><h3>Overview</h3><p class="sm">Unlike <a href="#" onclick="go('tool');return false">Tool Use</a>, the model never chooses a tool mid-answer. Unlike the <a href="#" onclick="go('plan');return false">Planning Agent</a> and <a href="#" onclick="go('react');return false">ReAct Loop</a>, there is no multi-step reasoning: one decision, then code takes over. The four scores are <b>uncalibrated self-report</b>; the agreement rate below is the one calibrated number.</p></div>
+<div class="card" id="knowl"></div>
+<div class="card"><div class="between"><h3 style="margin:0">Request</h3><span class="badge" id="runsb"></span></div>
+<div class="presets" id="presets"></div>
+<p class="sm mu" style="margin:10px 0 4px">Or type your own (free-text runs earn no agreement credit):</p>
+<div class="row"><input type="text" id="free" maxlength="300" placeholder="e.g. How wide is the Hubble primary mirror?" style="flex:1;min-width:200px"><button class="btn" id="runfree" onclick="runRouter(-1)">Run</button></div>
+<div id="limitmsg"></div><div id="progress"></div></div>
+<div id="result"></div><div class="card" id="agree"></div>`}
+function routerPaint(){
+ $('#knowl').innerHTML=`<div class="between"><h3 style="margin:0">Router knowledge panel</h3><span class="badge">exactly what the router was told</span></div>
+ <ol class="sm" style="padding-left:18px;margin:8px 0">${ROUTES.map(r=>`<li><b>${r.n}:</b> <code>${r.d}</code></li>`).join('')}</ol>
+ <p class="sm"><b>Decision margin:</b> <code>${MARGIN}</code> — if the top two scores are within this, the run is low-confidence and goes to the cheaper route. <b>Cost order:</b> deterministic &lt; single call &lt; RAG &lt; search + generate.</p>`;
+ $('#presets').innerHTML=PRE.map((p,i)=>`<button class="preset ${i==selPre?'sel':''}" ${(running||runsLeft<1)?'disabled':''} onclick="runRouter(${i})">${i+1}. ${p.t}</button>`).join('');
+ $('#runsb').textContent=`Runs left ${runsLeft} of 5`;$('#runfree').disabled=running||runsLeft<1;$('#free').disabled=running||runsLeft<1;
+ $('#limitmsg').innerHTML=runsLeft<1?`<div class="note wa">This app’s limit of 5 runs per visit is used up. This is the app limit, not the shared daily cap. Earlier results stay visible.</div>`:'';
+ $('#result').innerHTML=last?resultCard(last):`<div class="card mu sm" style="text-align:center">No run yet — choose a preset above.</div>`;
+ const rows=PRE.map((p,i)=>{const [a,d,x]=hist[i],n=a+d+x;return `<tr><td>${i+1}. ${p.t.length>36?p.t.slice(0,34)+'…':p.t}</td><td>${a}</td><td>${d}</td><td>${x}</td><td>${n>=5?Math.round(a/n*100)+'%':'<span class="mu">counts only (n='+n+')</span>'}</td></tr>`}).join('');
+ $('#agree').innerHTML=`<h3>Agreement history</h3><table><tr><th>Preset</th><th>Agreed</th><th>Disagreed</th><th>Declined</th><th>Rate</th></tr>${rows}</table><p class="sm mu">Rate = agreed ÷ (agreed + disagreed + declined), shown from 5 observations. Tie-break dispatches earn no credit; free-text runs and re-runs never count.</p>`}
+function scoreStrip(sc,top,torn){return `<div>${ROUTES.map((r,k)=>`<div class="score ${r.id==top?'top':''} ${torn&&torn.includes(r.id)?'torn':''}"><span>${r.id==top?'▶ ':''}${r.n}</span><div class="track"><div class="fill" style="width:${sc[k]*100}%"></div></div><span>${sc[k].toFixed(2)}</span></div>`).join('')}</div>`}
+function pathAns(p,route,ans,cites,fb){let h='';
+ if(route=='det')h=`<p class="sm mu">Validated expression (accepted by the evaluator; model text never executed):</p><p><code>${esc(p.expr)}</code> = <b>${p.res}</b></p>`;
+ else{h=`<p>${esc(ans)}</p>`;if(cites)h+=cites.map((c,k)=>`<blockquote>[${k+1}] <b>${c[0]}</b> — ${c[1]}</blockquote>`).join('')}
+ return `<div class="panel hi"><div class="between"><h3 style="margin:0">Answer</h3><span class="badge">via ${RN(route)}</span></div>${fb?`<div class="note wa">${fb}</div>`:''}${h}</div>`}
+function costStrip(route,ov,t1,rr){
+ const calls=route=='det'?0:route=='search'?1:route=='single'?1:1, srch=route=='search'?1:0, ret=route=='rag'?1:0;
+ const pt=route=='det'?0.01:t1, n=lat.length, base=n>=5?`typical ${med(lat).toFixed(1)} s (median of ${n} real search-route runs)`:`<span class="mu">no time figure (only ${n} observations)</span>`;
+ return `<div class="panel"><h3>Cost strip</h3><table><tr><th>Resource</th><th>${rr?'This re-run':'This run'}</th><th>“No router” baseline (search + generate)</th></tr>
+ <tr><td>Model calls (routed path)</td><td>${calls}</td><td>1</td></tr><tr><td>Search calls</td><td>${srch}</td><td>1</td></tr><tr><td>Retrievals</td><td>${ret}</td><td>0</td></tr>
+ <tr><td>Routed path time</td><td>${pt.toFixed(2)} s</td><td>${base}</td></tr>
+ <tr><td><b>Router overhead</b> (separate)</td><td>${ov?'1 model call · 0.9 s':'<b>0</b> model calls · 0 s'}</td><td>—</td></tr></table>
+ <p class="sm mu">Baseline time is a typical value from past runs, never this run’s time.</p></div>`}
+function resultCard(r){const p=r.pre;let head,body;
+ const tag=r.free?'<span class="badge">free text · no history credit</span>':r.agree=='agreed'?'<span class="badge ok">agreed with expected route</span>':r.agree=='tie'?'<span class="badge wa">tie-break · no credit</span>':'<span class="badge er">misrouted</span>';
+ if(p.low){head=`<div class="between"><h2>Low-confidence card</h2>${tag}</div><div class="note wa">The router was torn between <b>${RN(p.low[0])}</b> and <b>${RN(p.low[1])}</b> (top scores within the ${MARGIN} margin). The cheaper one, <b>${RN(p.low[0])}</b>, was dispatched per the fixed cost order.</div>`}
+ else head=`<div class="between"><h2>Routed answer</h2>${tag}</div>`;
+ const strip=`<div class="panel"><h3>Router decision</h3>${scoreStrip(p.sc,p.route,p.low)}<p class="sm"><b>Rationale:</b> ${p.why}</p><p class="sm mu">Scores are uncalibrated self-report.${!r.free&&r.agree=='misrouted'?' Expected route differs: dispatched route '+RN(p.route)+'.':''}</p></div>`;
+ body=pathAns(p,p.route,p.ans,p.cites,r.fb);
+ let rr='';
+ if(!r.free&&r.agree!='agreed'&&!rerunUsed&&!rerun&&!r.isRerun&&runsLeft>0&&PRE[r.i].exp!=PRE[r.i].route)rr=`<button class="btn" ${running?'disabled':''} onclick="doRerun()">Run it the expected way</button> <span class="sm mu">costs 1 run · overhead 0 · not counted in history</span>`;
+ let side='';
+ if(rerun){side=`<h3>Side by side</h3><div class="two"><div class="panel"><b class="sm">Original · ${RN(p.route)}</b>${pathAns(p,p.route,p.ans,p.cites).replace('panel hi','')}</div><div class="panel hi"><b class="sm">Expected way · ${RN(p.exp)}</b>${pathAns(p,p.exp,p.ans2,p.cites2)}${costStrip(p.exp,false,p.t2,true)}</div></div><div class="note">This re-run is not feeding agreement history.</div>`}
+ const units=`<p class="sm mu">Model-call units: ${r.units||'2 reserved · 2 used · 0 released'}</p>`;
+ return `<div class="card">${head}${strip}${body}${units}${costStrip(p.route,true,p.t1||1.4)}${rr}${side}</div>`}
+function guess(t){const l=t.toLowerCase();let route='single',sc=[.03,.8,.1,.1];
+ if(/\d\s*[\+\-\*\/x%]\s*\d|convert|celsius|km|miles/.test(l)){route='det';sc=[.9,.06,.02,.02]}
+ else if(/latest|news|today|recent|price|score/.test(l)){route='search';sc=[.01,.1,.2,.9]}
+ else if(/apollo|mars|voyager|hubble|iss|moon|rover/.test(l)){route='rag';sc=[.02,.1,.84,.3]}
+ return {t,route,sc,why:'Classified from the wording of your request.',exp:null,t1:route=='search'?4.5:route=='rag'?2.0:1.4,
+ ans:route=='single'?'Here is a concise reply drawn only from your request: '+t.slice(0,60)+'…':'Answer composed from the dispatched path for your request.',
+ cites:route=='search'?[['example.com/news','Snippet relevant to your query…']]:route=='rag'?[['Space dataset: Hubble Space Telescope','Passage relevant to your question…']]:null,
+ expr:'(parsed expression)',res:'(computed)'}}
+async function runRouter(i){
+ if(running||runsLeft<1)return;let p;const free=i<0;
+ if(free){const t=$('#free').value.trim();if(!t){$('#limitmsg').innerHTML='<div class="note er">Enter a request first (1–300 characters).</div>';return}p=guess(t)}else{p=PRE[i];selPre=i}
+ running=true;runsLeft--;routerPaint();
+ const st=['Reserving 2 model-call units','Router classifying request (1 call)','Dispatching deterministically to '+RN(p.route),'Composing answer'];
+ for(let k=0;k<st.length;k++){$('#progress').innerHTML=`<ul class="steps">${st.map((s,j)=>`<li class="${j<k?'done':j==k?'act':''}">${j<k?'✓':j==k?'<span class="spin"></span>':'○'} ${s}</li>`).join('')}</ul>`;await sleep(650)}
+ $('#progress').innerHTML='';
+ let agree='agreed',units=p.route=='det'?'2 reserved · 1 used · 1 released':'2 reserved · 2 used · 0 released';
+ if(!free){if(p.low)agree='tie';else if(p.route!=p.exp)agree='misrouted';
+  if(agree!='tie'){hist[i][agree=='agreed'?0:1]++}}
+ if(p.route=='search')lat.push(p.t1);
+ rerun=null;rerunUsed=false;last={i:free?-1:i,pre:p,free,agree,units};running=false;routerPaint();
+ $('#result').scrollIntoView({behavior:'smooth'})}
+async function doRerun(){if(running||runsLeft<1)return;running=true;runsLeft--;routerPaint();
+ $('#progress').innerHTML='<ul class="steps"><li class="act"><span class="spin"></span> Re-running through the expected route (router skipped)…</li></ul>';await sleep(1400);
+ $('#progress').innerHTML='';rerun=true;rerunUsed=true;lat.push(last.pre.t2);running=false;routerPaint()}
+/* ===== Embeddings ===== */
+const EC={Animals:['#f59e0b',[-3,2]],Emotions:['#ec4899',[3,2.5]],Tech:['#38bdf8',[0,-3]]};
+const EP={Animals:['dog','cat','wolf','The fox ran across the field','horse','owl'],Emotions:['joy','grief','anger','She felt a quiet sense of relief','fear','delight'],Tech:['database','neural network','compiler','The server restarted overnight','GPU','API']};
+let epts=[],ecust=[];
+function embShell(){return `<div class="between"><div><h1>Embeddings</h1><p class="mu">Curated words and sentences, embedded once at startup and projected to 2D. Similar meanings cluster.</p></div><span class="badge ok">embedding ready</span></div>
+<div class="card"><h3>Overview</h3><p class="sm">An embedding turns text into numbers so that similar meanings land close together. Your text is placed using the <b>same fitted projection</b> as the curated points, so nothing moves when you add it.</p></div>
+<div class="card"><svg id="plot" viewBox="0 0 600 340" style="width:100%;background:var(--bg);border-radius:8px"></svg><div class="row sm" id="leg"></div>
+<div class="row" style="margin-top:10px"><input type="text" id="ctext" placeholder="Add your own word, phrase or sentence" style="flex:1;min-width:200px"><button class="btn" onclick="embAdd()">Place on plot</button></div><div id="emsg"></div></div>`}
+function embDraw(){let s='',seed=3;const r=()=>{seed=(seed*9301+49297)%233280;return seed/233280-.5};
+ if(!epts.length)for(const c in EP)EP[c].forEach(l=>epts.push({l,c,x:EC[c][1][0]+r()*2.2,y:EC[c][1][1]+r()*2.2}));
+ const X=x=>300+x*70,Y=y=>170-y*45;
+ epts.forEach(p=>s+=`<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="5" fill="${EC[p.c][0]}"/><text x="${X(p.x)+7}" y="${Y(p.y)+3}">${p.l.length>20?p.l.slice(0,18)+'…':p.l}</text>`);
+ ecust.forEach((p,k)=>s+=`<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="${k==ecust.length-1?9:6}" fill="#22c55e" stroke="#fff" stroke-width="2"/><text x="${X(p.x)+10}" y="${Y(p.y)+3}" style="fill:#22c55e;font-weight:700">${esc(p.l)}</text>`);
+ $('#plot').innerHTML=s;$('#leg').innerHTML=Object.keys(EC).map(c=>`<span><span style="color:${EC[c][0]}">●</span> ${c}</span>`).join(' ')+'<span><span style="color:#22c55e">●</span> Your text</span>'}
+function embAdd(){const t=$('#ctext').value.trim(),m=$('#emsg');
+ if(!t){m.innerHTML='<div class="note er">Custom text can’t be empty. Enter a word, phrase or sentence up to 500 characters.</div>';return}
+ if(t.length>500){m.innerHTML='<div class="note er">That text is over 500 characters. Please shorten it.</div>';return}
+ const l=t.toLowerCase();let c=/dog|cat|bird|animal|fish|lion/.test(l)?'Animals':/happy|sad|love|hate|angry|joy/.test(l)?'Emotions':/code|computer|software|data|ai/.test(l)?'Tech':'Tech';
+ const base=EC[c][1],x=base[0]*.7+(t.length%5-2)*.25,y=base[1]*.7+(t.length%3-1)*.3;ecust.push({l:t,x,y});embDraw();
+ const nn=epts.filter(p=>p.c==c).slice(0,3);
+ m.innerHTML=`<div class="note ok">Placed at (${x.toFixed(2)}, ${y.toFixed(2)}) using the existing projection — curated points did not move. Nearest: ${nn.map((p,k)=>esc(p.l)+' ('+(0.12+k*.05).toFixed(2)+')').join(', ')}.</div>`;$('#ctext').value=''}
+/* ===== Generic apps ===== */
+const G={
+rag:{lim:null,ph:'Ask about the space dataset…',pre:['How long did Voyager 1 take to leave the heliopause?','What did Hubble’s first images reveal?','Who won the 1994 World Cup?'],
+ ov:'Retrieval-Augmented Generation retrieves relevant passages first, then asks the model to answer only from them. The passages are shown beside the answer.',
+ st:q=>/world cup|football|recipe/i.test(q)?[{t:'Stage 1 · Retrieval',b:'<div class="note wa">No passage cleared the relevance threshold. The space dataset does not cover this question, so no answer was generated.</div>',k:'0 passages'}]:
+ [{t:'Stage 1 · Retrieval',b:'<blockquote><b>Voyager 1</b> — Launched in 1977, Voyager 1 crossed the heliopause in August 2012. <i>(similarity 0.81)</i></blockquote><blockquote><b>Heliosphere</b> — The heliopause marks where the solar wind gives way to interstellar medium. <i>(0.74)</i></blockquote>',k:'2 passages'},{t:'Stage 2 · Grounded generation',b:'Voyager 1 left the heliosphere in August 2012, about 35 years after its 1977 launch [1][2]. <span class="mu">(answer uses only the passages above)</span>',k:'cites [1][2]'}]},
+single:{lim:null,ph:'Enter a prompt…',pre:['Summarize: The new transit line opens in May…','Classify the sentiment: “The battery died in a day.”','Extract the name and date: “Meet Priya on 4 June.”'],sel:['Simple','Structured'],
+ ov:'One request, one response, exactly one model call — no retrieval, tools or chaining. Use it when the task is self-contained.',
+ st:(q,s)=>s=='Structured'?[{t:'Structured request',b:'<code>{"schema":"Extraction","required":["name","date"]}</code>',k:'1 call'},{t:'Structured reply',b:'<code>{"name":"Priya","date":"4 June"}</code> <span class="badge ok">conforms to schema</span>',k:'validated'}]:[{t:'Response',b:'Sentiment: negative — the writer complains about battery life.',k:'1 call'}]},
+tool:{lim:null,ph:'Search query…',pre:['latest James Webb Space Telescope discovery','Spec4 AI agent framework'],
+ ov:'Live web search via the shared search capability. The exact query used is shown, and empty or failed searches are reported as such, never filled in.',
+ st:q=>[{t:'Query issued',b:'<code>'+esc(q)+'</code> · limit 3',k:'exact query'},{t:'Results',b:'<blockquote><b>1. Webb finds earliest galaxies</b> · nasa.gov — Observations confirm galaxies formed within 300 Myr of the Big Bang…</blockquote><blockquote><b>2. Webb spectra of exoplanet atmospheres</b> · esa.int — Carbon dioxide detected…</blockquote><blockquote><b>3. Mission update</b> · stsci.edu — Cycle 4 proposals…</blockquote>',k:'3 snippets'}]},
+chain:{lim:null,ph:'Describe a story idea…',pre:['A lighthouse keeper who is afraid of the sea'],
+ ov:'The output of one call becomes the input to the next. This demo makes exactly 2 calls to conserve quota; the pattern itself allows any number.',
+ roles:'<div class="two"><div class="panel"><b>1 · Struggling Writer</b><p class="sm mu">Drafts a short story in a self-doubting voice. Its output is all call 2 sees.</p></div><div class="panel"><b>2 · Harsh Critic</b><p class="sm mu">Critiques that exact draft bluntly, quoting a detail from it.</p></div></div>',
+ st:()=>[{t:'Call 1 · Struggling Writer (intermediate output)',b:'Um, so… Tomas kept the light for forty years and, I think, hated the water. I’m not sure this works, but one night the fog thickened and he climbed the stairs anyway…',k:'call 1 of 2'},{t:'Call 2 · Harsh Critic (final output)',b:'Forty years and no stakes. “I think, hated the water” — the hedging buries the one interesting idea. Commit or cut.',k:'call 2 of 2'}]},
+plan:{lim:3,ph:'City, e.g. Lisbon',ph2:'Interests, e.g. street food, modern art, walkable neighbourhoods',two:true,pre:['Lisbon','Kyoto'],gate:1,toast:'Itinerary for your day is ready.',
+ ov:'Plan-first: a planner call writes the full plan, you review it, then executors carry it out. Contrast with the interleaved ReAct Loop, where each step is decided after the last observation. Real planners may use any number of steps; this demo fixes a few. Limits: 1 planner + 2–3 executor calls per run, 3 runs per visit.',
+ st:()=>[{t:'Plan (review before anything runs)',b:'<ol class="sm"><li>Research: <code>best street food in Lisbon</code></li><li>Research: <code>modern art museums Lisbon walkable</code></li><li>Synthesis: compose a one-day itinerary</li></ol>',k:'3 steps'},{t:'Step 1 result',b:'Time Out Market and Pastéis de Belém lead the results [1].',k:'completed'},{t:'Step 2 result',b:'MAAT and Berardo Collection sit along the riverside walk [2].',k:'completed'},{t:'Itinerary',b:'<b>Morning</b> Pastéis de Belém, then MAAT. <b>Afternoon</b> Berardo Collection. <b>Evening</b> Time Out Market.',k:'final'}]},
+orch:{lim:3,ph:'Ask a question…',pre:['Should a small studio adopt Rust for its game engine?','Why did the 2008 financial crisis spread so fast?'],gate:2,
+ ov:'An orchestrator picks two of four specialists (Technical, Financial, Historical, Practical), briefs each, runs them in parallel and merges the answers. Specialists are independent and have no tools. 3 calls per run.',
+ st:()=>[{t:'Moderation',b:'<span class="badge ok">allowed</span> category: general',k:'verdict'},{t:'Delegation decision',b:'Chosen: <b>Technical</b> and <b>Financial</b>. Rationale: the question mixes engineering fit and cost. Briefs: Technical — assess memory safety and ecosystem; Financial — estimate retraining cost.',k:'confirm to dispatch'},
+ {pair:[['Technical · done','Rust removes classes of memory bugs but engine libraries are thinner than C++.'],['Financial · done','Retraining 6 engineers costs roughly 3 months of output.']]},{t:'Merged answer',b:'Adopt Rust incrementally for new subsystems; budget ~3 months of reduced throughput.<div class="note ac">Disagreement note: agree on risk; complement on cost; no contradictions.</div>',k:'merged'}]},
+collab:{lim:null,ph:'',pre:[],sel:['Speed over price','Full quantity','Longest warranty'],selLabel:'Priority weighting',noText:true,toast:'Run complete.',
+ ov:'A Buyer agent negotiates with two rival Seller agents holding private constraints, across a staged trust boundary (A2A-shaped messages, in-process). All agents share one owner — the boundary is for teaching; a real deployment would add authentication, network isolation and signed messages. Exactly 6 model calls.',
+ st:(q,s)=>[{t:'Request for quotation (no model call)',b:'500 ergonomic chairs, delivery within 30 days.',k:'RFQ'},{pair:[['Seller A · bid','$118/unit · 28 days · 24 mo warranty'],['Seller B · bid','$104/unit · 40 days · 12 mo warranty']]},{t:'Buyer track · counter-offers',b:'To A: lower price. To B: shorten delivery.',k:'2 counters'},{pair:[['Seller A · best and final','$112 · 28 days'],['Seller B · best and final','$104 · 33 days (conceded delivery)']]},{t:'Award',b:'Winner: '+(s=='Speed over price'?'Seller A':'Seller B')+' — weighed against “'+s+'”.',k:'award'},{t:'Private-position reveal',b:'A’s floor was $109, so it held near it; B’s hidden minimum was 30 days.',k:'reveal'},{t:'Priority sensitivity (suggestion)',b:'Under “Longest warranty”, Seller A would likely win on warranty. <button class="ghost" onclick="toast(\'Re-run with Longest warranty queued\')">Try that weighting</button>',k:'what if'}]},
+react:{lim:2,ph:'Type a multi-hop question…',pre:['Who directed the film that won Best Picture the year the Eiffel Tower’s current lights were installed?','In which country is the university where the Nobel winner for 2023 Physics studied?'],sug:true,toast:'Hop source annotations are ready.',
+ ov:'Reason, Act, Observe: each next search can only be written after reading the previous result. Unlike Tool Use (one search) and the Planning Agent (plan first), there’s no plan. At most 8 searches plus one answer call; 2 runs per visit.',
+ st:()=>[{t:'Cycle 1 · search 1 of 8',b:'<i>Thought:</i> I need the first fact. <i>Action:</i> <code>Nobel Prize in Physics 2023 laureates</code> <i>Observation:</i> Pierre Agostini, Ferenc Krausz, Anne L’Huillier…',k:'observed'},{t:'Cycle 2 · search 2 of 8',b:'<i>Thought:</i> L’Huillier — where did she study? <i>Action:</i> <code>Anne L’Huillier education</code> <i>Observation:</i> Pierre and Marie Curie University, Paris.',k:'observed'},{t:'Final answer',b:'France [obs 2]. <span class="badge ok">hop 1 observed · hop 2 observed</span>',k:'answer'}]}};
+const GT={rag:'RAG',single:'Single Call',tool:'Tool Use',chain:'Chained Calls',plan:'Planning Agent',orch:'Orchestrated Subagents',collab:'Multi-Agent Collaboration',react:'ReAct Loop'};
+const gs={};
+function genShell(id){const g=G[id],a=CAT.find(x=>x.id==id);gs[id]=gs[id]||{left:g.lim||null,out:''};
+ return `<div class="between"><div><h1>${a.name}</h1><p class="mu">${a.d}</p></div><span class="badge">${a.pat}</span></div>
+<div class="card"><h3>Overview</h3><p class="sm">${g.ov}</p>${g.roles||''}</div>
+<div class="card"><div class="between"><h3 style="margin:0">Input</h3>${g.lim?`<span class="badge" id="gl">Runs left ${gs[id].left} of ${g.lim}</span>`:''}</div>
+${g.pre.length?`<div class="row" style="margin:8px 0">${g.pre.map(p=>`<button class="chip sm" onclick="document.getElementById('gi').value=this.textContent">${p}</button>`).join('')}</div>`:''}
+${g.noText?'':g.two?`<input type="text" id="gi" placeholder="${g.ph}" style="margin-bottom:6px"><input type="text" id="gi2" placeholder="${g.ph2}">`:`<textarea id="gi" placeholder="${g.ph}" ${g.sug?`onblur="sugg('${id}')"`:''}></textarea>`}
+<div id="sug"></div>
+${g.sel?`<div class="row" style="margin-top:8px"><label class="sm mu">${g.selLabel||'Mode'}</label><select id="gsel" style="width:auto">${g.sel.map(o=>`<option>${o}</option>`).join('')}</select></div>`:''}
+<div class="row" style="margin-top:10px"><button class="btn" id="grun" onclick="genRun('${id}')">${id=='collab'?'Start negotiation':'Run'}</button></div><div id="gmsg"></div></div>
+<div id="gout">${gs[id].out}</div>`}
+function sugg(id){function v(t){if(!t)return;$('#sug').innerHTML=t.split(' ').length<8?`<div class="note wa">Suggestion: this looks single-hop, so the loop may finish in one search. <button class="ghost" onclick="this.parentNode.remove()">Dismiss</button></div>`:`<div class="note ac">Suggestion: needs 2 chained facts and live web info — a good fit. (confidence: high) <button class="ghost" onclick="this.parentNode.remove()">Dismiss</button> <button class="ghost" onclick="this.parentNode.remove()">Accept</button></div>`}
+ v($('#gi').value.trim())}
+async function genRun(id){const g=G[id],s=gs[id],inp=$('#gi'),m=$('#gmsg');
+ let q=inp?inp.value.trim():'x';if(!q){m.innerHTML='<div class="note er">Please enter an input first.</div>';return}
+ if(g.two&&!$('#gi2').value.trim()){m.innerHTML='<div class="note er">Both city and interests are required.</div>';return}
+ if(g.lim&&s.left<1){m.innerHTML='<div class="note wa">This app’s limit of '+g.lim+' runs per visit is used. This is the app limit, not the shared daily cap.</div>';return}
+ m.innerHTML='';if(g.lim){s.left--;$('#gl').textContent=`Runs left ${s.left} of ${g.lim}`;if(s.left<1){$('#grun').disabled=true;inp&&(inp.disabled=true);m.innerHTML='<div class="note wa">App limit reached (not the shared daily cap). Earlier results stay visible.</div>'}}
+ $('#grun').disabled=true;const sel=$('#gsel')?$('#gsel').value:'',stg=g.st(q,sel);let html='';const out=$('#gout');out.innerHTML='';
+ for(let k=0;k<stg.length;k++){const x=stg[k];
+  if(g.gate!==undefined&&k==g.gate){out.innerHTML=html+`<div class="note ac">Review the above. <button class="btn" id="nx">Next</button></div>`;await new Promise(r=>$('#nx').onclick=r)}
+  out.innerHTML=html+`<div class="card"><span class="spin"></span><span class="sm mu">Running step ${k+1} of ${stg.length}…</span></div>`;await sleep(700);
+  html+=x.pair?`<div class="two">${x.pair.map(p=>`<div class="card"><h3>${p[0]}</h3><p class="sm">${p[1]}</p></div>`).join('')}</div>`:`<div class="card"><div class="between"><h3 style="margin:0">${x.t}</h3><span class="badge">${x.k}</span></div><div class="sm" style="margin-top:6px">${x.b}</div></div>`;out.innerHTML=html}
+ s.out=html;if(!(g.lim&&s.left<1))$('#grun').disabled=false;if(g.toast)toast(g.toast)}
+buildNav();go('router');
+</script>
+</body>
+</html>
