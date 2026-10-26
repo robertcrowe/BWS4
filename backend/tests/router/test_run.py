@@ -222,18 +222,27 @@ class TestAdmissionOrder:
         store = router_store()
         state.reset_route_descriptions()
 
-        async def unreachable(*_a: object) -> list[str]:
-            raise ConnectionError("down")
-
-        with (
-            patch.object(state, "load_indexed_document_titles", unreachable),
-            patch.object(classifier, "classify", _classify_returning(recorder, None)),
-        ):
+        with patch.object(classifier, "classify", _classify_returning(recorder, None)):
             response = _post({"request": P1.request, "preset_id": "p1"})
 
         assert response.status_code == 503
         assert response.json()["detail"]["code"] == "descriptions_not_ready"
         assert store.hold() is None
+
+    def test_descriptions_not_ready_refuses_before_moderation(
+        self, router_store: Any, recorder: Recorder, moderation: Any
+    ) -> None:
+        store = router_store()
+        state.reset_route_descriptions()
+
+        with patch.object(classifier, "classify", _classify_returning(recorder, None)):
+            response = _post({"request": "What is the tallest mountain?"})
+
+        assert response.status_code == 503
+        assert response.json()["detail"]["code"] == "descriptions_not_ready"
+        assert recorder.calls == []
+        assert store.hold() is None
+        assert store.used() == 0
 
     def test_mismatched_preset_text_is_refused(
         self, router_store: Any, recorder: Recorder, moderation: Any

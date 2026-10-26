@@ -15,8 +15,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from backend.app.core.config import get_settings  # noqa: E402
-from backend.app.db.base import Base  # noqa: E402
 from backend.app.db import models  # noqa: E402,F401
+from backend.app.db.base import Base  # noqa: E402
 
 config = context.config
 

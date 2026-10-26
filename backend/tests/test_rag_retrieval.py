@@ -1,8 +1,8 @@
 # Built with Spec4 AI - https://spec4.ai
 
-from typing import Any
 import asyncio
 import math
+from typing import Any
 
 from backend.app.db.models import DatasetEmbedding
 from backend.app.rag.index_dataset import build_embedded_passages
@@ -31,7 +31,7 @@ class _FakeSession:
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
     norm_a = math.sqrt(sum(x * x for x in a))
     norm_b = math.sqrt(sum(y * y for y in b))
     return dot / (norm_a * norm_b)
@@ -73,7 +73,9 @@ def test_retrieval_ranking_surfaces_the_topically_relevant_passage_in_top_k() ->
     ordering) should include a passage from the topically relevant document.
     """
     embedded_passages = build_embedded_passages()
-    question_embedding = embed_text("When did Voyager 1 launch and what is it doing now?")
+    question_embedding = embed_text(
+        "When did Voyager 1 launch and what is it doing now?"
+    )
 
     ranked = sorted(
         embedded_passages,

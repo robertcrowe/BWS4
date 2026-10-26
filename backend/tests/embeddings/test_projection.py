@@ -10,9 +10,8 @@ assert nothing about them.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-
 import math
+from collections.abc import Iterator
 from itertools import combinations
 
 import pytest
@@ -123,7 +122,9 @@ def test_projection_groups_same_category_presets_closer_than_cross_category() ->
     grouped = _points_by_category()
 
     same_category = [
-        _distance(a, b) for points in grouped.values() for a, b in combinations(points, 2)
+        _distance(a, b)
+        for points in grouped.values()
+        for a, b in combinations(points, 2)
     ]
     cross_category = [
         _distance(a, b)
@@ -176,7 +177,9 @@ def test_projection_places_every_preset_nearest_its_own_category_centroid() -> N
         (point.label, point.category, nearest)
         for point in service.get_preset_points()
         if (
-            nearest := min(centroids, key=lambda c: _distance((point.x, point.y), centroids[c]))
+            nearest := min(
+                centroids, key=lambda c: _distance((point.x, point.y), centroids[c])
+            )
         )
         != point.category
     ]
@@ -187,7 +190,9 @@ def test_projection_places_every_preset_nearest_its_own_category_centroid() -> N
 # --- one shared representation, not a second private model ------------------
 
 
-def test_projection_uses_the_same_shared_embedding_service_as_the_rag_pipeline() -> None:
+def test_projection_uses_the_same_shared_embedding_service_as_the_rag_pipeline() -> (
+    None
+):
     """The embeddings app must not stand up its own model.
 
     Identity, not equality: `service.embed_text` is asserted to be the very

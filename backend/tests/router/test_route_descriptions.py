@@ -142,28 +142,46 @@ class TestPresetsPayload:
         )
         assert body["route_descriptions_block"] == rebuilt
 
-    def test_not_ready_is_a_503_not_invented_text(self) -> None:
+    def test_carries_availability_true_when_ready(self) -> None:
+        assert client.get("/api/router/presets").json()["available"] is True
+
+    def test_not_ready_reports_unavailable_not_invented_text(self) -> None:
         state.reset_route_descriptions()
 
-        async def unreachable(*_args: object) -> list[str]:
-            raise ConnectionError("database unreachable")
+        response = client.get("/api/router/presets")
 
-        with patch.object(state, "load_indexed_document_titles", unreachable):
+        assert response.status_code == 200
+        body = response.json()
+        assert body["available"] is False
+        assert body["route_descriptions"] == []
+        assert body["route_descriptions_block"] is None
+        assert body["route_descriptions_sha256"] is None
+        assert len(body["presets"]) == 6
+
+    def test_presets_never_refill_the_holder(self) -> None:
+        # Recovery is the explicit retry's job: a read must not reach the DB.
+        state.reset_route_descriptions()
+
+        async def titles(*_args: object) -> list[str]:
+            raise AssertionError("GET /presets read the indexed titles")
+
+        with patch.object(state, "load_indexed_document_titles", titles):
             response = client.get("/api/router/presets")
 
-        assert response.status_code == 503
-        assert "not ready" in response.json()["detail"]
+        assert response.json()["available"] is False
 
-    def test_not_ready_recovers_once_titles_are_readable(self) -> None:
+    def test_not_ready_recovers_through_retry(self) -> None:
         state.reset_route_descriptions()
 
         async def titles(*_args: object) -> list[str]:
             return ["Apollo 11"]
 
         with patch.object(state, "load_indexed_document_titles", titles):
-            response = client.get("/api/router/presets")
+            assert client.post("/api/router/retry").status_code == 200
+        response = client.get("/api/router/presets")
 
         assert response.status_code == 200
+        assert response.json()["available"] is True
         assert "Subjects: Apollo 11." in response.json()["route_descriptions_block"]
 
 

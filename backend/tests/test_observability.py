@@ -2,7 +2,6 @@
 """Sentry initialization must be opt-in and never break a DSN-less run."""
 
 from typing import Any
-
 from unittest.mock import patch
 
 from backend.app.core.config import Settings

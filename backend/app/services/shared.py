@@ -12,7 +12,8 @@ consistent regardless of which app or capability is invoked.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, datetime
+from typing import Final
 
 import structlog
 from sqlalchemy import select
@@ -54,8 +55,8 @@ CAPABILITY_PLANNING = "planning"
 #: language_generation_requests.mode. "structured" means a schema was demanded
 #: of the response and validated after it came back -- whether that schema was
 #: enforced by provider-native constrained decoding or only by the prompt.
-MODE_PLAIN = "plain"
-MODE_STRUCTURED = "structured"
+MODE_PLAIN: Final = "plain"
+MODE_STRUCTURED: Final = "structured"
 
 #: Capabilities that are logged but never capped.
 #:
@@ -66,7 +67,7 @@ MODE_STRUCTURED = "structured"
 #: unit on *every* question but a generation unit only on above-threshold
 #: ones, the local model was mathematically guaranteed to take the whole
 #: showcase dark first. A windowed cap is also the wrong instrument for the one
-#: real cost (CPU on a free dyno): it bounds the window, not the burst, and it
+#: real cost (CPU on a small shared host): it bounds the window, not the burst, and it
 #: disables the app until the window rolls instead of shedding load. That job
 #: belongs to a rate limit.
 UNMETERED_CAPABILITIES = frozenset({CAPABILITY_REPRESENTATION})
@@ -146,7 +147,7 @@ def utc_window() -> datetime:
     Returns:
         The current UTC hour, with minutes and finer truncated.
     """
-    return datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    return datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
 
 
 async def reserve_capability(
@@ -184,11 +185,16 @@ async def reserve_capability(
     del app_name  # not yet used to partition usage, kept for interface symmetry
     window = utc_window()
 
-    result = await session.execute(select(UsageLimit).where(UsageLimit.capability == capability))
+    result = await session.execute(
+        select(UsageLimit).where(UsageLimit.capability == capability)
+    )
     limit = result.scalar_one_or_none()
     if limit is None:
         limit = UsageLimit(
-            capability=capability, used=0, cap=_default_cap(capability), window_start=window
+            capability=capability,
+            used=0,
+            cap=_default_cap(capability),
+            window_start=window,
         )
         session.add(limit)
     elif limit.window_start is None:
@@ -243,7 +249,9 @@ async def release_capability(
         return 0
 
     window = utc_window()
-    result = await session.execute(select(UsageLimit).where(UsageLimit.capability == capability))
+    result = await session.execute(
+        select(UsageLimit).where(UsageLimit.capability == capability)
+    )
     limit = result.scalar_one_or_none()
     if limit is None:
         return 0
@@ -275,7 +283,9 @@ async def log_invocation(
         capability: The capability invoked.
         summary: A short human-readable description of what happened.
     """
-    session.add(ServiceLogEntry(app_name=app_name, capability=capability, summary=summary))
+    session.add(
+        ServiceLogEntry(app_name=app_name, capability=capability, summary=summary)
+    )
     await session.commit()
 
 
@@ -340,7 +350,9 @@ async def generate_text(
     """
     await reserve_capability(session, CAPABILITY_GENERATION, app_name=app_name)
 
-    result = generation.generate_text(system_prompt=system_prompt, user_prompt=user_prompt)
+    result = generation.generate_text(
+        system_prompt=system_prompt, user_prompt=user_prompt
+    )
 
     await record_generation_request(
         session,
@@ -361,7 +373,9 @@ async def generate_text(
     return result.text
 
 
-async def represent_text(session: AsyncSession, *, text: str, app_name: str) -> list[float]:
+async def represent_text(
+    session: AsyncSession, *, text: str, app_name: str
+) -> list[float]:
     """Represent text through the shared interface: embed and log.
 
     Unlike generate_text/get_record/set_record, this reserves nothing. The
@@ -398,7 +412,9 @@ async def represent_text(session: AsyncSession, *, text: str, app_name: str) -> 
     return vector
 
 
-async def get_record(session: AsyncSession, *, key: str, app_name: str) -> StoredRecord | None:
+async def get_record(
+    session: AsyncSession, *, key: str, app_name: str
+) -> StoredRecord | None:
     """Read a stored record through the shared interface: enforce, read, log.
 
     Args:
@@ -421,12 +437,16 @@ async def get_record(session: AsyncSession, *, key: str, app_name: str) -> Store
         session,
         app_name=app_name,
         capability=CAPABILITY_STORAGE,
-        summary=f"Read stored record '{key}'" if record else f"Stored record '{key}' not found",
+        summary=f"Read stored record '{key}'"
+        if record
+        else f"Stored record '{key}' not found",
     )
     return record
 
 
-async def set_record(session: AsyncSession, *, key: str, value: str, app_name: str) -> StoredRecord:
+async def set_record(
+    session: AsyncSession, *, key: str, value: str, app_name: str
+) -> StoredRecord:
     """Write a stored record through the shared interface: enforce, write, log.
 
     Args:
@@ -444,9 +464,14 @@ async def set_record(session: AsyncSession, *, key: str, value: str, app_name: s
     """
     await reserve_capability(session, CAPABILITY_STORAGE, app_name=app_name)
 
-    record = await storage.set_record(session, key=key, value=value, written_by=app_name)
+    record = await storage.set_record(
+        session, key=key, value=value, written_by=app_name
+    )
 
     await log_invocation(
-        session, app_name=app_name, capability=CAPABILITY_STORAGE, summary=f"Wrote stored record '{key}'"
+        session,
+        app_name=app_name,
+        capability=CAPABILITY_STORAGE,
+        summary=f"Wrote stored record '{key}'",
     )
     return record

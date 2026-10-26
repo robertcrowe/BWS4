@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.services import shared
 from backend.app.services.generation import GenerationServiceError, generate_text
 from backend.app.single_call.presets import PresetPrompt, json_schema_for
+from backend.app.single_call.schemas import SingleCallMode
 
 logger = structlog.get_logger()
 
@@ -151,7 +152,7 @@ class SingleCallResult:
         structured_request: What was sent, for the side-by-side display.
     """
 
-    mode: str
+    mode: SingleCallMode
     plain_text: str | None
     model: str
     structured_object: dict[str, Any] | None = None
@@ -184,12 +185,15 @@ def normalize_prompt(raw: str) -> str:
         raise InvalidPromptError("Enter a prompt before running the single call.")
     if len(prompt) > MAX_PROMPT_CHARS:
         raise InvalidPromptError(
-            f"That prompt is {len(prompt)} characters -- the limit is {MAX_PROMPT_CHARS}."
+            f"That prompt is {len(prompt)} characters -- the limit is "
+            f"{MAX_PROMPT_CHARS}."
         )
     return prompt
 
 
-async def run_plain_call(session: AsyncSession, *, prompt_text: str) -> SingleCallResult:
+async def run_plain_call(
+    session: AsyncSession, *, prompt_text: str
+) -> SingleCallResult:
     """Send one prompt to the shared generation service and return its response.
 
     Routes through the shared_framework_services primitives rather than
@@ -238,7 +242,10 @@ async def run_plain_call(session: AsyncSession, *, prompt_text: str) -> SingleCa
         response_excerpt=generated.text,
         model=generated.model,
         mode=shared.MODE_PLAIN,
-        summary=f"Single call (plain mode), {len(generated.text)} chars via {generated.model}",
+        summary=(
+            f"Single call (plain mode), {len(generated.text)} chars via "
+            f"{generated.model}"
+        ),
     )
 
     logger.info(
@@ -397,12 +404,13 @@ def _validate(
             f"{'.'.join(str(part) for part in err['loc']) or '(root)'}: {err['msg']}"
             for err in exc.errors()
         )
-        return None, f"The response did not match {schema_model.__name__} -- {problems}."
+        return (
+            None,
+            f"The response did not match {schema_model.__name__} -- {problems}.",
+        )
 
 
-def resolve_prompt(
-    *, prompt_text: str | None, preset: PresetPrompt | None
-) -> str:
+def resolve_prompt(*, prompt_text: str | None, preset: PresetPrompt | None) -> str:
     """Pick the prompt actually sent, given free text and/or a preset.
 
     A preset wins over free text when both arrive. That is the honest reading

@@ -35,24 +35,53 @@ configure_sentry(settings)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
-    """Warm the embeddings projection cache before the first request.
+    """Warm per-process state once at boot, before the first request.
 
-    Render's free tier spins the service down after ~15 minutes idle, so a
-    demo click is often the first request against a cold process. Loading
-    the sentence-transformers model, embedding 24 presets, and fitting the
-    PCA lazily would put all of that on that visitor's request; doing it here
-    moves the cost to boot, where nobody is waiting on it.
+    The API runs as one always-on Uvicorn process on the netcup VPS (500 G12),
+    supervised by systemd behind Caddy. It is never spun down for idleness, so
+    this function runs once per process start -- a release restart or a host
+    reboot -- and what it builds stays warm for the process lifetime. Loading
+    the sentence-transformers model, embedding the 24 presets and fitting the
+    2D PCA projection here, rather than lazily, means no visitor's first
+    request pays that ~30 s cost; it is paid at boot, where nobody is waiting
+    on it. The release script's readiness gate waits for this to finish.
 
-    Deliberately non-fatal. The projection serves one example app, while this
-    process also serves /health, the RAG app, and the tool-use app -- a
-    failure to warm up must not take those down with it. `get_preset_points()`
-    rebuilds on demand, so the cost simply lands on the first request instead.
+    The embeddings warm-up is best-effort: a failure is logged and the API
+    still starts. The projection serves one example app, while this process
+    also serves /health and every other app -- a failure to warm up must not
+    take those down with it. `get_preset_points()` rebuilds on demand, so the
+    cost simply lands on the first request instead.
+
+    The Router's route-description warm-up is best-effort in the same way: a
+    failure is logged and the API still starts. The Router then reports
+    itself temporarily unavailable, with a retry endpoint, while every other
+    app keeps working.
+
+    Missing credentials are different, and fatal. Settings are loaded at
+    import (`get_settings()` above), not here, so a missing GROQ_API_KEY or
+    OPENAI_API_KEY (or any other required variable) stops the process before
+    this function runs; nothing in it can swallow that failure.
+
+    Args:
+        _app: The FastAPI application. Unused; the warmed state lives in
+            module-level caches, not on the app object.
+
+    Yields:
+        None, once warm-up has been attempted; the API serves requests until
+        shutdown resumes the generator.
     """
     try:
         ensure_built()
     except Exception:  # noqa: BLE001 - warm-up is best-effort by design
         logger.exception("embeddings_projection_warmup_failed")
-    await warm_route_descriptions()
+    # Until v10 this await sat outside any try/except, unlike the embeddings
+    # warm-up above. It only worked because the function swallowed its own
+    # errors. It now raises on failure (so `POST /api/router/retry` can report
+    # one), and the best-effort handling lives here, around this call only.
+    try:
+        await warm_route_descriptions()
+    except Exception:  # noqa: BLE001 - warm-up is best-effort by design
+        logger.exception("router_warmup_failed")
     yield
 
 

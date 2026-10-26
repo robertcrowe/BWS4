@@ -15,12 +15,12 @@ of the shipped chain, not a hypothetical.
 
 from __future__ import annotations
 
-from typing import Any
-
 import asyncio
 import json
+from typing import Any
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.db.models import UsageLimit
@@ -39,19 +39,17 @@ from backend.app.single_call.presets import (
     json_schema_for,
 )
 from backend.app.single_call.service import run_structured_call
-import pytest
 
 
 @pytest.fixture(autouse=True)
 def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
-    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
-    test environment it fails closed and would refuse all of them. Overridden
+    The gate is not this file's subject, and with the moderation endpoint held
+    offline for the suite it fails closed and would refuse all of them. Overridden
     per module rather than globally, so a test that *should* exercise the gate
     cannot pass by accident.
     """
-
 
 
 class _FakeResult:
@@ -120,9 +118,11 @@ def test_presets_endpoint_ships_the_full_prompt_text_and_schema() -> None:
     assert body["default_response_schema"]["title"] == DEFAULT_SCHEMA_MODEL.__name__
     assert len(body["presets"]) == len(PRESET_PROMPTS)
 
-    for entry, preset in zip(body["presets"], PRESET_PROMPTS):
+    for entry, preset in zip(body["presets"], PRESET_PROMPTS, strict=True):
         assert entry["id"] == preset.id
-        assert entry["prompt_text"] == preset.prompt_text, "the full prompt must ship, untruncated"
+        assert entry["prompt_text"] == preset.prompt_text, (
+            "the full prompt must ship, untruncated"
+        )
         assert entry["intent"], "every preset is labelled with its intent"
         assert entry["response_schema"]["title"] == preset.schema_model.__name__
 
@@ -145,7 +145,11 @@ def test_every_preset_schema_forbids_extra_properties() -> None:
 
 def test_the_named_intents_from_the_specification_are_all_present() -> None:
     """summarize / classify / extract are named in the capability's Inputs."""
-    assert {preset.id for preset in PRESET_PROMPTS} >= {"summarize", "classify", "extract"}
+    assert {preset.id for preset in PRESET_PROMPTS} >= {
+        "summarize",
+        "classify",
+        "extract",
+    }
 
 
 # --------------------------------------------------------------------------
@@ -236,14 +240,18 @@ def test_the_response_carries_the_request_that_produced_it() -> None:
     assert sent["prompt_text"] == preset.prompt_text
     assert sent["schema_name"] == "ClassificationResult"
     assert sent["response_schema"] == json_schema_for(ClassificationResult)
-    assert sent["system_prompt"], "the instruction sent must be shown, not just the prompt"
+    assert sent["system_prompt"], (
+        "the instruction sent must be shown, not just the prompt"
+    )
     # The echoed prompt is the preset's text, not the empty free-text box.
     assert body["prompt_text"] == preset.prompt_text
 
 
 def test_free_text_structured_requests_use_the_default_demo_schema() -> None:
     session: Any = FakeSession()
-    payload = json.dumps({"response": "Kubernetes autoscales pods.", "topics": ["devops"]})
+    payload = json.dumps(
+        {"response": "Kubernetes autoscales pods.", "topics": ["devops"]}
+    )
     try:
         with patch.object(service, "generate_text", return_value=_served(payload)):
             body = (
@@ -264,7 +272,9 @@ def test_free_text_structured_requests_use_the_default_demo_schema() -> None:
 def test_a_schema_fetched_from_the_presets_endpoint_can_be_posted_back() -> None:
     """The round trip the `response_schema` input is actually for."""
     session: Any = FakeSession()
-    summary = json.dumps({"summary": "Webb sees infrared.", "key_points": ["6.5m mirror"]})
+    summary = json.dumps(
+        {"summary": "Webb sees infrared.", "key_points": ["6.5m mirror"]}
+    )
     try:
         with patch.object(service, "generate_text", return_value=_served(summary)):
             body = (
@@ -327,7 +337,9 @@ def test_a_non_conforming_response_is_flagged_with_its_raw_output() -> None:
     drifted = json.dumps({"classification": "bug", "priority": "high"})
     session: Any = FakeSession()
     try:
-        with patch.object(service, "generate_text", return_value=_served(drifted)) as generate:
+        with patch.object(
+            service, "generate_text", return_value=_served(drifted)
+        ) as generate:
             response = _client(session).post(
                 "/api/single-call/generate",
                 json={"preset_prompt_id": "classify", "mode": "structured"},
@@ -355,7 +367,9 @@ def test_a_non_json_response_is_flagged_distinctly_from_a_shape_mismatch() -> No
     session: Any = FakeSession()
     try:
         with patch.object(
-            service, "generate_text", return_value=_served("Sure! Here's the classification:")
+            service,
+            "generate_text",
+            return_value=_served("Sure! Here's the classification:"),
         ):
             body = (
                 _client(session)
@@ -377,7 +391,9 @@ def test_a_json_array_is_rejected_rather_than_crashing() -> None:
     """Valid JSON that isn't an object at all."""
     session: Any = FakeSession()
     try:
-        with patch.object(service, "generate_text", return_value=_served('["bug", "high"]')):
+        with patch.object(
+            service, "generate_text", return_value=_served('["bug", "high"]')
+        ):
             body = (
                 _client(session)
                 .post(
@@ -416,7 +432,9 @@ def test_an_out_of_enum_value_is_caught_even_though_the_shape_is_right() -> None
     assert "category" in body["validation_error"]
 
 
-def test_extra_properties_are_caught_even_when_every_required_field_is_present() -> None:
+def test_extra_properties_are_caught_even_when_every_required_field_is_present() -> (
+    None
+):
     """This is what extra="forbid" buys, and why the schema test above pins it."""
     session: Any = FakeSession()
     padded = json.dumps(
@@ -454,7 +472,9 @@ def test_a_structured_call_writes_a_generation_row_and_a_log_entry() -> None:
     limit = UsageLimit(capability="generation", used=0, cap=100, window_start=None)
     session: Any = FakeSession([limit])
 
-    with patch.object(service, "generate_text", return_value=_served(CONFORMING_CLASSIFICATION)):
+    with patch.object(
+        service, "generate_text", return_value=_served(CONFORMING_CLASSIFICATION)
+    ):
         result = asyncio.run(
             run_structured_call(
                 session,
@@ -484,7 +504,9 @@ def test_a_failed_validation_is_still_recorded_as_a_generation() -> None:
     limit = UsageLimit(capability="generation", used=0, cap=100, window_start=None)
     session: Any = FakeSession([limit])
 
-    with patch.object(service, "generate_text", return_value=_served("not json at all")):
+    with patch.object(
+        service, "generate_text", return_value=_served("not json at all")
+    ):
         result = asyncio.run(
             run_structured_call(
                 session, prompt_text="Classify this.", schema_model=ClassificationResult
@@ -506,14 +528,20 @@ def test_the_recorded_mode_distinguishes_plain_from_structured() -> None:
     Same app, same model, same prompt length -- `mode` is the only field that
     separates them, which is the whole reason migration 0008 adds it.
     """
-    plain_limit = UsageLimit(capability="generation", used=0, cap=100, window_start=None)
+    plain_limit = UsageLimit(
+        capability="generation", used=0, cap=100, window_start=None
+    )
     plain_session: Any = FakeSession([plain_limit])
     with patch.object(service, "generate_text", return_value=_served("prose")):
         asyncio.run(service.run_plain_call(plain_session, prompt_text="hello"))
 
-    structured_limit = UsageLimit(capability="generation", used=0, cap=100, window_start=None)
+    structured_limit = UsageLimit(
+        capability="generation", used=0, cap=100, window_start=None
+    )
     structured_session: Any = FakeSession([structured_limit])
-    with patch.object(service, "generate_text", return_value=_served(CONFORMING_CLASSIFICATION)):
+    with patch.object(
+        service, "generate_text", return_value=_served(CONFORMING_CLASSIFICATION)
+    ):
         asyncio.run(
             run_structured_call(
                 structured_session,
@@ -536,7 +564,9 @@ def test_a_preset_can_also_be_run_in_plain_mode() -> None:
     """Mode and prompt source are independent choices."""
     session: Any = FakeSession()
     try:
-        with patch.object(service, "generate_text", return_value=_served("A summary.")) as gen:
+        with patch.object(
+            service, "generate_text", return_value=_served("A summary.")
+        ) as gen:
             body = (
                 _client(session)
                 .post(
@@ -550,6 +580,8 @@ def test_a_preset_can_also_be_run_in_plain_mode() -> None:
 
     assert body["mode"] == "plain"
     assert body["plain_text"] == "A summary."
-    assert body["schema_conforming"] is None, "no schema was demanded, so none was checked"
+    assert body["schema_conforming"] is None, (
+        "no schema was demanded, so none was checked"
+    )
     # Plain mode must not smuggle in a constrained-decoding directive.
     assert "response_format" not in gen.call_args.kwargs

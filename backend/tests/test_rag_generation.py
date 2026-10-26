@@ -1,9 +1,10 @@
 # Built with Spec4 AI - https://spec4.ai
 
-from typing import Any
 from collections.abc import AsyncGenerator
+from typing import Any
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.db.session import get_db_session
@@ -16,15 +17,14 @@ from backend.app.rag.service import (
     build_answer,
 )
 from backend.app.services.generation import GenerationServiceError
-import pytest
 
 
 @pytest.fixture(autouse=True)
 def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
-    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
-    test environment it fails closed and would refuse all of them. Overridden
+    The gate is not this file's subject, and with the moderation endpoint held
+    offline for the suite it fails closed and would refuse all of them. Overridden
     per module rather than globally, so a test that *should* exercise the gate
     cannot pass by accident.
     """
@@ -69,7 +69,9 @@ def test_build_answer_returns_no_strong_match_message_with_no_passages() -> None
 def test_build_answer_generates_a_grounded_answer_above_threshold() -> None:
     with patch(
         "backend.app.rag.service.generate_answer",
-        return_value=GeneratedAnswer(text="Voyager 1 launched in 1977 [1].", model=SERVED_MODEL),
+        return_value=GeneratedAnswer(
+            text="Voyager 1 launched in 1977 [1].", model=SERVED_MODEL
+        ),
     ):
         result = build_answer("When did Voyager 1 launch?", [_STRONG_PASSAGE])
 

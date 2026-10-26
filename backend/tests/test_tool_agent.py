@@ -12,24 +12,22 @@ drives a different model behaviour and asserts the loop follows it.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-
-from typing import Any
-
 import asyncio
 import json
+from collections.abc import Iterator
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from backend.app.services import model_registry
+from backend.app.services.web_search import ExaClientError, ExaRateLimitError, ExaResult
 from backend.app.tools.agent import (
     MAX_ITERATIONS,
     MAX_SEARCHES,
     AgentError,
     run_agent,
 )
-from backend.app.services.web_search import ExaClientError, ExaRateLimitError, ExaResult
 
 #: LiteLLM reports the served model without its routing prefix, so the fake
 #: responses do too -- normalize() must map it back to a real chain slug.
@@ -50,7 +48,9 @@ class _FakeToolCall:
 
 
 class _FakeMessage:
-    def __init__(self, content: str | None = None, tool_calls: list[Any] | None = None) -> None:
+    def __init__(
+        self, content: str | None = None, tool_calls: list[Any] | None = None
+    ) -> None:
         self.content = content
         self.tool_calls = tool_calls
 
@@ -113,7 +113,9 @@ def test_agent_uses_the_query_the_model_wrote_not_the_visitors_question() -> Non
         _FakeResponse(_answer("Recent coverage indicates Webb found water vapour.")),
     ]
 
-    with patch("backend.app.tools.agent.litellm.acompletion", AsyncMock(side_effect=responses)):
+    with patch(
+        "backend.app.tools.agent.litellm.acompletion", AsyncMock(side_effect=responses)
+    ):
         run = asyncio.run(
             run_agent(
                 "hey, so what have astronomers learned from JWST lately??",
@@ -159,7 +161,9 @@ def test_agent_searches_again_when_the_model_refines_its_query() -> None:
         _FakeResponse(_answer("Perseverance is still operating in Jezero Crater.")),
     ]
 
-    with patch("backend.app.tools.agent.litellm.acompletion", AsyncMock(side_effect=responses)):
+    with patch(
+        "backend.app.tools.agent.litellm.acompletion", AsyncMock(side_effect=responses)
+    ):
         run = asyncio.run(
             run_agent("How's the Mars rover doing?", execute_search=execute_search)
         )
@@ -172,7 +176,9 @@ def test_agent_searches_again_when_the_model_refines_its_query() -> None:
 
 def test_agent_deduplicates_results_seen_across_iterations() -> None:
     """Two searches returning the same URL must not produce a duplicate result."""
-    repeated = [ExaResult(title="Same", summary="Same summary", source="https://same.example")]
+    repeated = [
+        ExaResult(title="Same", summary="Same summary", source="https://same.example")
+    ]
 
     responses = [
         _FakeResponse(_search_call("first", "call_1")),
@@ -180,8 +186,12 @@ def test_agent_deduplicates_results_seen_across_iterations() -> None:
         _FakeResponse(_answer("Done.")),
     ]
 
-    with patch("backend.app.tools.agent.litellm.acompletion", AsyncMock(side_effect=responses)):
-        run = asyncio.run(run_agent("q", execute_search=AsyncMock(return_value=repeated)))
+    with patch(
+        "backend.app.tools.agent.litellm.acompletion", AsyncMock(side_effect=responses)
+    ):
+        run = asyncio.run(
+            run_agent("q", execute_search=AsyncMock(return_value=repeated))
+        )
 
     assert len(run.results) == 1
 
@@ -189,7 +199,8 @@ def test_agent_deduplicates_results_seen_across_iterations() -> None:
 def test_agent_forces_an_answer_when_the_model_never_stops_searching() -> None:
     """The loop must terminate even if the model would keep going."""
     always_searching = [
-        _FakeResponse(_search_call(f"query {i}", f"call_{i}")) for i in range(MAX_ITERATIONS)
+        _FakeResponse(_search_call(f"query {i}", f"call_{i}"))
+        for i in range(MAX_ITERATIONS)
     ]
     forced = _FakeResponse(_answer("Answering with what I found."))
     acompletion = AsyncMock(side_effect=[*always_searching, forced])
@@ -224,7 +235,9 @@ def test_agent_stops_spending_search_quota_at_the_ceiling() -> None:
 
     with patch(
         "backend.app.tools.agent.litellm.acompletion",
-        AsyncMock(side_effect=[_FakeResponse(many_calls), _FakeResponse(_answer("Done."))]),
+        AsyncMock(
+            side_effect=[_FakeResponse(many_calls), _FakeResponse(_answer("Done."))]
+        ),
     ):
         run = asyncio.run(run_agent("q", execute_search=execute_search))
 
@@ -243,7 +256,9 @@ def test_agent_reports_a_later_search_failure_back_to_the_model() -> None:
         _FakeResponse(_answer("Based on the first search, here is the answer.")),
     ]
 
-    with patch("backend.app.tools.agent.litellm.acompletion", AsyncMock(side_effect=responses)):
+    with patch(
+        "backend.app.tools.agent.litellm.acompletion", AsyncMock(side_effect=responses)
+    ):
         run = asyncio.run(run_agent("q", execute_search=execute_search))
 
     assert run.answer == "Based on the first search, here is the answer."
@@ -260,7 +275,9 @@ def test_agent_propagates_a_first_search_failure() -> None:
             asyncio.run(
                 run_agent(
                     "q",
-                    execute_search=AsyncMock(side_effect=ExaRateLimitError("rate limited")),
+                    execute_search=AsyncMock(
+                        side_effect=ExaRateLimitError("rate limited")
+                    ),
                 )
             )
 

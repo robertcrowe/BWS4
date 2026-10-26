@@ -14,12 +14,11 @@ Models and Exa are mocked throughout, so no key and no database are needed.
 
 from __future__ import annotations
 
-from typing import Any, Literal
-
 import asyncio
 import json
 import time
-from collections.abc import AsyncGenerator, AsyncIterator, Iterator, MutableMapping
+from collections.abc import AsyncGenerator, AsyncIterator, MutableMapping
+from typing import Any, Literal
 from unittest.mock import patch
 
 import pytest
@@ -52,8 +51,8 @@ async def _allow_moderation(_text: str, _context: str) -> ModerationVerdict:
 def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
-    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
-    test environment it fails closed and would refuse all of them. Overridden
+    The gate is not this file's subject, and with the moderation endpoint held
+    offline for the suite it fails closed and would refuse all of them. Overridden
     per module rather than globally, so a test that *should* exercise the gate
     cannot pass by accident.
     """
@@ -109,7 +108,9 @@ def _run_body(plan: Plan = PLAN) -> dict[str, Any]:
 def _step(
     index: int, status: Literal["completed", "failed"] = "completed"
 ) -> StepResult:
-    return StepResult(step_index=index, status=status, summary=f"Result {index}", sources=[])
+    return StepResult(
+        step_index=index, status=status, summary=f"Result {index}", sources=[]
+    )
 
 
 class _Result:
@@ -197,7 +198,9 @@ def _stream(body: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
 def _execution(*events: ExecutionEvent) -> Any:
     """Build a fake `execute_plan` yielding the given events."""
 
-    async def fake(_session: Any, *, goal: Any, plan: Any, calls_used: Any=0) -> AsyncIterator[Any]:
+    async def fake(
+        _session: Any, *, goal: Any, plan: Any, calls_used: Any = 0
+    ) -> AsyncIterator[Any]:
         for event in events:
             yield event
 
@@ -244,7 +247,12 @@ class TestPlanEndpoint:
         """
         session: Any = _Session()
         outcome = PlanOutcome(
-            goal="goal", plan=PLAN, trimmed_note=None, replanned=False, model="m", calls_used=1
+            goal="goal",
+            plan=PLAN,
+            trimmed_note=None,
+            replanned=False,
+            model="m",
+            calls_used=1,
         )
         app.dependency_overrides[get_db_session] = _override_session(session)
         try:
@@ -314,8 +322,9 @@ class TestRunStream:
     def test_it_streams_the_plan_then_each_step_then_the_itinerary(self) -> None:
         session: Any = _Session()
 
-        with _patch_run_session(session), patch.object(
-            service, "execute_plan", _completed_run()
+        with (
+            _patch_run_session(session),
+            patch.object(service, "execute_plan", _completed_run()),
         ):
             events = _stream(_run_body())
 
@@ -329,8 +338,9 @@ class TestRunStream:
     def test_step_results_arrive_in_plan_order(self) -> None:
         session: Any = _Session()
 
-        with _patch_run_session(session), patch.object(
-            service, "execute_plan", _completed_run()
+        with (
+            _patch_run_session(session),
+            patch.object(service, "execute_plan", _completed_run()),
         ):
             events = _stream(_run_body())
 
@@ -368,8 +378,9 @@ class TestRunStream:
         )
         session: Any = _Session()
 
-        with _patch_run_session(session), patch.object(
-            service, "execute_plan", _completed_run()
+        with (
+            _patch_run_session(session),
+            patch.object(service, "execute_plan", _completed_run()),
         ):
             events = _stream(_run_body(oversized))
 
@@ -406,14 +417,19 @@ class TestRunStream:
         )
         session: Any = _Session()
 
-        with _patch_run_session(session), patch.object(service, "execute_plan") as executed:
+        with (
+            _patch_run_session(session),
+            patch.object(service, "execute_plan") as executed,
+        ):
             events = _stream(_run_body(bad))
 
         assert [name for name, _ in events] == ["error"]
         assert events[0][1]["code"] == "invalid_plan"
         executed.assert_not_called()
 
-    def test_a_halted_run_becomes_a_categorised_error_event_after_its_results(self) -> None:
+    def test_a_halted_run_becomes_a_categorised_error_event_after_its_results(
+        self,
+    ) -> None:
         """Partial results survive the failure, which is the whole point.
 
         The chained-calls API set this convention: a run that produced output
@@ -466,25 +482,35 @@ class TestRunStream:
             ExecutionEvent(kind="itinerary", itinerary=ITINERARY),
         )
 
-        with _patch_run_session(session), patch.object(service, "execute_plan", with_failure):
+        with (
+            _patch_run_session(session),
+            patch.object(service, "execute_plan", with_failure),
+        ):
             events = _stream(_run_body())
 
         statuses = [data["status"] for name, data in events if name == "step_result"]
         assert statuses == ["failed", "completed"]
         assert events[-1][0] == "itinerary"
 
-    def test_the_run_starts_the_ceiling_from_the_planner_call_not_the_client(self) -> None:
+    def test_the_run_starts_the_ceiling_from_the_planner_call_not_the_client(
+        self,
+    ) -> None:
         """A client that could set the starting count could reset its own ceiling."""
         session: Any = _Session()
         seen: dict[str, Any] = {}
 
-        async def capture(_session: Any, *, goal: Any, plan: Any, calls_used: Any=0) -> AsyncIterator[Any]:
+        async def capture(
+            _session: Any, *, goal: Any, plan: Any, calls_used: Any = 0
+        ) -> AsyncIterator[Any]:
             seen["calls_used"] = calls_used
             yield ExecutionEvent(kind="itinerary", itinerary=ITINERARY)
 
         body = {**_run_body(), "calls_used": 0}
 
-        with _patch_run_session(session), patch.object(service, "execute_plan", capture):
+        with (
+            _patch_run_session(session),
+            patch.object(service, "execute_plan", capture),
+        ):
             _stream(body)
 
         assert seen["calls_used"] == api.PLANNER_CALL_COST
@@ -493,7 +519,9 @@ class TestRunStream:
 def _spaced_execution() -> Any:
     """A run whose events are separated in time, so flushing is measurable."""
 
-    async def fake(_session: Any, *, goal: Any, plan: Any, calls_used: Any=0) -> AsyncIterator[Any]:
+    async def fake(
+        _session: Any, *, goal: Any, plan: Any, calls_used: Any = 0
+    ) -> AsyncIterator[Any]:
         for event in (
             ExecutionEvent(kind="step_result", step_result=_step(1)),
             ExecutionEvent(kind="step_result", step_result=_step(2)),
@@ -562,7 +590,6 @@ class TestPersistenceAndDelivery:
         from pydantic_ai.messages import ModelResponse, ToolCallPart
         from pydantic_ai.models.function import FunctionModel
 
-        from backend.app.planning import agents
         from backend.app.services.web_search import ExaResult
 
         searched: list[str] = []
@@ -575,11 +602,15 @@ class TestPersistenceAndDelivery:
                         parts=[ToolCallPart("web_search", {"query": "a query"})]
                     )
                 return ModelResponse(
-                    parts=[ToolCallPart(info.output_tools[0].name, {"summary": "found"})]
+                    parts=[
+                        ToolCallPart(info.output_tools[0].name, {"summary": "found"})
+                    ]
                 )
             return ModelResponse(
                 parts=[
-                    ToolCallPart(info.output_tools[0].name, {"city": "Lisbon", "blocks": []})
+                    ToolCallPart(
+                        info.output_tools[0].name, {"city": "Lisbon", "blocks": []}
+                    )
                 ]
             )
 
@@ -591,7 +622,8 @@ class TestPersistenceAndDelivery:
 
         with (
             _patch_run_session(session),
-            patch("backend.app.planning.agents.agent_runtime.build_fallback_model",
+            patch(
+                "backend.app.planning.agents.agent_runtime.build_fallback_model",
                 lambda chain=None, **_: FunctionModel(behave),
             ),
             patch.object(service, "search", fake_search),
@@ -614,8 +646,9 @@ class TestPersistenceAndDelivery:
         """
         session: Any = _Session()
 
-        with _patch_run_session(session), patch.object(
-            service, "execute_plan", _spaced_execution()
+        with (
+            _patch_run_session(session),
+            patch.object(service, "execute_plan", _spaced_execution()),
         ):
             chunks = _drive_asgi(_run_body())
 
@@ -645,7 +678,9 @@ class TestDisconnect:
         produced: list[int] = []
         closed: list[str] = []
 
-        async def counting(_session: Any, *, goal: Any, plan: Any, calls_used: Any=0) -> AsyncIterator[Any]:
+        async def counting(
+            _session: Any, *, goal: Any, plan: Any, calls_used: Any = 0
+        ) -> AsyncIterator[Any]:
             try:
                 for index in (1, 2, 3):
                     produced.append(index)
@@ -654,7 +689,9 @@ class TestDisconnect:
                 closed.append("orchestrator closed")
 
         async def drive() -> None:
-            stream = api._stream(api.RunRequest.model_validate(_run_body()), _allow_moderation)
+            stream = api._stream(
+                api.RunRequest.model_validate(_run_body()), _allow_moderation
+            )
             await stream.__anext__()  # plan
             await stream.__anext__()  # step 1
             with pytest.raises(asyncio.CancelledError):
@@ -664,7 +701,10 @@ class TestDisconnect:
             assert closed == ["orchestrator closed"]
             assert produced == [1], "the orchestrator ran on after the disconnect"
 
-        with _patch_run_session(session), patch.object(service, "execute_plan", counting):
+        with (
+            _patch_run_session(session),
+            patch.object(service, "execute_plan", counting),
+        ):
             asyncio.run(drive())
 
 
@@ -688,10 +728,14 @@ class TestRetrySynthesis:
         app.dependency_overrides[get_db_session] = _override_session(session)
         try:
             with (
-                patch.object(service, "retry_synthesis", return_value=ITINERARY) as composed,
+                patch.object(
+                    service, "retry_synthesis", return_value=ITINERARY
+                ) as composed,
                 patch.object(service, "execute_plan") as executed,
             ):
-                response = client.post("/api/planning/retry-synthesis", json=self._body())
+                response = client.post(
+                    "/api/planning/retry-synthesis", json=self._body()
+                )
         finally:
             app.dependency_overrides.clear()
 
@@ -722,8 +766,18 @@ class TestRetrySynthesis:
             {
                 "goal": "One day",
                 "steps": [
-                    {"index": 1, "kind": "synthesis", "description": "first", "search_query": None},
-                    {"index": 2, "kind": "research", "description": "after", "search_query": "q"},
+                    {
+                        "index": 1,
+                        "kind": "synthesis",
+                        "description": "first",
+                        "search_query": None,
+                    },
+                    {
+                        "index": 2,
+                        "kind": "research",
+                        "description": "after",
+                        "search_query": "q",
+                    },
                 ],
             }
         )
@@ -754,7 +808,9 @@ class TestRetrySynthesis:
         app.dependency_overrides[get_db_session] = _override_session(session)
         try:
             with patch.object(service, "retry_synthesis", side_effect=error):
-                response = client.post("/api/planning/retry-synthesis", json=self._body())
+                response = client.post(
+                    "/api/planning/retry-synthesis", json=self._body()
+                )
         finally:
             app.dependency_overrides.clear()
 

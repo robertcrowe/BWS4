@@ -26,38 +26,77 @@ import pytest
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from backend.app.db.models import LanguageGenerationRequest, SearchQuery, ServiceLogEntry, UsageLimit
+from backend.app.db.models import (
+    LanguageGenerationRequest,
+    SearchQuery,
+    ServiceLogEntry,
+    UsageLimit,
+)
 from backend.app.planning import agents, service
 from backend.app.planning.budget import MAX_MODEL_CALLS, CallBudget, CallCeilingExceeded
-from backend.app.planning.schemas import Plan, PlanStep, StepResult
+from backend.app.planning.schemas import Plan, StepResult
 from backend.app.services import shared
 from backend.app.services.web_search import ExaResult
 
 GOOD_PLAN = {
     "goal": "One day in Lisbon for street food and modern art",
     "steps": [
-        {"index": 1, "kind": "research", "description": "Street food", "search_query": "street food Lisbon"},
-        {"index": 2, "kind": "research", "description": "Modern art", "search_query": "modern art Lisbon"},
-        {"index": 3, "kind": "synthesis", "description": "Compose the day", "search_query": None},
+        {
+            "index": 1,
+            "kind": "research",
+            "description": "Street food",
+            "search_query": "street food Lisbon",
+        },
+        {
+            "index": 2,
+            "kind": "research",
+            "description": "Modern art",
+            "search_query": "modern art Lisbon",
+        },
+        {
+            "index": 3,
+            "kind": "synthesis",
+            "description": "Compose the day",
+            "search_query": None,
+        },
     ],
 }
 
 BAD_PLAN = {
     "goal": "One day in Lisbon",
     "steps": [
-        {"index": 1, "kind": "synthesis", "description": "Compose first", "search_query": None},
-        {"index": 2, "kind": "research", "description": "Then research", "search_query": "q"},
+        {
+            "index": 1,
+            "kind": "synthesis",
+            "description": "Compose first",
+            "search_query": None,
+        },
+        {
+            "index": 2,
+            "kind": "research",
+            "description": "Then research",
+            "search_query": "q",
+        },
     ],
 }
 
 ITINERARY = {
     "city": "Lisbon",
     "blocks": [
-        {"time_of_day": "morning", "activity": "Time Out Market", "why_it_matches": "food", "source_refs": [1]}
+        {
+            "time_of_day": "morning",
+            "activity": "Time Out Market",
+            "why_it_matches": "food",
+            "source_refs": [1],
+        }
     ],
 }
 
-RESULTS = [ExaResult(title="Time Out Market", summary="A food hall.", source="https://a.test/1")]
+RESULTS = [
+    ExaResult(
+        title="Time Out Market", summary="A food hall.", source="https://a.test/1"
+    )
+]
 
 
 class _Result:
@@ -84,7 +123,9 @@ class _Session:
         self._caps = caps or {}
         self._pending: str | None = None
 
-    async def execute(self, statement: Any, *_args: object, **_kwargs: object) -> _Result:
+    async def execute(
+        self, statement: Any, *_args: object, **_kwargs: object
+    ) -> _Result:
         # The only select this code issues is usage_limits by capability, so the
         # capability is recovered from the compiled parameters rather than by
         # parsing SQL.
@@ -126,7 +167,9 @@ def _plan_model(*payloads: dict[str, Any]) -> FunctionModel:
     queue = list(payloads)
 
     def behave(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, queue.pop(0))])
+        return ModelResponse(
+            parts=[ToolCallPart(info.output_tools[0].name, queue.pop(0))]
+        )
 
     return FunctionModel(behave)
 
@@ -148,9 +191,13 @@ def _execution_model(
         if "web_search" in tool_names:
             if searches and not state["searched"]:
                 state["searched"] = True
-                return ModelResponse(parts=[ToolCallPart("web_search", {"query": "a query"})])
+                return ModelResponse(
+                    parts=[ToolCallPart("web_search", {"query": "a query"})]
+                )
             state["searched"] = False
-            return ModelResponse(parts=[ToolCallPart(output_tool, {"summary": "Found a food hall."})])
+            return ModelResponse(
+                parts=[ToolCallPart(output_tool, {"summary": "Found a food hall."})]
+            )
 
         return ModelResponse(parts=[ToolCallPart(output_tool, itinerary or ITINERARY)])
 
@@ -158,7 +205,10 @@ def _execution_model(
 
 
 def _patch_model(model: FunctionModel) -> Any:
-    return patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: model)
+    return patch(
+        "backend.app.planning.agents.agent_runtime.build_fallback_model",
+        lambda chain=None, **_: model,
+    )
 
 
 def _patch_search(
@@ -310,7 +360,11 @@ class TestPlanning:
                 service.create_plan(session, city="Lisbon", interests="street food")
             )
 
-        assert [step.kind for step in outcome.plan.steps] == ["research", "research", "synthesis"]
+        assert [step.kind for step in outcome.plan.steps] == [
+            "research",
+            "research",
+            "synthesis",
+        ]
         assert outcome.replanned is False
         assert outcome.calls_used == 1
 
@@ -333,7 +387,9 @@ class TestPlanning:
         session: Any = _Session()
 
         with _patch_model(_plan_model(BAD_PLAN, GOOD_PLAN)):
-            outcome = asyncio.run(service.create_plan(session, city="Lisbon", interests="art"))
+            outcome = asyncio.run(
+                service.create_plan(session, city="Lisbon", interests="art")
+            )
 
         assert outcome.replanned is True
         assert outcome.calls_used == 2
@@ -345,7 +401,9 @@ class TestPlanning:
 
         with _patch_model(_plan_model(BAD_PLAN, BAD_PLAN)):
             with pytest.raises(service.PlanUnavailableError):
-                asyncio.run(service.create_plan(session, city="Lisbon", interests="art"))
+                asyncio.run(
+                    service.create_plan(session, city="Lisbon", interests="art")
+                )
 
         assert session.generation_used() == 2
 
@@ -353,15 +411,29 @@ class TestPlanning:
         oversized = {
             "goal": "One day in Lisbon",
             "steps": [
-                {"index": i, "kind": "research", "description": f"r{i}", "search_query": f"q{i}"}
+                {
+                    "index": i,
+                    "kind": "research",
+                    "description": f"r{i}",
+                    "search_query": f"q{i}",
+                }
                 for i in range(1, 5)
             ]
-            + [{"index": 5, "kind": "synthesis", "description": "s", "search_query": None}],
+            + [
+                {
+                    "index": 5,
+                    "kind": "synthesis",
+                    "description": "s",
+                    "search_query": None,
+                }
+            ],
         }
         session: Any = _Session()
 
         with _patch_model(_plan_model(oversized)):
-            outcome = asyncio.run(service.create_plan(session, city="Lisbon", interests="art"))
+            outcome = asyncio.run(
+                service.create_plan(session, city="Lisbon", interests="art")
+            )
 
         assert outcome.calls_used == 1, "trimming is a code fix, not a model fix"
         assert outcome.trimmed_note is not None
@@ -382,7 +454,9 @@ class TestPlanning:
 
         with _patch_model(_plan_model(GOOD_PLAN)):
             with pytest.raises(service.UsageLimitReachedError):
-                asyncio.run(service.create_plan(session, city="Lisbon", interests="art"))
+                asyncio.run(
+                    service.create_plan(session, city="Lisbon", interests="art")
+                )
 
 
 class TestExecution:
@@ -392,7 +466,11 @@ class TestExecution:
         with _patch_model(_execution_model()), _patch_search():
             events = _collect(session, _plan_object())
 
-        assert [event.kind for event in events] == ["step_result", "step_result", "itinerary"]
+        assert [event.kind for event in events] == [
+            "step_result",
+            "step_result",
+            "itinerary",
+        ]
         assert [event.step_result.step_index for event in events[:2]] == [1, 2]
 
     def test_each_step_result_is_yielded_before_the_next_step_runs(self) -> None:
@@ -418,7 +496,10 @@ class TestExecution:
                 if event.kind == "step_result":
                     observed.append(len(searches))
 
-        with _patch_model(_execution_model()), patch.object(service, "search", counting_search):
+        with (
+            _patch_model(_execution_model()),
+            patch.object(service, "search", counting_search),
+        ):
             asyncio.run(run())
 
         assert observed == [1, 2]
@@ -431,20 +512,28 @@ class TestExecution:
         """
         session: Any = _Session()
 
-        with _patch_model(_execution_model()), _patch_search(
-            error=RuntimeError("exa exploded")
+        with (
+            _patch_model(_execution_model()),
+            _patch_search(error=RuntimeError("exa exploded")),
         ):
             with patch.object(service, "STEP_ATTEMPTS", 1):
                 events = _collect(session, _plan_object())
 
-        assert [event.kind for event in events] == ["step_result", "step_result", "itinerary"]
+        assert [event.kind for event in events] == [
+            "step_result",
+            "step_result",
+            "itinerary",
+        ]
 
     def test_a_search_the_tool_could_not_run_marks_the_step_failed(self) -> None:
         from backend.app.services.web_search import ExaClientError
 
         session: Any = _Session()
 
-        with _patch_model(_execution_model()), _patch_search(error=ExaClientError("down")):
+        with (
+            _patch_model(_execution_model()),
+            _patch_search(error=ExaClientError("down")),
+        ):
             events = _collect(session, _plan_object())
 
         results = [event.step_result for event in events if event.kind == "step_result"]
@@ -512,7 +601,9 @@ class TestTheGateAndTheCeiling:
         assert events[-1].kind == "halted"
         assert events[-1].code == "call_ceiling_reached"
 
-    def test_a_tight_budget_skips_research_but_still_composes_an_itinerary(self) -> None:
+    def test_a_tight_budget_skips_research_but_still_composes_an_itinerary(
+        self,
+    ) -> None:
         """The budget is spent on the output, not on the notes.
 
         A live run spent everything on research and halted with no itinerary at
@@ -526,7 +617,11 @@ class TestTheGateAndTheCeiling:
         with _patch_model(_execution_model()), _patch_search():
             events = _collect(session, _plan_object(), calls_used=MAX_MODEL_CALLS - 3)
 
-        assert [event.kind for event in events] == ["step_result", "step_result", "itinerary"]
+        assert [event.kind for event in events] == [
+            "step_result",
+            "step_result",
+            "itinerary",
+        ]
 
         skipped = events[1].step_result
         assert skipped.status == "failed"
@@ -545,7 +640,11 @@ class TestTheGateAndTheCeiling:
 
         # One call left after the synthesis reserve is not enough for a research
         # step, so both are skipped and nothing but the synthesis call is spent.
-        assert [event.kind for event in events] == ["step_result", "step_result", "itinerary"]
+        assert [event.kind for event in events] == [
+            "step_result",
+            "step_result",
+            "itinerary",
+        ]
         assert session.generation_used() == 1
         assert session.search_used() == 0
 
@@ -583,7 +682,9 @@ class TestSynthesisFailure:
             tool_names = {tool.name for tool in info.function_tools}
             if "web_search" in tool_names:
                 return ModelResponse(
-                    parts=[ToolCallPart(info.output_tools[0].name, {"summary": "found"})]
+                    parts=[
+                        ToolCallPart(info.output_tools[0].name, {"summary": "found"})
+                    ]
                 )
             raise RuntimeError("synthesis model is down")
 
@@ -592,13 +693,19 @@ class TestSynthesisFailure:
         with _patch_model(FunctionModel(behave)), _patch_search():
             events = _collect(session, _plan_object())
 
-        assert [event.kind for event in events] == ["step_result", "step_result", "halted"]
+        assert [event.kind for event in events] == [
+            "step_result",
+            "step_result",
+            "halted",
+        ]
         assert events[-1].code == "synthesis_failed"
         assert "retrying runs only the final step" in events[-1].notice
 
     def test_retrying_synthesis_alone_reruns_nothing_else(self) -> None:
         session: Any = _Session()
-        results = [StepResult(step_index=1, status="completed", summary="Found a food hall.")]
+        results = [
+            StepResult(step_index=1, status="completed", summary="Found a food hall.")
+        ]
 
         with _patch_model(_execution_model()), _patch_search():
             itinerary = asyncio.run(
@@ -626,12 +733,16 @@ class TestPersistence:
         # Both halves of a run, each with the model that half actually uses:
         # the planner emits a Plan, the executor searches and emits an Itinerary.
         with _patch_model(_plan_model(GOOD_PLAN)), _patch_search():
-            asyncio.run(service.create_plan(session, city="Reykjavik", interests="volcanoes"))
+            asyncio.run(
+                service.create_plan(session, city="Reykjavik", interests="volcanoes")
+            )
 
         with _patch_model(_execution_model()), _patch_search():
             _collect(session, _plan_object())
 
-        assert not [row for row in session.added if isinstance(row, LanguageGenerationRequest)]
+        assert not [
+            row for row in session.added if isinstance(row, LanguageGenerationRequest)
+        ]
 
         for summary in session.summaries():
             assert "Reykjavik" not in summary

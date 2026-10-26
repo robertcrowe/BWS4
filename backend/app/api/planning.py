@@ -42,7 +42,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sse_starlette.sse import EventSourceResponse, ServerSentEvent
+from sse_starlette import EventSourceResponse, ServerSentEvent
 
 from backend.app.db.session import async_session_factory, get_db_session
 from backend.app.planning import service, validator
@@ -373,7 +373,7 @@ async def _stream(
             raise
 
 
-def _event(name: str, payload: dict) -> ServerSentEvent:
+def _event(name: str, payload: dict[str, object]) -> ServerSentEvent:
     """Build one named SSE event with a JSON data payload.
 
     Args:

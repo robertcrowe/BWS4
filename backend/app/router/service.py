@@ -3,13 +3,15 @@
 
 ## Admission (an ordinary request; nothing streams yet)
 
-1. **Resolve the preset**, if one is named. The server routes its own copy of
+1. **Route descriptions ready.** Checked first, in memory, with no database
+   session. The router cannot be told the routes without them, so while they
+   are unavailable the run is refused as temporarily unavailable before
+   moderation runs or anything is held. A re-run checks this first too.
+2. **Resolve the preset**, if one is named. The server routes its own copy of
    the preset's text; a client text that does not match is refused.
-2. **Moderation, for free text only.** Presets skip it -- the gate byte-matches
+3. **Moderation, for free text only.** Presets skip it -- the gate byte-matches
    the app's own canonical strings. It fails closed, and it costs no model
    allowance, which is what lets it run before anything is held.
-3. **Route descriptions ready.** The router cannot be told the routes without
-   them, and a run must not be started that cannot be classified.
 4. **Hold two units** against the shared generation cap: charged to the hourly
    gate with `reserve_capability` and promised with `allowance_holds.reserve`,
    so a run that cannot finish is never started.
@@ -73,7 +75,7 @@ from backend.app.router.run_schemas import (
     Stage,
     UnitAccount,
 )
-from backend.app.router.state import ensure_route_descriptions
+from backend.app.router.state import is_ready
 from backend.app.services import allowance_holds, shared, text_gate
 from backend.app.services.moderation import Moderator
 
@@ -98,8 +100,9 @@ SHARED_CAP_MESSAGE: Final[str] = (
     "was held, and it resets at the top of the hour."
 )
 NOT_READY_MESSAGE: Final[str] = (
-    "The Router's route descriptions are not ready, so the router cannot be told "
-    "its routes. No run was used. Try again shortly."
+    "The Router is temporarily unavailable: its route descriptions are not "
+    "ready, so the router cannot be told its routes. No run was used and "
+    "nothing was held. Try again shortly."
 )
 MALFORMED_NOTE: Final[str] = (
     "The router's decision could not be read -- it was incomplete or did not "
@@ -224,8 +227,32 @@ def _resolve(payload: RunRequest) -> RouterPreset | None:
     return preset
 
 
+def _refuse_if_unavailable(run_id: uuid.UUID | None = None) -> None:
+    """Refuse when the route descriptions are not ready.
+
+    The first admission step for a run and a re-run, ahead of moderation and of
+    any hold. An in-memory read: no database session, no units, no history row.
+
+    Args:
+        run_id: The run being admitted, for logs, if one has been assigned.
+
+    Raises:
+        RunRefusedError: 503 `descriptions_not_ready` while unavailable.
+    """
+    if not is_ready():
+        logger.info(
+            "router_run_refused",
+            run_id=str(run_id) if run_id else None,
+            reason=CODE_NOT_READY,
+        )
+        raise RunRefusedError(503, CODE_NOT_READY, NOT_READY_MESSAGE)
+
+
 async def admit(payload: RunRequest, moderator: Moderator) -> AdmittedRun:
-    """Admit a run: moderation for free text, then the two-unit hold.
+    """Admit a run: availability, moderation for free text, then the hold.
+
+    The order is fixed: the availability check, then moderation (free text
+    only), then the two-unit hold. A refusal at any step holds nothing.
 
     Args:
         payload: The validated request body.
@@ -237,8 +264,9 @@ async def admit(payload: RunRequest, moderator: Moderator) -> AdmittedRun:
     Raises:
         RunRefusedError: When the run must not start. Nothing is held.
     """
-    preset = _resolve(payload)
     run_id = uuid.uuid4()
+    _refuse_if_unavailable(run_id)
+    preset = _resolve(payload)
 
     if preset is None:
         async with async_session_factory() as gate_session:
@@ -254,10 +282,6 @@ async def admit(payload: RunRequest, moderator: Moderator) -> AdmittedRun:
             raise RunRefusedError(
                 text_gate.status_for(gate.code), gate.code, gate.message or ""
             )
-
-    if await ensure_route_descriptions() is None:
-        logger.info("router_run_refused", run_id=str(run_id), reason=CODE_NOT_READY)
-        raise RunRefusedError(503, CODE_NOT_READY, NOT_READY_MESSAGE)
 
     async with async_session_factory() as session:
         try:
@@ -727,6 +751,7 @@ async def admit_rerun(payload: RerunRequest) -> AdmittedRerun:
     Raises:
         RunRefusedError: When the re-run must not start. Nothing is held.
     """
+    _refuse_if_unavailable()
     preset = get_preset(payload.preset_id)
     if preset is None:
         raise RunRefusedError(

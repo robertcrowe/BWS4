@@ -14,11 +14,11 @@ an `@pytest.mark.asyncio` here would silently skip.
 
 from __future__ import annotations
 
-from typing import Any
-
 import asyncio
+from typing import Any
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.db.models import UsageLimit
@@ -26,8 +26,6 @@ from backend.app.db.session import get_db_session
 from backend.app.main import app
 from backend.app.services.generation import GenerationResult, GenerationServiceError
 from backend.app.single_call import service
-import pytest
-
 from backend.app.single_call.service import (
     SINGLE_CALL_APP_NAME,
     UsageLimitReachedError,
@@ -39,8 +37,8 @@ from backend.app.single_call.service import (
 def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
-    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
-    test environment it fails closed and would refuse all of them. Overridden
+    The gate is not this file's subject, and with the moderation endpoint held
+    offline for the suite it fails closed and would refuse all of them. Overridden
     per module rather than globally, so a test that *should* exercise the gate
     cannot pass by accident.
     """
@@ -92,7 +90,9 @@ def test_plain_mode_returns_the_models_text() -> None:
     """The phase's core assertion: a plain prompt yields 200 with non-empty text."""
     session: Any = FakeSession()
     try:
-        with patch.object(service, "generate_text", return_value=_generated()) as generate:
+        with patch.object(
+            service, "generate_text", return_value=_generated()
+        ) as generate:
             response = _client(session).post(
                 "/api/single-call/generate",
                 json={"prompt_text": "What is a hash table?", "mode": "plain"},
@@ -126,7 +126,10 @@ def test_plain_mode_reports_no_schema_check_rather_than_a_failed_one() -> None:
         with patch.object(service, "generate_text", return_value=_generated()):
             body = (
                 _client(session)
-                .post("/api/single-call/generate", json={"prompt_text": "hi", "mode": "plain"})
+                .post(
+                    "/api/single-call/generate",
+                    json={"prompt_text": "hi", "mode": "plain"},
+                )
                 .json()
             )
     finally:
@@ -139,12 +142,17 @@ def test_plain_mode_reports_no_schema_check_rather_than_a_failed_one() -> None:
 def test_the_served_model_is_reported_not_the_chains_first_entry() -> None:
     """A fallback answered, so the fallback must be what gets named."""
     session: Any = FakeSession()
-    served = GenerationResult(text="answered by the deep fallback", model="openrouter/x:free")
+    served = GenerationResult(
+        text="answered by the deep fallback", model="openrouter/x:free"
+    )
     try:
         with patch.object(service, "generate_text", return_value=served):
             body = (
                 _client(session)
-                .post("/api/single-call/generate", json={"prompt_text": "hi", "mode": "plain"})
+                .post(
+                    "/api/single-call/generate",
+                    json={"prompt_text": "hi", "mode": "plain"},
+                )
                 .json()
             )
     finally:
@@ -176,9 +184,12 @@ def test_submission_with_neither_prompt_nor_preset_is_rejected() -> None:
     try:
         with patch.object(service, "generate_text") as generate:
             blank = _client(session).post(
-                "/api/single-call/generate", json={"prompt_text": "   ", "mode": "plain"}
+                "/api/single-call/generate",
+                json={"prompt_text": "   ", "mode": "plain"},
             )
-            absent = _client(session).post("/api/single-call/generate", json={"mode": "plain"})
+            absent = _client(session).post(
+                "/api/single-call/generate", json={"mode": "plain"}
+            )
     finally:
         app.dependency_overrides.clear()
 
@@ -194,7 +205,10 @@ def test_an_overlong_prompt_is_rejected_before_the_model_is_called() -> None:
         with patch.object(service, "generate_text") as generate:
             response = _client(session).post(
                 "/api/single-call/generate",
-                json={"prompt_text": "x" * (service.MAX_PROMPT_CHARS + 1), "mode": "plain"},
+                json={
+                    "prompt_text": "x" * (service.MAX_PROMPT_CHARS + 1),
+                    "mode": "plain",
+                },
             )
     finally:
         app.dependency_overrides.clear()
@@ -208,7 +222,9 @@ def test_a_provider_failure_is_reported_as_unavailable_not_as_an_answer() -> Non
     session: Any = FakeSession()
     try:
         with patch.object(
-            service, "generate_text", side_effect=GenerationServiceError("every model failed")
+            service,
+            "generate_text",
+            side_effect=GenerationServiceError("every model failed"),
         ):
             response = _client(session).post(
                 "/api/single-call/generate", json={"prompt_text": "hi", "mode": "plain"}
@@ -230,7 +246,9 @@ def test_a_spent_usage_cap_is_reported_differently_from_a_provider_outage() -> N
     happened. The queued row is already at its cap, so reserve_capability
     raises before the provider is reached.
     """
-    exhausted = UsageLimit(capability="generation", used=100, cap=100, window_start=None)
+    exhausted = UsageLimit(
+        capability="generation", used=100, cap=100, window_start=None
+    )
     session: Any = FakeSession([exhausted])
 
     with patch.object(service, "generate_text") as generate:
@@ -241,7 +259,9 @@ def test_a_spent_usage_cap_is_reported_differently_from_a_provider_outage() -> N
         else:  # pragma: no cover - the cap must bite
             raise AssertionError("an exhausted cap must not reach the provider")
 
-    assert generate.call_count == 0, "the cap must be checked before the provider is called"
+    assert generate.call_count == 0, (
+        "the cap must be checked before the provider is called"
+    )
 
 
 def test_a_call_is_capped_and_logged_through_the_shared_services() -> None:
@@ -256,7 +276,9 @@ def test_a_call_is_capped_and_logged_through_the_shared_services() -> None:
     session: Any = FakeSession([fresh])
 
     with patch.object(service, "generate_text", return_value=_generated()):
-        result = asyncio.run(run_plain_call(session, prompt_text="What is a hash table?"))
+        result = asyncio.run(
+            run_plain_call(session, prompt_text="What is a hash table?")
+        )
 
     assert result.plain_text
     assert fresh.used == 1, "a call must spend a generation unit"

@@ -23,7 +23,10 @@ def _get_model() -> SentenceTransformer:
         process since model load is the expensive part of embedding.
     """
     settings = get_settings()
-    return SentenceTransformer(settings.embedding_model_name)
+    # The constructor is typed to return Any in the installed release, so the
+    # declared local is what carries the real type to the return.
+    model: SentenceTransformer = SentenceTransformer(settings.embedding_model_name)
+    return model
 
 
 def embed_text(text: str) -> list[float]:

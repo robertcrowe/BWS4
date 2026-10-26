@@ -28,10 +28,10 @@ Two states are excluded before alerting, because neither is rot:
 * A head that is currently benched. Something already reported that, and this
   would be the second alarm for one fault.
 
-State is process-local and resets on restart, which on a free dyno means it
-resets on every cold start. That is a real limit and not worth fixing here: the
-counter is a live-process smoke detector, not a historical record, and the
-events it emits are what persist.
+State is process-local and resets on restart, which on the always-on VPS means
+it resets on every release restart or reboot. That is a real limit and not
+worth fixing here: the counter is a live-process smoke detector, not a
+historical record, and the events it emits are what persist.
 """
 
 from __future__ import annotations

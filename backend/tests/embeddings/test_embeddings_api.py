@@ -13,23 +13,22 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.embeddings.presets import PRESET_TEXT_EXAMPLES
 from backend.app.main import app
-import pytest
 
 
 @pytest.fixture(autouse=True)
 def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
-    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
-    test environment it fails closed and would refuse all of them. Overridden
+    The gate is not this file's subject, and with the moderation endpoint held
+    offline for the suite it fails closed and would refuse all of them. Overridden
     per module rather than globally, so a test that *should* exercise the gate
     cannot pass by accident.
     """
-
 
 
 def test_presets_endpoint_returns_every_curated_example() -> None:
@@ -65,7 +64,7 @@ def test_presets_endpoint_is_stable_across_requests() -> None:
 def test_startup_warms_the_projection_cache_before_any_request() -> None:
     """The lifespan event pays the embed-and-fit cost at boot, not on a click.
 
-    This is the free-tier cold-start mitigation: entering the TestClient
+    This is the warm-at-boot guarantee: entering the TestClient
     context runs the same lifespan Uvicorn does, so a built cache here means
     a visitor's first request finds one already built.
     """

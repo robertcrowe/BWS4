@@ -69,10 +69,10 @@ bw.spec4.ai {
 	# index.html itself and can keep serving a stale entry chunk for hours
 	# after a deploy. Second, fallback scope: assets/ must NOT fall back to
 	# /index.html — a chunk that no longer exists after a redeploy must be
-	# a 404, exactly as Render served it. With the fallback in place the
-	# browser received index.html AS the module ("Failed to fetch
-	# dynamically imported module"), which broke every route navigation
-	# for any visitor holding a pre-deploy index.html.
+	# a 404. With the fallback in place the browser received index.html
+	# AS the module ("Failed to fetch dynamically imported module"), which
+	# broke every route navigation for any visitor holding a pre-deploy
+	# index.html.
 	handle /assets/* {
 		root * /srv/bws4/frontend/dist
 		encode zstd gzip
@@ -86,8 +86,8 @@ bw.spec4.ai {
 	# resolve to the bundle so React Router can route them client-side.
 	# no-cache does NOT mean "don't store": it means revalidate before
 	# reuse, so every navigation re-checks index.html against its etag
-	# (matching the max-age=0 revalidation behaviour Render gave the
-	# gallery) and a fresh deploy is picked up on the next full load.
+	# (the same as max-age=0 revalidation) and a fresh deploy is picked
+	# up on the next full load.
 	handle {
 		root * /srv/bws4/frontend/dist
 		encode zstd gzip

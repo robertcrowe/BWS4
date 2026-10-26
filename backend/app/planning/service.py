@@ -34,13 +34,18 @@ licence to keep the content.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from typing import Literal
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
-from tenacity import AsyncRetrying, RetryError, retry_if_not_exception_type, stop_after_attempt
+from tenacity import (
+    AsyncRetrying,
+    RetryError,
+    retry_if_not_exception_type,
+    stop_after_attempt,
+)
 
 from backend.app.db.models import SearchQuery
 from backend.app.planning import agents, validator
@@ -232,7 +237,9 @@ def goal_for(*, city: str, interests: str) -> str:
         raise InvalidGoalError(str(exc)) from exc
 
 
-async def create_plan(session: AsyncSession, *, city: str, interests: str) -> PlanOutcome:
+async def create_plan(
+    session: AsyncSession, *, city: str, interests: str
+) -> PlanOutcome:
     """Run the planner call and return a plan for the visitor to review.
 
     **Executes nothing.** This is the first half of the two-phase invocation;
@@ -292,7 +299,9 @@ async def create_plan(session: AsyncSession, *, city: str, interests: str) -> Pl
     # kept trying would be the runaway this tier is most prone to.
     for attempt in (1, 2):
         try:
-            step = await agents.run_planner(goal=goal, problems=problems, on_request=gate)
+            step = await agents.run_planner(
+                goal=goal, problems=problems, on_request=gate
+            )
         except AgentLaneError as exc:
             await _log(session, "planner", f"attempt {attempt} failed: model chain")
             raise PlanUnavailableError(
@@ -350,7 +359,7 @@ async def execute_plan(
     goal: str,
     plan: Plan,
     calls_used: int = 0,
-) -> AsyncIterator[ExecutionEvent]:
+) -> AsyncGenerator[ExecutionEvent, None]:
     """Execute an approved plan step by step, yielding each result as it lands.
 
     Called only after the visitor's explicit advance signal. Steps run strictly
@@ -393,8 +402,9 @@ async def execute_plan(
                 step_index=step.index,
                 status=STATUS_FAILED,
                 summary=(
-                    "This run reached its model-call budget before this step could run, "
-                    "so it was skipped. The itinerary below was composed without it."
+                    "This run reached its model-call budget before this step could "
+                    "run, so it was skipped. The itinerary below was composed "
+                    "without it."
                 ),
             )
             logger.info("planning_step_skipped", step_index=step.index, reason="budget")
@@ -410,7 +420,9 @@ async def execute_plan(
             # Out of budget mid-run. Everything already yielded stays on the
             # visitor's screen -- an agent run must not discard work it has
             # already paid for.
-            yield _halted(exc, "The run stopped before the itinerary could be composed.")
+            yield _halted(
+                exc, "The run stopped before the itinerary could be composed."
+            )
             return
 
         results.append(result)
@@ -421,7 +433,9 @@ async def execute_plan(
             goal=goal, plan=plan, results=results, on_request=gate
         )
     except (CallCeilingExceeded, shared.ServiceUnavailableError) as exc:
-        yield _halted(exc, "The research finished, but the itinerary could not be composed.")
+        yield _halted(
+            exc, "The research finished, but the itinerary could not be composed."
+        )
         return
     except AgentLaneError:
         await _log(session, "synthesis", "failed: model chain")
@@ -433,9 +447,9 @@ async def execute_plan(
             kind="halted",
             code="synthesis_failed",
             notice=(
-                "Every research step finished, but the itinerary could not be composed. "
-                "The results above are preserved — retrying runs only the final step, so "
-                "the research is not repeated."
+                "Every research step finished, but the itinerary could not be "
+                "composed. The results above are preserved — retrying runs only the "
+                "final step, so the research is not repeated."
             ),
         )
         return
@@ -489,7 +503,8 @@ async def retry_synthesis(
     except AgentLaneError as exc:
         await _log(session, "synthesis-retry", "failed: model chain")
         raise PlanUnavailableError(
-            "The itinerary still could not be composed. The research results are unchanged."
+            "The itinerary still could not be composed. The research results are "
+            "unchanged."
         ) from exc
     except shared.ServiceUnavailableError as exc:
         raise UsageLimitReachedError(str(exc)) from exc
@@ -501,7 +516,12 @@ async def retry_synthesis(
 
 
 async def _run_research_step(
-    session: AsyncSession, *, goal: str, step: PlanStep, gate, allowance: int
+    session: AsyncSession,
+    *,
+    goal: str,
+    step: PlanStep,
+    gate: agents.GateHook,
+    allowance: int,
 ) -> StepResult:
     """Execute one research step, with a timeout and one retry.
 
@@ -583,7 +603,11 @@ async def _run_research_step(
     # A search the tool could not run is a failed step; a search that ran and
     # found nothing is a completed step with an honest, empty answer. The two
     # look the same in the output shape and mean different things.
-    status = STATUS_FAILED if tracking.search_failed and not outcome.sources else STATUS_COMPLETED
+    status: Literal["completed", "failed"] = (
+        STATUS_FAILED
+        if tracking.search_failed and not outcome.sources
+        else STATUS_COMPLETED
+    )
     summary = outcome.summary
     if not outcome.sources and status == STATUS_COMPLETED:
         summary = f"{_NO_RESULTS_SUMMARY} The step reported: {outcome.summary}"
@@ -612,7 +636,7 @@ async def _run_research_step(
     )
 
 
-def _search_for(session: AsyncSession, tracking: _StepRun):
+def _search_for(session: AsyncSession, tracking: _StepRun) -> agents.ExecuteSearch:
     """Build the injected search callable for one step.
 
     Everything the executor agent must not know about lives here: the search
@@ -655,7 +679,7 @@ def _search_for(session: AsyncSession, tracking: _StepRun):
     return execute
 
 
-def _gate(session: AsyncSession, budget: CallBudget):
+def _gate(session: AsyncSession, budget: CallBudget) -> agents.GateHook:
     """Build the hook that runs immediately before every model call.
 
     Two checks, in this order, both before any provider is contacted:

@@ -31,9 +31,7 @@ DEPLOY_README = (REPO_ROOT / "deploy" / "README.md").read_text()
 ENV_EXAMPLE = (REPO_ROOT / ".env.example").read_text()
 COLLAB = REPO_ROOT / "backend" / "app" / "collab"
 
-EXEC_START = next(
-    line for line in UNIT.splitlines() if line.startswith("ExecStart=")
-)
+EXEC_START = next(line for line in UNIT.splitlines() if line.startswith("ExecStart="))
 
 
 def _env_example_entries() -> dict[str, str]:

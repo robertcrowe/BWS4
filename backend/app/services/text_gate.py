@@ -25,11 +25,11 @@ it. This returns them as distinct codes for the same reason `ModerationCategory`
 distinguishes them, and an orchestrated run once flattened them and had to be
 fixed.
 
-**With no `OPENAI_API_KEY` configured the gate fails closed**, so every
-free-text path in every app is refused with `moderation_unavailable` while
-curated examples keep working. That is the designed behaviour of a safety gate
-and not a bug — but it is also the state an unconfigured deployment sits in
-permanently, so it is worth knowing before wiring this in front of an app.
+**When the moderation endpoint cannot be reached the gate fails closed**, so
+every free-text path in every app is refused with `moderation_unavailable`
+while curated examples keep working. That is the designed behaviour of a safety
+gate and not a bug. `OPENAI_API_KEY` itself is required at startup, so a
+deployment can no longer sit in that state permanently for want of a key.
 
 ## Where this goes in an app's request handling
 

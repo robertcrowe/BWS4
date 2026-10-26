@@ -42,6 +42,7 @@ export const ROUTES: RouterRoute[] = [
 ]
 
 export const ROUTER_PRESETS: RouterPresetsResponse = {
+  available: true,
   setVersion: 'v1',
   decisionMargin: 0.15,
   costOrder: ['deterministic_evaluator', 'single_call', 'retrieval', 'search_generation'],
@@ -104,6 +105,7 @@ export const ROUTER_PRESETS: RouterPresetsResponse = {
 /** The same catalogue as the backend sends it, snake_cased on the wire. */
 export function presetsWireBody(body: RouterPresetsResponse) {
   return {
+    available: body.available,
     set_version: body.setVersion,
     decision_margin: body.decisionMargin,
     cost_order: body.costOrder,
@@ -124,6 +126,18 @@ export function presetsWireBody(body: RouterPresetsResponse) {
     route_descriptions_block: body.routeDescriptionsBlock,
     route_descriptions_sha256: body.routeDescriptionsSha256,
   }
+}
+
+/**
+ * The presets as the backend sends them while the route descriptions are not
+ * ready: presets and settings still served, no descriptions, null block and hash.
+ */
+export const UNAVAILABLE_PRESETS: RouterPresetsResponse = {
+  ...ROUTER_PRESETS,
+  available: false,
+  routeDescriptions: [],
+  routeDescriptionsBlock: null,
+  routeDescriptionsSha256: null,
 }
 
 /** A routed decision event for preset p5, agreeing with its expected route. */

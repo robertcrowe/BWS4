@@ -51,31 +51,46 @@ class PresetsResponse(BaseModel):
     `route_descriptions_block` is the exact string the router prompt receives;
     the page renders it verbatim, and `route_descriptions_sha256` lets anyone
     check that what they see is what was hashed server-side.
+
+    `available` is false while the route descriptions are not ready. The
+    presets and fixed settings are still served then, but `route_descriptions`
+    is empty and the block and its hash are null -- never invented text.
     """
 
     model_config = ConfigDict(frozen=True)
 
+    available: bool
     presets: list[PublicPreset]
     set_version: str
     decision_margin: float
     cost_order: list[RouteId]
     route_descriptions: list[PublicRoute]
-    route_descriptions_block: str
-    route_descriptions_sha256: str
+    route_descriptions_block: str | None
+    route_descriptions_sha256: str | None
 
 
-def public_presets(descriptions: RouteDescriptions) -> PresetsResponse:
+class RetryResponse(BaseModel):
+    """Body of a successful `POST /api/router/retry`."""
+
+    model_config = ConfigDict(frozen=True)
+
+    available: bool
+
+
+def public_presets(descriptions: RouteDescriptions | None) -> PresetsResponse:
     """Project the catalogue, fixed settings and route descriptions to the wire.
 
     Args:
-        descriptions: The generated route descriptions.
+        descriptions: The generated route descriptions, or None while they are
+            not ready.
 
     Returns:
-        The six presets, the catalogue version, the decision margin, the route
-        cost order, and the four route descriptions with their exact block and
-        its hash.
+        Availability, the six presets, the catalogue version, the decision
+        margin, the route cost order, and the four route descriptions with their
+        exact block and its hash (empty and null while unavailable).
     """
     return PresetsResponse(
+        available=descriptions is not None,
         presets=[
             PublicPreset(
                 id=preset.id,
@@ -97,10 +112,10 @@ def public_presets(descriptions: RouteDescriptions) -> PresetsResponse:
                 description=route.description,
                 cost_rank=route.cost_rank,
             )
-            for route in descriptions.routes
+            for route in (descriptions.routes if descriptions else ())
         ],
-        route_descriptions_block=descriptions.block,
-        route_descriptions_sha256=descriptions.sha256,
+        route_descriptions_block=descriptions.block if descriptions else None,
+        route_descriptions_sha256=descriptions.sha256 if descriptions else None,
     )
 
 

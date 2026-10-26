@@ -56,9 +56,9 @@ logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/collab", tags=["collab"])
 
-#: Seconds between keep-alive comments. Render's proxy closes an idle
-#: connection, and a bidding stage against a free model can run for tens of
-#: seconds with nothing to say.
+#: Seconds between keep-alive comments. A proxy between the browser and the
+#: API can close an idle connection, and a bidding stage against a free model
+#: can run for tens of seconds with nothing to say.
 PING_SECONDS = 15
 
 

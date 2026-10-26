@@ -14,9 +14,11 @@ added falls inside a ruff exclusion or under a mypy override that turns errors
 off. Adding a file to the ReAct slice keeps it honest automatically; adding one
 somewhere excluded fails here with the path named.
 
-**Nothing legacy is un-excluded, and that is asserted too.** The pre-v5 paths
-keep exactly the exemption they had. Cleaning one up is a deliberate change,
-not a side effect of this phase.
+**v10 Phase 4 removed every ruff exclusion**, so the ruff half of the sweep
+now asserts that the inventory is gone rather than that legacy paths keep it.
+**v10 Phase 5 did the same for mypy**: every `ignore_errors` override is gone
+and `files` covers the whole `backend` package, so the mypy half now asserts
+that nothing switches errors off rather than that particular paths stay on.
 """
 
 from __future__ import annotations
@@ -27,7 +29,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CONFIG = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
 
-RUFF_EXCLUDE: list[str] = CONFIG["tool"]["ruff"]["extend-exclude"]
+RUFF_EXCLUDE: list[str] = CONFIG["tool"]["ruff"].get("extend-exclude", [])
 MYPY = CONFIG["tool"]["mypy"]
 OVERRIDES: list[dict[str, object]] = MYPY.get("overrides", [])
 
@@ -122,22 +124,19 @@ def test_every_file_this_revision_added_is_type_checked() -> None:
             assert verdict is not False, f"{module} has mypy errors switched off"
 
 
-def test_the_react_package_is_covered_by_a_wildcard_not_an_inventory() -> None:
+def test_no_mypy_override_switches_errors_off() -> None:
     """So a module added later is gated on creation, not when someone remembers.
 
-    The alternative -- naming each file -- is the arrangement that has to be
-    maintained, and the failure mode is silent. Verified in Phase 2 by injecting
-    a type error into a new module and confirming a bare `mypy` reported it.
+    v7 met this with a `backend.app.react.*` wildcard re-enabling errors inside
+    a config that exempted its neighbours. v10 Phase 5 removed every exemption,
+    so the strict default now covers the ReAct package -- and everything else
+    -- with no override naming it, and none may toggle `ignore_errors` again.
     """
-    enabled = [
-        override for override in OVERRIDES if override.get("ignore_errors") is False
-    ]
-    named: set[str] = set()
-    for override in enabled:
-        named.update(_module_patterns(override))
+    for override in OVERRIDES:
+        assert "ignore_errors" not in override, f"override {override!r}"
 
-    assert "backend.app.react.*" in named
-    assert "backend.app.api.react" in named
+    assert _mypy_verdict("backend.app.react.service") is None
+    assert _mypy_verdict("backend.app.api.react") is None
 
 
 def test_the_test_tree_is_in_the_checked_file_set() -> None:
@@ -146,18 +145,21 @@ def test_the_test_tree_is_in_the_checked_file_set() -> None:
     It had never been checked before v7: `mypy backend` reported 406 errors
     across 45 files because the config's `files` covered only `backend/app`,
     and passing an explicit path overrode it. A gate nobody runs by default is
-    a gate that decays.
+    a gate that decays. Since v10 Phase 5 it is the whole `backend` package.
     """
-    assert MYPY["files"] == ["backend/app", "backend/tests"]
+    assert MYPY["files"] == ["backend"]
+    assert MYPY["strict"] is True
+    assert "exclude" not in MYPY
 
 
-def test_no_legacy_path_was_un_excluded_by_this_phase() -> None:
-    """Instruction 17's second half, and the reason the inventories are long.
+def test_no_legacy_path_is_excluded_from_ruff() -> None:
+    """v10 Phase 4 un-excluded every pre-v5 path; none may creep back in.
 
-    Widening the gate to a pre-v5 path would bury this revision's diff in a
-    repo-wide reformat, which is the whole reason the scoping exists. These are
-    the paths that must still be carrying their exemption.
+    These are the paths that carried an exemption until then. The inventory
+    itself must be empty too, and no `exclude` may replace `extend-exclude`.
     """
+    assert RUFF_EXCLUDE == []
+    assert "exclude" not in CONFIG["tool"]["ruff"]
     for legacy in (
         "backend/app/planning",
         "backend/app/rag",
@@ -170,29 +172,30 @@ def test_no_legacy_path_was_un_excluded_by_this_phase() -> None:
         "backend/app/core/config.py",
         "backend/app/services/shared.py",
     ):
-        assert legacy in RUFF_EXCLUDE, f"{legacy} lost its ruff exemption"
+        assert _is_ruff_excluded(legacy) is None, f"{legacy} is excluded from ruff"
 
 
-def test_the_files_this_phase_appended_to_kept_their_own_gating() -> None:
-    """Appending to a file does not change which gate it is in, in either direction.
+def test_the_files_this_phase_appended_to_are_type_checked() -> None:
+    """The files v7 appended to are under the strict default like everything else.
 
-    `services/web_search.py` and `core/observability.py` were re-enabled for
-    mypy when v7 wrote in them, and both are still on. `services/shared.py`,
-    `db/models.py`, `core/config.py` and `main.py` were only appended to and
-    keep exactly the exclusion they had -- deliberately, since re-enabling one
-    would mean reformatting a legacy path inside a phase that owns none of it.
+    v7 left `services/shared.py`, `core/config.py` and `main.py` with the
+    exclusion they had and re-enabled `services/web_search.py` and
+    `core/observability.py`. v10 Phase 5 removed every exclusion, so all five
+    now fall to the strict default with no override matching them.
     """
-    assert _mypy_verdict("backend.app.services.web_search") is True
-    assert _mypy_verdict("backend.app.core.observability") is True
-
-    assert _mypy_verdict("backend.app.services.shared") is False
-    assert _mypy_verdict("backend.app.core.config") is False
-    assert _mypy_verdict("backend.app.main") is False
+    for module in (
+        "backend.app.services.web_search",
+        "backend.app.core.observability",
+        "backend.app.services.shared",
+        "backend.app.core.config",
+        "backend.app.main",
+    ):
+        assert _mypy_verdict(module) is None, f"{module} is matched by an override"
 
 
 def test_the_migration_is_where_alembic_and_the_gate_both_expect_it() -> None:
-    """0013 lives under the excluded migrations tree, like every revision before it."""
+    """0013 lives under the migrations tree, which ruff now lints like the rest."""
     migration = REPO_ROOT / "backend/app/db/migrations/versions/0013_react_runs.py"
 
     assert migration.exists()
-    assert _is_ruff_excluded(str(migration.relative_to(REPO_ROOT))) == "backend/app/db"
+    assert _is_ruff_excluded(str(migration.relative_to(REPO_ROOT))) is None

@@ -1,7 +1,7 @@
 # Built with Spec4 AI - https://spec4.ai
 
-from typing import Any
 import asyncio
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -26,7 +26,9 @@ class _FakeExecuteResult:
     statement and returns a canned result, since ordering/filtering happens
     in Postgres and isn't available here."""
 
-    def __init__(self, scalar: object = None, all_rows: list[object] | None = None) -> None:
+    def __init__(
+        self, scalar: object = None, all_rows: list[object] | None = None
+    ) -> None:
         self._scalar = scalar
         self._all_rows = all_rows or []
 
@@ -79,7 +81,9 @@ def test_generate_text_through_shared_interface_records_log_and_usage_rows() -> 
     assert text == "a generated response"
 
     usage_rows = [obj for obj in session.added if isinstance(obj, UsageLimit)]
-    generation_rows = [obj for obj in session.added if isinstance(obj, LanguageGenerationRequest)]
+    generation_rows = [
+        obj for obj in session.added if isinstance(obj, LanguageGenerationRequest)
+    ]
     log_rows = [obj for obj in session.added if isinstance(obj, ServiceLogEntry)]
 
     assert len(usage_rows) == 1
@@ -109,13 +113,17 @@ def test_represent_text_logs_but_never_meters_the_local_embedding_model() -> Non
     with patch(
         "backend.app.services.embedding.embed_text", return_value=[0.1, 0.2, 0.3]
     ) as mocked_embed:
-        vector = asyncio.run(shared.represent_text(session, text="hello world", app_name="Test App"))
+        vector = asyncio.run(
+            shared.represent_text(session, text="hello world", app_name="Test App")
+        )
 
     mocked_embed.assert_called_once_with("hello world")
     assert vector == [0.1, 0.2, 0.3]
 
     usage_rows = [obj for obj in session.added if isinstance(obj, UsageLimit)]
-    representation_rows = [obj for obj in session.added if isinstance(obj, TextRepresentation)]
+    representation_rows = [
+        obj for obj in session.added if isinstance(obj, TextRepresentation)
+    ]
     log_rows = [obj for obj in session.added if isinstance(obj, ServiceLogEntry)]
 
     assert usage_rows == [], "the local embedding model must not consume a usage cap"
@@ -142,11 +150,16 @@ def test_representation_cannot_be_metered_by_accident() -> None:
 
 def test_set_record_through_shared_interface_records_log_and_usage_rows() -> None:
     session: Any = _FakeSession(
-        queued_results=[_FakeExecuteResult(scalar=None), _FakeExecuteResult(scalar=None)]
+        queued_results=[
+            _FakeExecuteResult(scalar=None),
+            _FakeExecuteResult(scalar=None),
+        ]
     )
 
     record = asyncio.run(
-        shared.set_record(session, key="visitor_last_question", value="hello", app_name="Test App")
+        shared.set_record(
+            session, key="visitor_last_question", value="hello", app_name="Test App"
+        )
     )
 
     assert record.key == "visitor_last_question"
@@ -162,17 +175,24 @@ def test_set_record_through_shared_interface_records_log_and_usage_rows() -> Non
     assert log_rows[0].capability == "storage"
 
 
-def test_generate_text_raises_service_unavailable_once_capability_cap_is_reached() -> None:
+def test_generate_text_raises_service_unavailable_once_capability_cap_is_reached() -> (
+    None
+):
     """A mocked low cap must reject the request before the provider is ever
     called -- the shared interface's clear-failure behavior."""
     exhausted_limit = UsageLimit(capability="generation", used=2, cap=2)
-    session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=exhausted_limit)])
+    session: Any = _FakeSession(
+        queued_results=[_FakeExecuteResult(scalar=exhausted_limit)]
+    )
 
     with patch("backend.app.services.generation.generate_text") as mocked_generate:
         try:
             asyncio.run(
                 shared.generate_text(
-                    session, system_prompt="sys", user_prompt="prompt", app_name="Test App"
+                    session,
+                    system_prompt="sys",
+                    user_prompt="prompt",
+                    app_name="Test App",
                 )
             )
         except shared.ServiceUnavailableError as exc:
@@ -182,4 +202,3 @@ def test_generate_text_raises_service_unavailable_once_capability_cap_is_reached
 
     mocked_generate.assert_not_called()
     assert not any(isinstance(obj, LanguageGenerationRequest) for obj in session.added)
-

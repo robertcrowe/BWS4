@@ -104,7 +104,10 @@ async def answer_question(session: AsyncSession, question: str) -> AnswerResult:
         session,
         app_name=RAG_APP_NAME,
         capability=shared.CAPABILITY_REPRESENTATION,
-        summary=f"Embedded a visitor question for retrieval ({len(passages)} passage(s) found)",
+        summary=(
+            f"Embedded a visitor question for retrieval ({len(passages)} passage(s) "
+            "found)"
+        ),
     )
 
     if passages and passages[0].similarity_score >= SIMILARITY_THRESHOLD:
@@ -138,7 +141,8 @@ async def answer_question(session: AsyncSession, question: str) -> AnswerResult:
             capability=shared.CAPABILITY_GENERATION,
             summary=(
                 f"Generated a RAG answer ({result.status}), citing "
-                f"{len(result.cited_passages)} of {len(result.retrieved_passages)} passage(s)"
+                f"{len(result.cited_passages)} of {len(result.retrieved_passages)} "
+                "passage(s)"
             ),
         )
 

@@ -158,7 +158,9 @@ def sanitize_interests(raw: str) -> str:
     Raises:
         InvalidInputError: If it is blank or over-long.
     """
-    return sanitize_field(raw, field="description of your interests", max_chars=MAX_INTERESTS_CHARS)
+    return sanitize_field(
+        raw, field="description of your interests", max_chars=MAX_INTERESTS_CHARS
+    )
 
 
 def untrusted_block(label: str, content: str) -> str:
@@ -177,4 +179,6 @@ def untrusted_block(label: str, content: str) -> str:
     Returns:
         The content wrapped in opening and closing delimiters.
     """
-    return f"{_BLOCK_OPEN} {label}>>>\n{_neutralise_delimiters(content)}\n{_BLOCK_CLOSE}"
+    return (
+        f"{_BLOCK_OPEN} {label}>>>\n{_neutralise_delimiters(content)}\n{_BLOCK_CLOSE}"
+    )

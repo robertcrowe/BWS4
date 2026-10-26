@@ -43,8 +43,8 @@ import type {
 export type RunPhase =
   | 'idle'
   /** Requested, but no event has arrived yet. Render this, don't render blank —
-   *  Render's free tier spins down, so a cold start before the first event is a
-   *  routine path rather than an edge case. */
+   *  the budget reservation and the first model call take a few seconds before
+   *  the first event, so this is a routine path rather than an edge case. */
   | 'connecting'
   | 'running'
   | 'complete'

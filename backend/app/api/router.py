@@ -16,8 +16,13 @@ resolved server-side from these constants, so a frontend copy would be a
 second source of truth free to drift.
 
 If the route descriptions could not be generated (the database was unreachable
-at boot and still is), the endpoint answers 503 "not ready" rather than
-serving a retrieval line with an invented subject list.
+at boot), the endpoint still answers 200 but with `available: false`, no route
+descriptions and a null block, rather than serving a retrieval line with an
+invented subject list.
+
+`POST /retry` re-attempts the route-description warm-up after such a failure.
+It never touches the usage allowance. While the Router is unavailable, `/run`
+and `/rerun` refuse before moderation and before any hold.
 
 **This router is thin on purpose.** The catalogue projection lives in the
 slice; what is here is the HTTP binding.
@@ -42,42 +47,69 @@ from backend.app.router.run_schemas import RerunRequest, RunRefusal, RunRequest
 from backend.app.router.schemas import (
     HistoryResponse,
     PresetsResponse,
+    RetryResponse,
     public_history,
     public_presets,
 )
-from backend.app.router.state import ensure_route_descriptions
+from backend.app.router.state import get_route_descriptions, warm_route_descriptions
 from backend.app.services.moderation import Moderator, get_stateless_moderator
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/router", tags=["router"])
 
-#: The 503 detail when route descriptions are unavailable.
+#: The 503 message when a retry could not prepare the route descriptions.
 DESCRIPTIONS_NOT_READY = (
-    "The Router's route descriptions are not ready: the indexed document titles "
-    "could not be read. Try again shortly."
+    "The Router is temporarily unavailable: its route descriptions could not be "
+    "prepared because the indexed document titles could not be read. Try again "
+    "shortly."
 )
 
 
 @router.get("/presets")
 async def get_presets() -> PresetsResponse:
-    """Return the presets, decision settings and route descriptions.
+    """Return availability, the presets, decision settings and route descriptions.
 
-    Free: no model call and no quota. The first call after a failed warm-up
-    retries reading the indexed titles once.
+    Free: no model call, no quota and no database read -- it only looks at the
+    in-process holder. It never retries a failed warm-up; `POST /retry` does.
 
     Returns:
-        Each preset's id, request text, expected route and reason; the decision
-        margin and cost order; and the four route descriptions with the exact
-        block the router receives and its SHA-256. Never an answer.
+        Whether the Router is available; each preset's id, request text,
+        expected route and reason; the decision margin and cost order; and the
+        four route descriptions with the exact block the router receives and its
+        SHA-256 (empty and null while unavailable). Never an answer.
+    """
+    return public_presets(get_route_descriptions())
+
+
+@router.post("/retry")
+async def retry() -> RetryResponse:
+    """Re-attempt the route-description warm-up, without a restart.
+
+    Reads the indexed document titles and, on success, fills the in-process
+    holder so the Router is available again. Free: no model call, and it never
+    reserves usage or touches the allowance tables. Already available is a
+    success that reads nothing.
+
+    Returns:
+        `available: true`.
 
     Raises:
-        HTTPException: 503 when the route descriptions are not ready.
+        HTTPException: 503 `descriptions_not_ready` when the warm-up fails
+            again; the Router stays unavailable.
     """
-    descriptions = await ensure_route_descriptions()
-    if descriptions is None:
-        raise HTTPException(status_code=503, detail=DESCRIPTIONS_NOT_READY)
-    return public_presets(descriptions)
+    try:
+        await warm_route_descriptions()
+    except Exception:  # noqa: BLE001 - reported to the visitor as still unavailable
+        logger.exception("router_retry_failed")
+        raise HTTPException(
+            status_code=503,
+            detail=RunRefusal(
+                code=service.CODE_NOT_READY, message=DESCRIPTIONS_NOT_READY
+            ).model_dump(),
+        ) from None
+    logger.info("router_retry_succeeded")
+    return RetryResponse(available=True)
 
 
 #: The 503 detail when the shared histories cannot be read.
@@ -137,10 +169,10 @@ async def run(
 ) -> EventSourceResponse:
     """Admit a run, then stream its stages.
 
-    Admission -- moderation for free text, then the two-unit hold -- happens
-    here, before any response starts, so a refusal is an ordinary HTTP error
-    with a `{code, message}` detail: no stream, no run, no hold. Only an
-    admitted run streams.
+    Admission -- the availability check, moderation for free text, then the
+    two-unit hold -- happens here, before any response starts, so a refusal is
+    an ordinary HTTP error with a `{code, message}` detail: no stream, no run,
+    no hold. Only an admitted run streams.
 
     `get_stateless_moderator` because the gate opens its own session; the
     stream opens its own too. Neither uses `Depends(get_db_session)`, whose
@@ -183,8 +215,9 @@ async def rerun(payload: RerunRequest) -> EventSourceResponse:
         The event stream.
 
     Raises:
-        HTTPException: 404 unknown or expired run, 409 already re-run, 422
-            ineligible or mismatched, 429 shared cap.
+        HTTPException: 503 descriptions not ready (checked first), 404 unknown
+            or expired run, 409 already re-run, 422 ineligible or mismatched,
+            429 shared cap.
     """
     try:
         admitted = await service.admit_rerun(payload)

@@ -31,6 +31,8 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+from collections.abc import Mapping, Sequence
+from typing import Any, TypedDict
 
 import httpx
 import litellm
@@ -108,7 +110,9 @@ PROBE_SYSTEM = (
     "When the user asks about recent or factual information, call the "
     "web_search tool with a well-formed query rather than answering from memory."
 )
-PROBE_QUESTION = "What have astronomers learned from the James Webb Space Telescope recently?"
+PROBE_QUESTION = (
+    "What have astronomers learned from the James Webb Space Telescope recently?"
+)
 
 #: A canned tool result whose distinctive tokens let stage 2 tell a genuinely
 #: grounded answer apart from one recited from the model's own memory.
@@ -117,7 +121,9 @@ PROBE_TOOL_RESULT = json.dumps(
         "results": [
             {
                 "title": "JWST detects carbon dioxide in exoplanet atmosphere",
-                "summary": "Webb's NIRSpec confirmed CO2 in the atmosphere of WASP-39b.",
+                "summary": (
+                    "Webb's NIRSpec confirmed CO2 in the atmosphere of WASP-39b."
+                ),
                 "url": "https://example.org/jwst-co2",
             },
             {
@@ -146,7 +152,9 @@ async def fetch_free_tool_models() -> list[str]:
             response.raise_for_status()
             payload = response.json()
         except (httpx.HTTPError, ValueError) as exc:
-            raise RuntimeError(f"Could not fetch the OpenRouter catalogue: {exc}") from exc
+            raise RuntimeError(
+                f"Could not fetch the OpenRouter catalogue: {exc}"
+            ) from exc
 
     return [
         f"openrouter/{model['id']}"
@@ -184,11 +192,37 @@ async def fetch_groq_chat_models() -> list[str]:
     return [
         f"groq/{model['id']}"
         for model in payload.get("data", [])
-        if not any(marker in model.get("id", "").lower() for marker in _GROQ_NON_CHAT_MARKERS)
+        if not any(
+            marker in model.get("id", "").lower() for marker in _GROQ_NON_CHAT_MARKERS
+        )
     ]
 
 
-async def probe_model(model: str) -> dict:
+class ProbeResult(TypedDict):
+    """One model's outcome from `probe_model`.
+
+    Attributes:
+        model: The probed slug.
+        emits_call: Stage 1 produced a well-formed `web_search` call.
+        completes_loop: Stage 2 answered, or searched again, after the result.
+        query: The search query the model issued, stripped.
+        note: Human-readable explanation of the outcome.
+    """
+
+    model: str
+    emits_call: bool
+    completes_loop: bool
+    query: str
+    note: str
+
+
+#: What the ranking helpers read. A Mapping rather than `ProbeResult`, because
+#: they need only `model` and `note`, and callers (the tests among them) hand
+#: them partial dicts.
+_RankEntry = Mapping[str, Any]
+
+
+async def probe_model(model: str) -> ProbeResult:
     """Run the two-stage tool-calling check against one model.
 
     Credentials come from the environment (see
@@ -202,7 +236,7 @@ async def probe_model(model: str) -> dict:
         A result dict with `model`, `emits_call`, `completes_loop`, `query`,
         and a human-readable `note`.
     """
-    result = {
+    result: ProbeResult = {
         "model": model,
         "emits_call": False,
         "completes_loop": False,
@@ -276,7 +310,9 @@ async def probe_model(model: str) -> dict:
         grounded = any(token in final_text.lower() for token in _GROUNDING_TOKENS)
         result["completes_loop"] = True
         result["note"] = (
-            "answered from tool results" if grounded else "answered, but not visibly grounded"
+            "answered from tool results"
+            if grounded
+            else "answered, but not visibly grounded"
         )
         return result
 
@@ -292,7 +328,7 @@ async def probe_model(model: str) -> dict:
     return result
 
 
-async def probe_with_backoff(model: str, delay: float) -> dict:
+async def probe_with_backoff(model: str, delay: float) -> ProbeResult:
     """Probe one model, staggered, retrying once past a free-tier rate limit.
 
     Args:
@@ -332,7 +368,7 @@ def _vendor_of(model: str) -> str:
     return parts[1] if len(parts) > 2 else parts[-1]
 
 
-def _round_robin_vendors(entries: list[dict]) -> list[str]:
+def _round_robin_vendors(entries: Sequence[_RankEntry]) -> list[str]:
     """Interleave one provider's models so adjacent entries differ in vendor.
 
     Args:
@@ -341,7 +377,7 @@ def _round_robin_vendors(entries: list[dict]) -> list[str]:
     Returns:
         Slugs ordered by round-robin over vendors, best-first within a vendor.
     """
-    by_vendor: dict[str, list[dict]] = {}
+    by_vendor: dict[str, list[_RankEntry]] = {}
     for entry in entries:
         by_vendor.setdefault(_vendor_of(entry["model"]), []).append(entry)
 
@@ -358,7 +394,7 @@ def _round_robin_vendors(entries: list[dict]) -> list[str]:
     return ordered
 
 
-def rank_cross_vendor(passing: list[dict]) -> list[str]:
+def rank_cross_vendor(passing: Sequence[_RankEntry]) -> list[str]:
     """Order passing models by provider priority, then interleaved by vendor.
 
     A chain whose entries all share a provider is one outage or quota wall
@@ -371,7 +407,7 @@ def rank_cross_vendor(passing: list[dict]) -> list[str]:
     Returns:
         Slugs ordered Groq-first, vendor-interleaved within each provider.
     """
-    by_provider: dict[str, list[dict]] = {}
+    by_provider: dict[str, list[_RankEntry]] = {}
     for entry in passing:
         by_provider.setdefault(entry["model"].split("/", 1)[0], []).append(entry)
 
@@ -404,8 +440,10 @@ async def main() -> int:
     if not get_settings().groq_api_key:
         print("GROQ_API_KEY is unset -- probing OpenRouter only.\n")
 
-    print(f"Probing {len(candidates)} candidate models "
-          f"({len(excluded)} excluded as known-bad)...\n")
+    print(
+        f"Probing {len(candidates)} candidate models "
+        f"({len(excluded)} excluded as known-bad)...\n"
+    )
 
     results = await asyncio.gather(
         *(
@@ -417,7 +455,8 @@ async def main() -> int:
     print(f"{'model':<58} {'call':<6} {'loop':<6} note")
     print("-" * 132)
     for entry in sorted(
-        results, key=lambda e: (not e["emits_call"], not e["completes_loop"], e["model"])
+        results,
+        key=lambda e: (not e["emits_call"], not e["completes_loop"], e["model"]),
     ):
         print(
             f"{entry['model']:<58} "

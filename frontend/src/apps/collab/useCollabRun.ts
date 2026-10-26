@@ -65,8 +65,8 @@ export function useCollabRun(): CollabRun {
     controller.current = next
     selection.current = { scenarioId, weightingId }
 
-    // `connecting` rather than blank. Render's free tier spins down, so a cold
-    // start of several seconds before the first event is a routine path.
+    // `connecting` rather than blank. The budget reservation and the first
+    // model call take a few seconds before the first event, a routine path.
     setState({ ...initialRunState(), phase: 'connecting' })
     setPending(true)
 

@@ -10,7 +10,7 @@ Two decisions here are load-bearing:
   here would place this app's points in a different representation space
   from the RAG app's, which is the feature's "app ends up using a different
   embedding representation" failure mode, and it would load a second copy of
-  the model into a free-tier dyno's memory.
+  the model into the single API process's memory.
 
   It calls `services.embedding` directly rather than the shared
   `services.shared.represent_text` wrapper only because this pass is

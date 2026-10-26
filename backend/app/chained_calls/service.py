@@ -48,6 +48,7 @@ from backend.app.chained_calls.pipeline import (
     StoryDraft,
     run_step,
 )
+from backend.app.chained_calls.schemas import ChainStatus
 from backend.app.services import shared
 
 logger = structlog.get_logger()
@@ -68,11 +69,11 @@ MAX_STORY_PROMPT_CHARS = 600
 MAX_STORY_CHARS = 6000
 
 #: The chain finished both calls.
-STATUS_COMPLETE = "complete"
+STATUS_COMPLETE: ChainStatus = "complete"
 #: Call 1 succeeded and call 2 did not. The intermediate output is still
 #: returned, per the capability's escalation path -- showing what was generated
 #: beats discarding it because a later step failed.
-STATUS_CRITIQUE_FAILED = "critique_failed"
+STATUS_CRITIQUE_FAILED: ChainStatus = "critique_failed"
 
 _CRITIQUE_FAILED_NOTICE = (
     "The story was written, but the critic call did not complete. The draft "
@@ -132,7 +133,7 @@ class ChainOutcome:
         notice: Plain-language explanation of a partial result, or None.
     """
 
-    status: str
+    status: ChainStatus
     draft: StoryDraft
     writer_model: str
     critique: StoryCritique | None = None
@@ -241,8 +242,9 @@ async def run_critique_only(
     """
     await _reserve(session, units=1)
     # writer_model is unknown on this path: the draft arrived from the client
-    # and this process may not be the one that generated it (a free dyno spins
-    # down between clicks). Naming a model on that basis would be a guess.
+    # and this process may not be the one that generated it (a release restart
+    # can fall between the two clicks). Naming a model on that basis would be a
+    # guess.
     return await _critique(session, draft=draft, writer_model=None)
 
 
@@ -335,7 +337,8 @@ async def _reserve(session: AsyncSession, *, units: int) -> None:
             raise UsageLimitReachedError(
                 f"Today's shared generation budget cannot cover all {units} calls in "
                 "this chain, so it was not started -- a half-finished chain would "
-                "show a story with no critique. The budget resets at the top of the hour."
+                "show a story with no critique. The budget resets at the top of the "
+                "hour."
             ) from exc
         raise UsageLimitReachedError(str(exc)) from exc
 

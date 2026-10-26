@@ -1,7 +1,13 @@
 # Built with Spec4 AI - https://spec4.ai
+from itertools import pairwise
+
 import pytest
 
-from backend.app.rag.chunking import DEFAULT_WINDOW_CHARS, chunk_document, embedding_text
+from backend.app.rag.chunking import (
+    DEFAULT_WINDOW_CHARS,
+    chunk_document,
+    embedding_text,
+)
 from backend.app.rag.dataset_loader import load_dataset_documents
 
 
@@ -34,7 +40,9 @@ def test_chunk_document_windows_stay_within_the_configured_size() -> None:
         assert len(passage.text_excerpt) <= 100
 
 
-def test_chunk_document_covers_the_full_text_with_no_gaps_larger_than_the_window() -> None:
+def test_chunk_document_covers_the_full_text_with_no_gaps_larger_than_the_window() -> (
+    None
+):
     """No part of the source text may be dropped by chunking.
 
     Asserted as adjacent-pair coverage rather than as equality between the
@@ -57,7 +65,7 @@ def test_chunk_document_covers_the_full_text_with_no_gaps_larger_than_the_window
     passage_word_lists = [p.text_excerpt.split() for p in passages]
     for paragraph in text.split("\n\n"):
         words = paragraph.split()
-        for first, second in zip(words, words[1:]):
+        for first, second in pairwise(words):
             assert any(
                 any(
                     candidate[i] == first and candidate[i + 1] == second
@@ -70,12 +78,14 @@ def test_chunk_document_covers_the_full_text_with_no_gaps_larger_than_the_window
 def test_chunk_document_overlaps_consecutive_windows() -> None:
     """Consecutive windows must share trailing context, so a fact split across
     a boundary is still retrievable in full from one side of it."""
-    text = " ".join(f"Sentence number {i} carries some filler content." for i in range(30))
+    text = " ".join(
+        f"Sentence number {i} carries some filler content." for i in range(30)
+    )
 
     passages = chunk_document("Overlap Doc", text, window_chars=200, overlap_chars=60)
 
     assert len(passages) > 2
-    for earlier, later in zip(passages, passages[1:]):
+    for earlier, later in pairwise(passages):
         shared = set(earlier.text_excerpt.split()) & set(later.text_excerpt.split())
         assert shared, "consecutive windows share no text at all"
 
@@ -89,14 +99,17 @@ def test_chunk_document_does_not_split_mid_sentence_when_a_boundary_exists() -> 
     """The visitor reads every retrieved passage, so a passage beginning
     "and Gemini programs." reads as a bug even when retrieval is unaffected."""
     text = " ".join(
-        f"This is sentence {i} and it runs on for a while to fill the window." for i in range(12)
+        f"This is sentence {i} and it runs on for a while to fill the window."
+        for i in range(12)
     )
 
     passages = chunk_document("Sentence Doc", text, window_chars=200)
 
     for passage in passages:
         first_word = passage.text_excerpt.split()[0]
-        assert first_word[0].isupper(), f"passage starts mid-sentence: {passage.text_excerpt[:60]!r}"
+        assert first_word[0].isupper(), (
+            f"passage starts mid-sentence: {passage.text_excerpt[:60]!r}"
+        )
 
 
 def test_chunk_document_keeps_abbreviations_inside_one_sentence() -> None:

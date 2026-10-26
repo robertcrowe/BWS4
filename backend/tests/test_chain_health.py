@@ -10,10 +10,8 @@ than none, because the operator learns to ignore it.
 
 from __future__ import annotations
 
-from typing import Any
-
 from collections.abc import Iterator
-
+from typing import Any
 from unittest.mock import patch
 
 import pytest

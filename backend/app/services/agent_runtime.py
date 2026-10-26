@@ -64,9 +64,9 @@ from pydantic_ai.models import Model, ModelRequestParameters
 from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.models.wrapper import WrapperModel
-from pydantic_ai.settings import ModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.providers.openrouter import OpenRouterProvider
+from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import UsageLimits
 
 from backend.app.services import chain_health, model_registry
@@ -177,7 +177,7 @@ class AgentLaneError(Exception):
         super().__init__(message)
 
 
-class StepRequestLimitExceeded(AgentLaneError):
+class StepRequestLimitExceeded(AgentLaneError):  # noqa: N818 -- public name tests import
     """Raised when a step used up its `request_limit` without producing output.
 
     A subclass so callers that only care that the step failed need no change,
@@ -246,7 +246,9 @@ def openai_compatible_adapter(*, name: str, base_url: str) -> ProviderAdapter:
     def build(model_id: str) -> Model:
         if not cached:
             cached.append(
-                OpenAIProvider(base_url=base_url, api_key=model_registry.provider_api_key(name))
+                OpenAIProvider(
+                    base_url=base_url, api_key=model_registry.provider_api_key(name)
+                )
             )
         return OpenAIChatModel(model_id, provider=cached[0])
 
@@ -266,7 +268,11 @@ def _openrouter_adapter() -> ProviderAdapter:
 
     def build(model_id: str) -> Model:
         if not cached:
-            cached.append(OpenRouterProvider(api_key=model_registry.provider_api_key("openrouter")))
+            cached.append(
+                OpenRouterProvider(
+                    api_key=model_registry.provider_api_key("openrouter")
+                )
+            )
         return OpenAIChatModel(model_id, provider=cached[0])
 
     return ProviderAdapter(name="openrouter", build_model=build)
@@ -346,7 +352,9 @@ class GatedModel(WrapperModel):
     that starts streaming must gate that method too.
     """
 
-    def __init__(self, wrapped: Model, on_request: Callable[[], Awaitable[None]]) -> None:
+    def __init__(
+        self, wrapped: Model, on_request: Callable[[], Awaitable[None]]
+    ) -> None:
         super().__init__(wrapped)
         self._on_request = on_request
 
@@ -415,7 +423,8 @@ def lane_chain(chain: list[str] | None = None, *, tools: bool = False) -> list[s
         raise AgentLaneError(
             "lane",
             "No models are available to the PydanticAI lane: every entry is "
-            "unconfigured, benched, excluded by probe, or from an unregistered provider.",
+            "unconfigured, benched, excluded by probe, or from an unregistered "
+            "provider.",
         )
     return slugs
 
@@ -461,9 +470,13 @@ def _observe_fallback(label: str) -> Callable[[Exception], bool]:
         # read for the retry window and classified for the log; it is never
         # logged. Same rule the planning app's own telemetry follows.
         detail = str(exc)
-        rate_limited = status == 429 or (status is None and model_registry.looks_rate_limited(detail))
+        rate_limited = status == 429 or (
+            status is None and model_registry.looks_rate_limited(detail)
+        )
 
-        benched_for = model_registry.note_rate_limit(slug, detail) if rate_limited else None
+        benched_for = (
+            model_registry.note_rate_limit(slug, detail) if rate_limited else None
+        )
 
         logger.warning(
             "model_fallback",
@@ -608,7 +621,9 @@ async def run_typed_step[T: BaseModel](
         # nothing about the model's health, so nothing gets benched.
         logger.warning("agent_step_hit_request_limit", label=label, limit=request_limit)
         raise StepRequestLimitExceeded(
-            label, f"The {label} step used its {request_limit}-request limit without answering."
+            label,
+            f"The {label} step used its {request_limit}-request limit without "
+            "answering.",
         ) from exc
     except Exception as exc:  # noqa: BLE001 - the framework raises several unrelated types
         if refusal:
@@ -626,7 +641,9 @@ async def run_typed_step[T: BaseModel](
             error_type=type(exc).__name__,
             benched=benched,
         )
-        raise AgentLaneError(label, f"The {label} call could not be completed.") from exc
+        raise AgentLaneError(
+            label, f"The {label} call could not be completed."
+        ) from exc
 
     served = model_registry.normalize(result.response.model_name or "unknown")
     chain_health.note_served(served)

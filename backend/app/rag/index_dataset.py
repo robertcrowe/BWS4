@@ -59,7 +59,9 @@ def build_embedded_passages() -> list[EmbeddedPassage]:
             # embedding_text(), not text_excerpt: the vector needs the source
             # title that the excerpt alone no longer carries.
             embedded.append(
-                EmbeddedPassage(passage=passage, embedding=embed_text(embedding_text(passage)))
+                EmbeddedPassage(
+                    passage=passage, embedding=embed_text(embedding_text(passage))
+                )
             )
     return embedded
 

@@ -63,7 +63,7 @@ from dataclasses import dataclass
 MAX_MODEL_CALLS = 18
 
 
-class CallCeilingExceeded(Exception):
+class CallCeilingExceeded(Exception):  # noqa: N818 -- public name tests import
     """Raised when a run tries to make one more model call than it may.
 
     Carries the ceiling so the caller can explain the stop without restating

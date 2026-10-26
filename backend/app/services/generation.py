@@ -124,7 +124,9 @@ def generate_text(
 
     content = response.choices[0].message.content
     if not content:
-        raise GenerationServiceError("text-generation service returned an empty response")
+        raise GenerationServiceError(
+            "text-generation service returned an empty response"
+        )
 
     served = model_registry.normalize(getattr(response, "model", "") or chain[0])
     chain_health.note_served(served)

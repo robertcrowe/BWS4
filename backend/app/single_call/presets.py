@@ -117,15 +117,17 @@ PRESET_PROMPTS: list[PresetPrompt] = [
         label="Summarize a passage",
         intent="Summarize",
         prompt_text=(
-            "Summarize the following passage in two sentences, then list its key points.\n\n"
-            "The James Webb Space Telescope observes primarily in the infrared, which lets it "
-            "see through the dust clouds that hide star formation from visible-light "
-            "telescopes. Its 6.5-metre segmented mirror collects roughly six times the light "
-            "of Hubble's, and it operates about 1.5 million kilometres from Earth at the "
-            "second Lagrange point, where a five-layer sunshield keeps its instruments near "
-            "40 kelvin. That combination has let it identify galaxies that formed within the "
-            "first few hundred million years after the Big Bang, and measure the composition "
-            "of atmospheres on planets orbiting other stars."
+            "Summarize the following passage in two sentences, then list its key "
+            "points.\n\n"
+            "The James Webb Space Telescope observes primarily in the infrared, which "
+            "lets it see through the dust clouds that hide star "
+            "formation from visible-light telescopes. Its 6.5-metre segmented mirror "
+            "collects roughly six times the light of Hubble's, and it operates about "
+            "1.5 million kilometres from Earth at the second Lagrange point, where a "
+            "five-layer sunshield keeps its instruments near 40 kelvin. That "
+            "combination has let it identify galaxies that formed within the first few "
+            "hundred million years after the Big Bang, and measure the composition of "
+            "atmospheres on planets orbiting other stars."
         ),
         schema_model=SummaryResult,
     ),
@@ -134,11 +136,11 @@ PRESET_PROMPTS: list[PresetPrompt] = [
         label="Classify a support ticket",
         intent="Classify",
         prompt_text=(
-            "Classify the following support ticket by type and urgency, and explain your "
-            "reasoning in one sentence.\n\n"
-            "\"The export button does nothing when I click it. I've tried three different "
-            "browsers and cleared my cache. I need to get this report to my client by "
-            "Friday.\""
+            "Classify the following support ticket by type and urgency, and explain "
+            "your reasoning in one sentence.\n\n"
+            "\"The export button does nothing when I click it. I've tried three "
+            "different browsers and cleared my cache. I need to get this report to my "
+            'client by Friday."'
         ),
         schema_model=ClassificationResult,
     ),
@@ -148,11 +150,11 @@ PRESET_PROMPTS: list[PresetPrompt] = [
         intent="Extract",
         prompt_text=(
             "Extract the structured details from this meeting note.\n\n"
-            "Priya Raman from Northwind Logistics called on 12 March 2026 to ask that the Q2 "
-            "pilot be moved from 20 April to 4 May, since their warehouse system freeze runs "
-            "until the end of April. She'll send revised volume figures by 19 March. I "
-            "agreed to circulate an updated statement of work and to loop in Dan Okafor from "
-            "our integrations team before the next call."
+            "Priya Raman from Northwind Logistics called on 12 March 2026 to ask that "
+            "the Q2 pilot be moved from 20 April to 4 May, since their warehouse "
+            "system freeze runs until the end of April. She'll send revised volume "
+            "figures by 19 March. I agreed to circulate an updated statement of work "
+            "and to loop in Dan Okafor from our integrations team before the next call."
         ),
         schema_model=ExtractionResult,
     ),
@@ -168,7 +170,10 @@ _PRESETS_BY_ID = {preset.id: preset for preset in PRESET_PROMPTS}
 #: GET /api/single-call/presets can post it straight back and be understood.
 _SCHEMAS_BY_TITLE: dict[str, type[_StrictSchema]] = {
     model.__name__: model
-    for model in [DEFAULT_SCHEMA_MODEL, *(preset.schema_model for preset in PRESET_PROMPTS)]
+    for model in [
+        DEFAULT_SCHEMA_MODEL,
+        *(preset.schema_model for preset in PRESET_PROMPTS),
+    ]
 }
 
 

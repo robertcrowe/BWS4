@@ -69,9 +69,10 @@ logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/react", tags=["react"])
 
-#: Seconds between keep-alive comments, matching `api/collab.py`. Render's
-#: proxy closes an idle connection, and a cycle that is waiting on a model and
-#: then on a search can run for tens of seconds with nothing to say.
+#: Seconds between keep-alive comments, matching `api/collab.py`. A proxy
+#: between the browser and the API can close an idle connection, and a cycle
+#: that is waiting on a model and then on a search can run for tens of seconds
+#: with nothing to say.
 PING_SECONDS = 15
 
 

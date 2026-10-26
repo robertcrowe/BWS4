@@ -51,7 +51,9 @@ from backend.app.services import shared
 from backend.app.services.web_search import ExaResult
 
 CASES_PATH = Path(__file__).parent / "golden" / "planning_cases.json"
-CASES: list[dict[str, Any]] = json.loads(CASES_PATH.read_text(encoding="utf-8"))["cases"]
+CASES: list[dict[str, Any]] = json.loads(CASES_PATH.read_text(encoding="utf-8"))[
+    "cases"
+]
 CASE_IDS = [case["id"] for case in CASES]
 
 
@@ -110,7 +112,9 @@ class GoldenRun:
 
     @property
     def step_results(self) -> list[Any]:
-        return [event.step_result for event in self.events if event.kind == "step_result"]
+        return [
+            event.step_result for event in self.events if event.kind == "step_result"
+        ]
 
     @property
     def itinerary(self) -> Any:
@@ -156,7 +160,9 @@ def _model_for(case: dict[str, Any], run: GoldenRun) -> FunctionModel:
         output_tool = info.output_tools[0].name
 
         if role == "planner":
-            payload = planner_queue.pop(0) if planner_queue else case["planner_outputs"][-1]
+            payload = (
+                planner_queue.pop(0) if planner_queue else case["planner_outputs"][-1]
+            )
             return ModelResponse(parts=[ToolCallPart(output_tool, payload)])
 
         if role == "synthesis":
@@ -181,13 +187,19 @@ def _model_for(case: dict[str, Any], run: GoldenRun) -> FunctionModel:
 
         # Research: search once, then summarise on the following turn.
         turn = len(run.model_calls * [0])
-        if id(info) not in searched and not any("web_search" in str(m) for m in messages[1:]):
+        if id(info) not in searched and not any(
+            "web_search" in str(m) for m in messages[1:]
+        ):
             searched.add(id(info))
             query = _pending_query(run, case)
             return ModelResponse(parts=[ToolCallPart("web_search", {"query": query})])
         del turn
         return ModelResponse(
-            parts=[ToolCallPart(output_tool, {"summary": "Summarised the results received."})]
+            parts=[
+                ToolCallPart(
+                    output_tool, {"summary": "Summarised the results received."}
+                )
+            ]
         )
 
     return FunctionModel(behave)
@@ -195,7 +207,11 @@ def _model_for(case: dict[str, Any], run: GoldenRun) -> FunctionModel:
 
 def _pending_query(run: GoldenRun, case: dict[str, Any]) -> str:
     """The query for the research step currently executing."""
-    plan = run.outcome.plan if run.outcome else Plan.model_validate(case["planner_outputs"][-1])
+    plan = (
+        run.outcome.plan
+        if run.outcome
+        else Plan.model_validate(case["planner_outputs"][-1])
+    )
     research = [step for step in plan.steps if step.kind == KIND_RESEARCH]
     position = min(len(run.queries), len(research) - 1)
     return research[position].search_query or ""
@@ -240,7 +256,10 @@ def run_case(case: dict[str, Any], *, caps: dict[str, int] | None = None) -> Gol
         return wrapped
 
     with (
-        patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: model),
+        patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
+            lambda chain=None, **_: model,
+        ),
         patch.object(service, "search", _search_for(case, run)),
         patch("backend.app.planning.agents.sanitize.untrusted_block", recording_block),
     ):
@@ -294,7 +313,9 @@ def test_the_suite_covers_all_three_case_classes() -> None:
 
 
 @pytest.mark.parametrize("case", CASES, ids=CASE_IDS)
-def test_the_accepted_plan_satisfies_every_validator_constraint(case: dict[str, Any]) -> None:
+def test_the_accepted_plan_satisfies_every_validator_constraint(
+    case: dict[str, Any],
+) -> None:
     """Schema shape plus the rules the schema cannot express."""
     run = run_case(case)
     plan = run.outcome.plan
@@ -311,7 +332,9 @@ def test_the_accepted_plan_satisfies_every_validator_constraint(case: dict[str, 
 
 
 @pytest.mark.parametrize("case", CASES, ids=CASE_IDS)
-def test_the_executed_plan_is_within_this_deployment_budget(case: dict[str, Any]) -> None:
+def test_the_executed_plan_is_within_this_deployment_budget(
+    case: dict[str, Any],
+) -> None:
     """At most two research steps plus the single synthesis step."""
     run = run_case(case)
     plan = run.outcome.plan
@@ -399,7 +422,11 @@ def test_the_expected_replan_and_trim_paths_fire(case: dict[str, Any]) -> None:
 @pytest.mark.parametrize(
     "case",
     [case for case in CASES if case["expect"].get("expect_a_step_with_no_sources")],
-    ids=[case["id"] for case in CASES if case["expect"].get("expect_a_step_with_no_sources")],
+    ids=[
+        case["id"]
+        for case in CASES
+        if case["expect"].get("expect_a_step_with_no_sources")
+    ],
 )
 def test_an_empty_search_is_reported_completed_and_honest(case: dict[str, Any]) -> None:
     """The search ran and the web had little to say — a finding, not a fault.
@@ -453,7 +480,10 @@ def test_planning_completes_before_any_step_executes(case: dict[str, Any]) -> No
             run.events.append(event)
 
     with (
-        patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: model),
+        patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
+            lambda chain=None, **_: model,
+        ),
         patch.object(service, "search", _search_for(case, run)),
     ):
         asyncio.run(drive())
@@ -478,7 +508,9 @@ def test_a_spent_planning_budget_refuses_the_run_before_any_model_call() -> None
     run.session = _Session(caps={shared.CAPABILITY_PLANNING: 0})
     model = _model_for(case, run)
 
-    with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: model
+    with patch(
+        "backend.app.planning.agents.agent_runtime.build_fallback_model",
+        lambda chain=None, **_: model,
     ):
         with pytest.raises(service.UsageLimitReachedError):
             asyncio.run(
@@ -580,7 +612,9 @@ def test_injection_in_the_interests_is_carried_as_data_not_as_structure() -> Non
     exactly that, and the marker must not survive sanitisation.
     """
     case = _adversarial("adversarial-injection")
-    assert "<<<END_UNTRUSTED_WEB_CONTENT>>>" in case["interests"], "fixture should try to forge"
+    assert "<<<END_UNTRUSTED_WEB_CONTENT>>>" in case["interests"], (
+        "fixture should try to forge"
+    )
 
     run = run_case(case)
 

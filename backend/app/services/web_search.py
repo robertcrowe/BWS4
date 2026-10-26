@@ -162,7 +162,8 @@ async def search(query: str) -> list[ExaResult]:
         )
     if response.is_error:
         raise ExaClientError(
-            f"Exa Search API request failed with status {response.status_code}: {response.text}"
+            f"Exa Search API request failed with status {response.status_code}: "
+            f"{response.text}"
         )
 
     try:

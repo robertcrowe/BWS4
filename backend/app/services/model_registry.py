@@ -189,7 +189,7 @@ GENERATION_MODEL_CHAIN = [
 _ALL_MODELS = list(dict.fromkeys(TOOL_MODEL_CHAIN + GENERATION_MODEL_CHAIN))
 
 #: How long a slug stays benched after a *permanent* failure. Long enough to
-#: stop hammering a withdrawn model for the life of a free-tier dyno, short
+#: stop hammering a withdrawn model for the life of the API process, short
 #: enough that a provider restoring the slug heals without a redeploy.
 COOLDOWN_SECONDS = 30 * 60
 
@@ -219,7 +219,7 @@ _PERMANENT_FAILURE_MARKERS = (
 #: never unbounded in either direction. The floor stops a sub-second hint from
 #: being no bench at all; the ceiling stops one bad reading (or a provider
 #: quoting the reset of a daily bucket) from taking a healthy model out of the
-#: chain for the rest of a dyno's life. A window this bench under-estimates
+#: chain for the rest of the process's life. A window this bench under-estimates
 #: costs one more failed attempt and re-benches; one it over-estimates costs
 #: real capacity, so the ceiling is the tighter of the two on purpose.
 MIN_RATE_LIMIT_BENCH_SECONDS = 5.0

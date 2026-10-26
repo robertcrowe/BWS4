@@ -2,7 +2,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import ValidationError
+from pydantic import ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 #: The repo root, resolved from this file rather than the process's working
@@ -16,7 +16,9 @@ class Settings(BaseSettings):
 
     # A cwd-local .env is still honoured (and wins) if one exists, so a
     # per-directory override remains possible.
-    model_config = SettingsConfigDict(env_file=(REPO_ROOT / ".env", ".env"), extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(REPO_ROOT / ".env", ".env"), extra="ignore"
+    )
 
     database_url: str
     cors_origin: str
@@ -25,25 +27,30 @@ class Settings(BaseSettings):
     openrouter_api_key: str
     exa_api_key: str
 
-    #: Optional second LLM provider for the tool-use agent's model chain.
-    #: Groq's free tier is metered per model (e.g. 1,000 requests/day on
-    #: gpt-oss-120b) rather than as one account-wide pool like OpenRouter's
-    #: (50/day unfunded, 1,000/day funded), so it carries most of the traffic
-    #: when configured. Unset is
-    #: fine: model_registry drops every groq/ slug from the chain and the
-    #: OpenRouter entries serve alone.
-    groq_api_key: str | None = None
+    #: GROQ_API_KEY and OPENAI_API_KEY are required in every environment
+    #: (production, local development and tests), with no placeholders and no
+    #: opt-out. An empty value counts as missing, and `get_settings` names
+    #: whichever is absent. Every pytest run needs the real keys; the `-m live`
+    #: smoke tests remain opt-in and deselected by default.
+    #:
+    #: GROQ_API_KEY: Groq's free tier is metered per model (e.g. 1,000
+    #: requests/day on gpt-oss-120b) rather than as one account-wide pool like
+    #: OpenRouter's (50/day unfunded, 1,000/day funded), so every chain is
+    #: Groq-first and it carries most of the traffic. A deployment without it
+    #: would quietly route everything through the OpenRouter tail, so it fails
+    #: at startup instead.
+    groq_api_key: str
 
-    #: Optional, and read before it is used: the shared moderation service that
-    #: needs it arrives in the next phase. Optional rather than required
-    #: because the moderation gate guards *free-form* questions only — curated
-    #: preset questions are pre-vetted and skip it — so a deployment without
-    #: this key must still start and serve every existing example app.
+    #: OPENAI_API_KEY: required, under the same contract as GROQ_API_KEY above.
+    #: It is the shared moderation service's credential: the gate in front of
+    #: every free-form visitor input fails closed without it, so a deployment
+    #: missing it would refuse every free-text request while appearing
+    #: healthy. Curated preset questions skip the gate either way.
     #:
     #: OpenAI's moderation endpoint is free of charge and does not draw on the
     #: OpenRouter allowance, which is why the safety gate costs nothing against
     #: the orchestrated run's three-call budget.
-    openai_api_key: str | None = None
+    openai_api_key: str
 
     #: Salt for the moderation log's question hash.
     #:
@@ -153,7 +160,6 @@ class Settings(BaseSettings):
     #: near-duplicate through costs one search out of eight.
     react_duplicate_similarity_threshold: float = 0.95
 
-
     #: Hard ceiling on the suitability check, end to end.
     #:
     #: The check is an *advisory* that must never delay Start, so this is a
@@ -176,6 +182,44 @@ class Settings(BaseSettings):
     #: makes re-submitting the same text free.
     react_suitability_cache_ttl_hours: int = 24
 
+    @field_validator("groq_api_key", "openai_api_key")
+    @classmethod
+    def _reject_blank_credential(cls, value: str) -> str:
+        """Treat an empty or whitespace-only credential as missing.
+
+        `.env.example` ships every key as `NAME=`, so a copied-but-unfilled
+        file supplies an empty string rather than nothing. Accepting it would
+        be a placeholder by another name.
+
+        Args:
+            value: The raw value from the environment or .env.
+
+        Returns:
+            The value, unchanged.
+
+        Raises:
+            ValueError: If the value is blank.
+        """
+        if not value.strip():
+            raise ValueError("is required and must not be empty")
+        return value
+
+
+def _env_var_names(exc: ValidationError) -> list[str]:
+    """Name the environment variables behind a settings validation failure.
+
+    Settings fields map case-insensitively onto variables of the same name, so
+    the upper-cased field is exactly what the operator has to set.
+
+    Args:
+        exc: The error raised while constructing Settings.
+
+    Returns:
+        The offending variable names, in field order, without duplicates.
+    """
+    names = [str(error["loc"][0]).upper() for error in exc.errors() if error["loc"]]
+    return list(dict.fromkeys(names))
+
 
 @lru_cache
 def get_settings() -> Settings:
@@ -188,13 +232,20 @@ def get_settings() -> Settings:
 
     Raises:
         RuntimeError: If required configuration (e.g. DATABASE_URL) is missing
-            or invalid, with a descriptive message for the operator.
+            or invalid, with a descriptive message for the operator. The first
+            line names the specific variable(s) at fault.
     """
     try:
-        return Settings()
+        # Every field comes from the environment or `.env`, which mypy cannot
+        # see; pydantic-settings fills them at runtime.
+        return Settings()  # type: ignore[call-arg]
     except ValidationError as exc:
         raise RuntimeError(
-            "Invalid or missing configuration. Ensure DATABASE_URL, "
-            "CORS_ORIGIN, OPENROUTER_API_KEY, and EXA_API_KEY are set via "
-            f"environment variables or a .env file. Details: {exc}"
+            "Invalid or missing configuration: "
+            f"{', '.join(_env_var_names(exc))}.\n"
+            "DATABASE_URL, CORS_ORIGIN, OPENROUTER_API_KEY, EXA_API_KEY, "
+            "GROQ_API_KEY and OPENAI_API_KEY are all required in every "
+            "environment (production, local development and tests); set them "
+            "via environment variables or the repo-root .env. There is no "
+            f"placeholder and no opt-out. Details: {exc}"
         ) from exc

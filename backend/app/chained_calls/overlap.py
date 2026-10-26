@@ -35,10 +35,47 @@ STRONG_MATCH_RATIO = 0.6
 #: Tokens too common to carry evidence of having read anything.
 _STOPWORDS = frozenset(
     {
-        "a", "an", "and", "the", "of", "to", "in", "is", "it", "its", "that",
-        "this", "was", "were", "be", "been", "with", "for", "on", "at", "as", "by",
-        "but", "or", "not", "his", "her", "their", "they", "he", "she", "you",
-        "from", "had", "has", "have", "into", "than", "then", "there", "which",
+        "a",
+        "an",
+        "and",
+        "the",
+        "of",
+        "to",
+        "in",
+        "is",
+        "it",
+        "its",
+        "that",
+        "this",
+        "was",
+        "were",
+        "be",
+        "been",
+        "with",
+        "for",
+        "on",
+        "at",
+        "as",
+        "by",
+        "but",
+        "or",
+        "not",
+        "his",
+        "her",
+        "their",
+        "they",
+        "he",
+        "she",
+        "you",
+        "from",
+        "had",
+        "has",
+        "have",
+        "into",
+        "than",
+        "then",
+        "there",
+        "which",
     }
 )
 
@@ -88,7 +125,11 @@ def _content_words(text: str) -> set[str]:
     Returns:
         The lowercased words of length two or more, minus stopwords.
     """
-    return {word for word in _WORD_RE.findall(text.lower()) if len(word) > 1 and word not in _STOPWORDS}
+    return {
+        word
+        for word in _WORD_RE.findall(text.lower())
+        if len(word) > 1 and word not in _STOPWORDS
+    }
 
 
 def measure(story: str, quoted_detail: str) -> OverlapSignal:
@@ -107,7 +148,9 @@ def measure(story: str, quoted_detail: str) -> OverlapSignal:
     """
     normalized_detail = _normalize(quoted_detail)
     if not normalized_detail:
-        return OverlapSignal(quoted_detail_found=False, match_ratio=0.0, references_story=False)
+        return OverlapSignal(
+            quoted_detail_found=False, match_ratio=0.0, references_story=False
+        )
 
     found = normalized_detail in _normalize(story)
 

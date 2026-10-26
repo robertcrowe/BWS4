@@ -152,7 +152,8 @@ def _nearest_neighbors(vector: np.ndarray) -> list[NearestNeighborOut]:
     order = np.argsort(distances)[:NEIGHBOR_COUNT]
 
     return [
-        NearestNeighborOut(text=examples[i].label, distance=float(distances[i])) for i in order
+        NearestNeighborOut(text=examples[i].label, distance=float(distances[i]))
+        for i in order
     ]
 
 
@@ -186,7 +187,9 @@ def place_custom_text(
     try:
         vector = np.array(embed(text))
     except Exception as exc:  # noqa: BLE001 - any model failure is one failure mode
-        logger.error("embeddings_placement_failed", text_sha=_redacted(text), error=str(exc))
+        logger.error(
+            "embeddings_placement_failed", text_sha=_redacted(text), error=str(exc)
+        )
         raise EmbeddingUnavailableError(
             "The embedding model is temporarily unavailable. Please try again."
         ) from exc

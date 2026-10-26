@@ -37,7 +37,7 @@ from collections.abc import AsyncGenerator
 import structlog
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
-from sse_starlette.sse import EventSourceResponse, ServerSentEvent
+from sse_starlette import EventSourceResponse, ServerSentEvent
 
 from backend.app.db.session import async_session_factory
 from backend.app.orchestrated.presets import public_presets
@@ -82,7 +82,7 @@ async def roster() -> RosterResponse:
     return RosterResponse(specialists=public_roster(), presets=public_presets())
 
 
-def _event(name: str, payload: dict) -> ServerSentEvent:
+def _event(name: str, payload: dict[str, object]) -> ServerSentEvent:
     """Build one named SSE event with a JSON data payload.
 
     Args:

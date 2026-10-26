@@ -394,7 +394,7 @@ class TestThisPhaseCallsNoProvider:
         assert "session" in inspect.signature(api.get_run).parameters
 
     def test_the_stream_keeps_alive_on_the_same_interval_as_collab(self) -> None:
-        """Render's proxy closes an idle connection, and a real cycle waits on
+        """A proxy can close an idle connection, and a real cycle waits on
         a model and then on a search with nothing to say for tens of seconds.
 
         **Read what this does and does not establish.** sse-starlette's own

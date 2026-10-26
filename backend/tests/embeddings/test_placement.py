@@ -10,9 +10,8 @@ representation, and a fake vector would assert nothing about it.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import Any
-
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -28,8 +27,8 @@ from backend.app.main import app
 def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
-    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
-    test environment it fails closed and would refuse all of them. Overridden
+    The gate is not this file's subject, and with the moderation endpoint held
+    offline for the suite it fails closed and would refuse all of them. Overridden
     per module rather than globally, so a test that *should* exercise the gate
     cannot pass by accident.
     """
@@ -108,14 +107,21 @@ def test_placement_endpoint_returns_the_capability_schema() -> None:
     client = _client_with_fake_embedder()
     try:
         with client:
-            response = client.post("/api/embeddings/place", json={"custom_text": "kitten"})
+            response = client.post(
+                "/api/embeddings/place", json={"custom_text": "kitten"}
+            )
     finally:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
     body = response.json()
 
-    assert set(body) == {"point", "text", "nearest_neighbors", "embedding_model_version"}
+    assert set(body) == {
+        "point",
+        "text",
+        "nearest_neighbors",
+        "embedding_model_version",
+    }
     assert set(body["point"]) == {"x", "y"}
     assert isinstance(body["point"]["x"], float)
     assert body["text"] == "kitten"
@@ -137,7 +143,7 @@ def test_placement_endpoint_answers_422_for_blank_text(blank: str) -> None:
     assert response.status_code == 422
 
 
-def test_placement_endpoint_answers_503_with_a_retryable_code_when_embedding_fails() -> None:
+def test_placement_answers_503_with_a_retryable_code_when_embedding_fails() -> None:
     """The escalation path: a machine-readable code the UI can offer a retry on."""
 
     def broken(_text: str) -> list[float]:
@@ -146,7 +152,9 @@ def test_placement_endpoint_answers_503_with_a_retryable_code_when_embedding_fai
     app.dependency_overrides[get_embedder] = lambda: broken
     try:
         with TestClient(app) as client:
-            response = client.post("/api/embeddings/place", json={"custom_text": "kitten"})
+            response = client.post(
+                "/api/embeddings/place", json={"custom_text": "kitten"}
+            )
     finally:
         app.dependency_overrides.clear()
 
@@ -182,7 +190,9 @@ def test_placement_endpoint_serves_with_the_database_unavailable() -> None:
     try:
         with patch("backend.app.db.session.async_session_factory", explode):
             with TestClient(app) as client:
-                response = client.post("/api/embeddings/place", json={"custom_text": "kitten"})
+                response = client.post(
+                    "/api/embeddings/place", json={"custom_text": "kitten"}
+                )
     finally:
         app.dependency_overrides.clear()
 
@@ -226,7 +236,9 @@ def test_placement_leaves_preset_coordinates_byte_for_byte_unchanged() -> None:
     after = [(p.label, p.x, p.y) for p in service.get_preset_points()]
 
     assert after == before
-    assert service.fit_count() == fit_count_before, "the projection was refit during placement"
+    assert service.fit_count() == fit_count_before, (
+        "the projection was refit during placement"
+    )
 
 
 def test_placement_is_stable_for_the_same_text_across_calls() -> None:

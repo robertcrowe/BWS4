@@ -25,7 +25,9 @@ async def get_record(session: AsyncSession, key: str) -> StoredRecord | None:
     return result.scalar_one_or_none()
 
 
-async def set_record(session: AsyncSession, *, key: str, value: str, written_by: str) -> StoredRecord:
+async def set_record(
+    session: AsyncSession, *, key: str, value: str, written_by: str
+) -> StoredRecord:
     """Write a stored record, creating it or overwriting its existing value.
 
     Google-style docstring per project convention.

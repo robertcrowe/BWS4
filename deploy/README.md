@@ -110,7 +110,7 @@ sudo "$EDITOR" /etc/bws4/bws4.env   # fill in VALUES; names below
   requires root, not a git mistake. `git status` in `/srv/bws4` stays
   clean by construction, and `deploy.sh` enforces that before every pull.
 - **Variable NAMES** (values live only in the file — carried over
-  verbatim from the retired Render dashboard, no additions or renames):
+  verbatim from the pre-migration deployment, no additions or renames):
   - `DATABASE_URL` — Neon Postgres (pgvector-enabled), external
   - `OPENROUTER_API_KEY`
   - `GROQ_API_KEY`
@@ -228,7 +228,7 @@ failed ACME attempts against LE rate limits.
   resolve to Cloudflare edge IPs, which breaks ACME issuance *and* would
   insert a second, buffering proxy in front of the four SSE example apps.
 - Historical: bring-up used temporary `bwtemp.spec4.ai` records with the
-  same targets while Render still served the canonical name; both the
+  same targets while the canonical name still pointed elsewhere; both the
   site-block entry and the DNS records were deleted at the end of
   Phase 6, and no record for that hostname should exist.
 

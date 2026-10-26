@@ -76,7 +76,9 @@ def generate_answer(question: str, passages: list[RetrievedPassage]) -> Generate
     generated = generate_text(system_prompt=_SYSTEM_PROMPT, user_prompt=prompt)
 
     try:
-        parsed = LlmAnswer.model_validate(json.loads(_extract_json_object(generated.text)))
+        parsed = LlmAnswer.model_validate(
+            json.loads(_extract_json_object(generated.text))
+        )
     except (json.JSONDecodeError, ValidationError) as exc:
         raise GenerationServiceError(
             f"text-generation service returned a response that didn't match "

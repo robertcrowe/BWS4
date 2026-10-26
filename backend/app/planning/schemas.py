@@ -20,7 +20,7 @@ enter from `services/web_search.py` and nothing here can invent one.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Final, Literal
 
 from pydantic import BaseModel, Field
 
@@ -38,8 +38,8 @@ SYNTHESIS_PROMPT_VERSION = "synthesis_v1"
 KIND_RESEARCH = "research"
 KIND_SYNTHESIS = "synthesis"
 
-STATUS_COMPLETED = "completed"
-STATUS_FAILED = "failed"
+STATUS_COMPLETED: Final = "completed"
+STATUS_FAILED: Final = "failed"
 
 
 class PlanStep(BaseModel):

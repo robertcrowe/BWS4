@@ -67,7 +67,9 @@ def test_a_verbatim_quote_is_found() -> None:
 
 def test_punctuation_and_line_wrapping_do_not_defeat_the_match() -> None:
     """A model re-quoting across a line break is quoting, not inventing."""
-    signal = overlap.measure(_STORY, "  He read it TWICE -- and then,\n maybe foolishly ")
+    signal = overlap.measure(
+        _STORY, "  He read it TWICE -- and then,\n maybe foolishly "
+    )
     assert signal.quoted_detail_found
 
 

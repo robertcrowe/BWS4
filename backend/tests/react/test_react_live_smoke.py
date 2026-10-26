@@ -67,9 +67,10 @@ def live_environment() -> Iterator[str]:
 
     `backend/tests/conftest.py` exports a fake `DATABASE_URL` so `Settings()`
     validates without a live Postgres, gives every provider in
-    `PROVIDER_CREDENTIALS` a fake key so chain-shape assertions do not depend on
-    which providers a developer happens to have configured, and force-clears
-    `OPENAI_API_KEY`. All three are correct everywhere else and wrong here.
+    `PROVIDER_CREDENTIALS` with an optional key a fake one so chain-shape
+    assertions do not depend on which providers a developer happens to have
+    configured, and holds the moderation endpoint offline. All three are correct
+    everywhere else and wrong here.
 
     Without this the run still *completes* -- every model attempt fails, the
     chain walks to the end, and the loop ends candidly as budget-exhausted with
@@ -237,9 +238,9 @@ def test_the_smoke_run_is_the_only_place_that_may_reach_a_provider() -> None:
 def test_running_the_smoke_suite_needs_real_credentials() -> None:
     """Named plainly, so a confusing failure is not the first thing you learn.
 
-    The test suite force-clears `OPENAI_API_KEY` and supplies fake values for
-    the rest, so an unconfigured environment fails inside the chain walk rather
-    than at the boundary.
+    The test suite holds the moderation endpoint offline and supplies fake
+    values for most other credentials, so an unconfigured environment fails
+    inside the chain walk rather than at the boundary.
     """
     docstring = __doc__ or ""
 

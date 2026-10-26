@@ -22,6 +22,7 @@ def default_overlap_for(window_chars: int) -> int:
     """The overlap used when a caller doesn't specify one."""
     return min(DEFAULT_OVERLAP_CHARS, int(window_chars * OVERLAP_FRACTION))
 
+
 #: Sentence terminator followed by whitespace and something that plausibly
 #: starts a new sentence. Splitting on sentences rather than raw word count
 #: keeps passages readable: the visitor sees every retrieved passage in the
@@ -33,9 +34,27 @@ _SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(\[])")
 #: than grown into a general abbreviation dictionary.
 _ABBREVIATIONS = frozenset(
     {
-        "mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st",
-        "e.g", "i.e", "etc", "vs", "no", "approx", "est",
-        "u.s", "u.k", "u.s.s.r", "cf", "al", "fig",
+        "mr",
+        "mrs",
+        "ms",
+        "dr",
+        "prof",
+        "sr",
+        "jr",
+        "st",
+        "e.g",
+        "i.e",
+        "etc",
+        "vs",
+        "no",
+        "approx",
+        "est",
+        "u.s",
+        "u.k",
+        "u.s.s.r",
+        "cf",
+        "al",
+        "fig",
     }
 )
 
@@ -161,7 +180,9 @@ def _split_into_windows(
 
         if current and _joined_len(current) + 1 + len(unit) > window_chars:
             windows.append(" ".join(current))
-            current = _overlap_tail(current, overlap_chars, window_chars - len(unit) - 1)
+            current = _overlap_tail(
+                current, overlap_chars, window_chars - len(unit) - 1
+            )
         current.append(unit)
 
     if current:
@@ -222,7 +243,9 @@ def _split_words(sentence: str, window_chars: int, overlap_chars: int) -> list[s
     for word in words:
         if current and _joined_len(current) + 1 + len(word) > window_chars:
             windows.append(" ".join(current))
-            current = _overlap_tail(current, overlap_chars, window_chars - len(word) - 1)
+            current = _overlap_tail(
+                current, overlap_chars, window_chars - len(word) - 1
+            )
         current.append(word)
     if current:
         windows.append(" ".join(current))

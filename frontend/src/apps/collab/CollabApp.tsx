@@ -62,8 +62,7 @@ export function CollabApp() {
           {run.state.phase === 'connecting' && (
             <p data-testid="connecting" className="text-sm text-gray-500 dark:text-gray-400">
               Reserving the run&rsquo;s budget and composing the request for
-              quotation… the backend sleeps when idle on its free tier, so the first
-              response can take a few seconds.
+              quotation…
             </p>
           )}
         </section>

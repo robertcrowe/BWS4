@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pgvector.sqlalchemy import Vector
@@ -12,7 +12,6 @@ from sqlalchemy import (
     JSON,
     Boolean,
     CheckConstraint,
-    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -54,7 +53,7 @@ class DatasetEmbedding(Base):
     text_excerpt: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIMENSIONS))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -73,7 +72,7 @@ class TextRepresentation(Base):
     model_name: Mapped[str] = mapped_column(String(255))
     dimensions: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -102,7 +101,7 @@ class LanguageGenerationRequest(Base):
     #: schema-constrained one when investigating why one of them is failing.
     mode: Mapped[str] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -121,8 +120,8 @@ class StoredRecord(Base):
     written_by: Mapped[str] = mapped_column(String(100))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
 
@@ -160,14 +159,12 @@ class UsageLimit(Base):
     #: on every reservation; an older value means the window has rolled over.
     window_start: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc).replace(
-            minute=0, second=0, microsecond=0
-        ),
+        default=lambda: datetime.now(UTC).replace(minute=0, second=0, microsecond=0),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
 
@@ -189,7 +186,7 @@ class ServiceLogEntry(Base):
     capability: Mapped[str] = mapped_column(String(50))
     summary: Mapped[str] = mapped_column(Text)
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -206,7 +203,7 @@ class SearchQuery(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     text: Mapped[str] = mapped_column(Text)
     submitted_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -224,10 +221,10 @@ class RagInteraction(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_question: Mapped[str] = mapped_column(Text)
     answer: Mapped[str] = mapped_column(Text)
-    retrieved_passages: Mapped[list[dict]] = mapped_column(JSON)
+    retrieved_passages: Mapped[list[dict[str, object]]] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(50))
     submitted_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -269,10 +266,10 @@ class AllowanceHold(Base):
     window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     state: Mapped[str] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(UTC)
     )
 
 
@@ -308,7 +305,7 @@ class ModerationLogEntry(Base):
     blocked: Mapped[bool] = mapped_column(Boolean, default=False)
     failed_closed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -338,7 +335,7 @@ class NegotiationRecord(Base):
     #: that reserved its budget, so a run and its reservation are joinable.
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     scenario_id: Mapped[str] = mapped_column(String(64))
     weighting_id: Mapped[str] = mapped_column(String(64))
@@ -403,7 +400,7 @@ class PeerMessage(Base):
     #: The A2A-shaped Message or Artifact this envelope carried.
     work_item: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -444,7 +441,7 @@ class ReactRun(Base):
     #: hold is reserved under, so a run and its reservation are joinable.
     id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     #: A preset id ('p1'..'p5') or the literal 'custom'.
     question_origin: Mapped[str] = mapped_column(String(32))
@@ -510,7 +507,7 @@ class RouterAgreementRecord(Base):
     preset_id: Mapped[str] = mapped_column(String(8), index=True)
     outcome: Mapped[str] = mapped_column(String(16))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -537,5 +534,5 @@ class RouterLatencyObservation(Base):
     route: Mapped[str] = mapped_column(String(32))
     duration_ms: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

@@ -12,10 +12,9 @@ assert on the *model's* query rather than the visitor's.
 
 from __future__ import annotations
 
-from typing import Any
-
 import json
 from collections.abc import AsyncGenerator, Iterator
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -37,8 +36,8 @@ from backend.app.services.web_search import ExaRateLimitError, ExaResult
 def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
-    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
-    test environment it fails closed and would refuse all of them. Overridden
+    The gate is not this file's subject, and with the moderation endpoint held
+    offline for the suite it fails closed and would refuse all of them. Overridden
     per module rather than globally, so a test that *should* exercise the gate
     cannot pass by accident.
     """
@@ -96,7 +95,9 @@ class _FakeToolCall:
 
 
 class _FakeMessage:
-    def __init__(self, content: str | None = None, tool_calls: list[Any] | None = None) -> None:
+    def __init__(
+        self, content: str | None = None, tool_calls: list[Any] | None = None
+    ) -> None:
         self.content = content
         self.tool_calls = tool_calls
 
@@ -115,7 +116,9 @@ class _FakeResponse:
 def _search_call(query: str) -> _FakeResponse:
     return _FakeResponse(
         _FakeMessage(
-            tool_calls=[_FakeToolCall("call_1", "web_search", json.dumps({"query": query}))]
+            tool_calls=[
+                _FakeToolCall("call_1", "web_search", json.dumps({"query": query}))
+            ]
         )
     )
 
@@ -138,7 +141,9 @@ def _clear_cooldowns() -> Iterator[None]:
     model_registry.reset_cooldowns()
 
 
-def _post(session: Any, model_responses: list[Any], search_mock: object, query: str) -> Any:
+def _post(
+    session: Any, model_responses: list[Any], search_mock: object, query: str
+) -> Any:
     app.dependency_overrides[get_db_session] = _override_with(session)
     try:
         with patch(
@@ -147,14 +152,19 @@ def _post(session: Any, model_responses: list[Any], search_mock: object, query: 
         ):
             with patch("backend.app.tools.service.search", search_mock):
                 with TestClient(app) as client:
-                    return client.post("/api/tools/search", json={"search_query": query})
+                    return client.post(
+                        "/api/tools/search", json={"search_query": query}
+                    )
     finally:
         app.dependency_overrides.clear()
 
 
 def test_search_endpoint_returns_the_agents_answer_and_its_step_trace() -> None:
     session: Any = _FakeSession(
-        queued_results=[_FakeExecuteResult(scalar=None), _FakeExecuteResult(scalar=None)]
+        queued_results=[
+            _FakeExecuteResult(scalar=None),
+            _FakeExecuteResult(scalar=None),
+        ]
     )
     fake_results = [
         ExaResult(
@@ -171,7 +181,10 @@ def test_search_endpoint_returns_the_agents_answer_and_its_step_trace() -> None:
 
     response = _post(
         session,
-        [_search_call("Spec4 latest release notes"), _answer("The latest Spec4 release is v0.")],
+        [
+            _search_call("Spec4 latest release notes"),
+            _answer("The latest Spec4 release is v0."),
+        ],
         search_mock,
         "hey what's the latest Spec4 release?",
     )
@@ -212,13 +225,18 @@ def test_search_endpoint_returns_the_agents_answer_and_its_step_trace() -> None:
 
     # Both the visitor's question and the model's query are persisted.
     persisted = [obj.text for obj in session.added if isinstance(obj, SearchQuery)]
-    assert persisted == ["hey what's the latest Spec4 release?", "Spec4 latest release notes"]
+    assert persisted == [
+        "hey what's the latest Spec4 release?",
+        "Spec4 latest release notes",
+    ]
 
     # Generation is reserved once for the whole loop; search once per call.
     usage = [obj for obj in session.added if isinstance(obj, UsageLimit)]
     assert [row.capability for row in usage] == ["generation", "search"]
 
-    generation_rows = [obj for obj in session.added if isinstance(obj, LanguageGenerationRequest)]
+    generation_rows = [
+        obj for obj in session.added if isinstance(obj, LanguageGenerationRequest)
+    ]
     assert generation_rows[0].model_name == SERVED_MODEL_SLUG
 
     log_rows = [obj for obj in session.added if isinstance(obj, ServiceLogEntry)]
@@ -230,7 +248,9 @@ def test_search_endpoint_answers_without_searching_when_the_model_declines() -> 
     session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=None)])
     search_mock = AsyncMock()
 
-    response = _post(session, [_answer("Two plus two is four.")], search_mock, "What is 2 + 2?")
+    response = _post(
+        session, [_answer("Two plus two is four.")], search_mock, "What is 2 + 2?"
+    )
 
     assert response.status_code == 200
     body = response.json()
@@ -246,7 +266,10 @@ def test_search_endpoint_answers_without_searching_when_the_model_declines() -> 
 
 def test_search_endpoint_returns_clear_unavailable_message_on_exa_rate_limit() -> None:
     session: Any = _FakeSession(
-        queued_results=[_FakeExecuteResult(scalar=None), _FakeExecuteResult(scalar=None)]
+        queued_results=[
+            _FakeExecuteResult(scalar=None),
+            _FakeExecuteResult(scalar=None),
+        ]
     )
 
     response = _post(
@@ -266,15 +289,20 @@ def test_search_endpoint_returns_clear_unavailable_message_on_exa_rate_limit() -
     assert any(isinstance(obj, ServiceLogEntry) for obj in session.added)
 
 
-def test_search_endpoint_returns_clear_unavailable_message_when_search_cap_reached() -> None:
+def test_search_endpoint_returns_unavailable_message_when_search_cap_reached() -> None:
     """Generation is available, but the search capability is exhausted."""
     exhausted = UsageLimit(capability="search", used=30, cap=30)
     session: Any = _FakeSession(
-        queued_results=[_FakeExecuteResult(scalar=None), _FakeExecuteResult(scalar=exhausted)]
+        queued_results=[
+            _FakeExecuteResult(scalar=None),
+            _FakeExecuteResult(scalar=exhausted),
+        ]
     )
     search_mock = AsyncMock()
 
-    response = _post(session, [_search_call("some query")], search_mock, "latest Spec4 release")
+    response = _post(
+        session, [_search_call("some query")], search_mock, "latest Spec4 release"
+    )
 
     search_mock.assert_not_awaited()
     assert response.status_code == 503

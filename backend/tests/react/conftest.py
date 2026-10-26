@@ -13,7 +13,7 @@ suite.
 The autouse fixture below patches `agent_runtime.run_typed_step` at its point of
 use to raise. A test that forgets its own stub therefore fails with a message
 naming the problem, rather than quietly reaching the network -- the same shape as
-`conftest.py` force-clearing `OPENAI_API_KEY` so an un-overridden moderation gate
+`conftest.py` holding the moderation endpoint offline so an un-overridden gate
 fails closed.
 
 Deliberately autouse rather than opt-in. The opposite arrangement puts the

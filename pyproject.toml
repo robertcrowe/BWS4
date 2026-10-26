@@ -57,68 +57,6 @@ line-length = 88
 indent-width = 4
 target-version = "py312"
 
-# Everything that predates v5. Ruff reports 366 findings and would reformat 57
-# files across these paths, which is precisely the repo-wide reformat this
-# revision is told not to become -- so the gate covers code written from v5
-# onward and each deferred path is one line here rather than an invisible
-# omission. Cleaning one up means deleting its line and fixing what appears,
-# as a change made on purpose.
-extend-exclude = [
-    "backend/app/main.py",
-    # api/ is listed file by file for the same reason services/ is, below: v6
-    # adds `api/collab.py` and v7 adds `api/react.py`, and a new file must be
-    # gated from the moment it exists rather than inheriting an exclusion
-    # written for its neighbours. Every pre-v6 router stays excluded; nothing
-    # here has been un-excluded. **`backend/app/react` and
-    # `backend/tests/react` are deliberately absent from this list**, which is
-    # what puts them inside the gate -- a new file inside an already-excluded
-    # package would be silently ungated, so v7's code lives outside every
-    # excluded path rather than being added and then re-enabled.
-    "backend/app/api/__init__.py",
-    "backend/app/api/chained_calls.py",
-    "backend/app/api/embeddings.py",
-    "backend/app/api/health.py",
-    "backend/app/api/orchestrated.py",
-    "backend/app/api/planning.py",
-    "backend/app/api/rag.py",
-    "backend/app/api/single_call.py",
-    "backend/app/api/tools.py",
-    "backend/app/chained_calls",
-    # core/ is listed file by file for the same reason services/ and api/ are:
-    # v7 Phase 2 adds the `span()` helper to `observability.py`, and code this
-    # revision writes must be gated rather than inheriting an exclusion written
-    # for its neighbours. `observability.py` already passed both gates as it
-    # stood, so this cost nothing to turn on. `config.py` and `logging.py` keep
-    # exactly the exclusion they had; nothing legacy has been un-excluded.
-    "backend/app/core/__init__.py",
-    "backend/app/core/config.py",
-    "backend/app/core/logging.py",
-    "backend/app/db",
-    "backend/app/embeddings",
-    "backend/app/planning",
-    "backend/app/rag",
-    # services/ is listed file by file rather than as a directory so that
-    # `moderation.py`, which v5 adds, is gated from the moment it exists
-    # instead of inheriting an exclusion meant for its neighbours.
-    "backend/app/services/__init__.py",
-    "backend/app/services/agent_runtime.py",
-    "backend/app/services/discover_models.py",
-    "backend/app/services/embedding.py",
-    "backend/app/services/generation.py",
-    "backend/app/services/model_registry.py",
-    "backend/app/services/prompt_loader.py",
-    "backend/app/services/shared.py",
-    "backend/app/services/storage.py",
-    "backend/app/services/web_search.py",
-    "backend/app/single_call",
-    "backend/app/tools",
-    "backend/tests/chained_calls",
-    "backend/tests/embeddings",
-    "backend/tests/single_call",
-    "backend/tests/conftest.py",
-    "backend/tests/test_*.py",
-]
-
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
@@ -137,107 +75,25 @@ select = ["E", "F", "I", "N", "B", "UP", "BLE"]
 # B008 would also hide the real version of this mistake.
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Header"]
 
-[tool.ruff.lint.per-file-ignores]
-# Migrations are generated with a fixed template and are never edited by hand.
-"backend/app/db/migrations/**" = ["E501", "I001", "UP035", "UP006"]
-
 [tool.mypy]
 python_version = "3.12"
-# Strict everywhere, then narrowed by the overrides below. Stated this way
-# round so that a new package is covered by default and any exemption is
-# visible as an explicit entry rather than an omission.
+# Strict over the whole backend, with no exclusions. v10 Phase 5 removed the
+# per-module `ignore_errors` overrides that exempted the pre-v5 slices (api,
+# chained_calls, core, db, embeddings, planning, rag, single_call, tools,
+# services and main) and fixed what they had been hiding, so a new module is
+# covered by default and there is no exemption list to keep honest.
 strict = true
-# The test tree joined the checked set in v7. It had never been type checked --
-# `mypy backend` reported 406 errors across 45 files -- and those were fixed
-# rather than configured away: the annotations are real, and the handful of
-# `type: ignore`s that remain each carry the reason they are there. Listing it
-# here is what stops it rotting back, since a gate nobody runs by default is a
-# gate that decays.
-files = ["backend/app", "backend/tests"]
+# `backend` rather than `backend/app` + `backend/tests`, so nothing under the
+# package -- the test tree included -- can drop out of the checked set. A gate
+# nobody runs by default is a gate that decays.
+files = ["backend"]
 
 [[tool.mypy.overrides]]
-# The pre-v5 backend is comprehensively annotated but has never been type
-# checked, so it has never had to satisfy a checker's stricter reading. It is
-# out of scope for this revision.
-module = [
-    # Per-module rather than `backend.app.api.*`, so v6's `api/collab.py` is
-    # type checked from birth instead of inheriting a pre-v6 exemption.
-    "backend.app.api.chained_calls",
-    "backend.app.api.embeddings",
-    "backend.app.api.health",
-    "backend.app.api.orchestrated",
-    "backend.app.api.planning",
-    "backend.app.api.rag",
-    "backend.app.api.single_call",
-    "backend.app.api.tools",
-    "backend.app.chained_calls.*",
-    "backend.app.core.*",
-    "backend.app.db.*",
-    "backend.app.embeddings.*",
-    "backend.app.planning.*",
-    "backend.app.rag.*",
-    "backend.app.single_call.*",
-    "backend.app.tools.*",
-    "backend.app.main",
-]
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-# services/ is shared by every app, so it is exempt as a whole for now --
-# except the moderation service this revision introduces, re-enabled below.
-module = ["backend.app.services.*"]
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = [
-    "backend.app.services.moderation",
-    "backend.app.services.allowance_holds",
-    "backend.app.services.untrusted",
-    "backend.app.services.message_bus",
-    "backend.app.services.prompt_context",
-    "backend.app.services.probe_capabilities",
-    "backend.app.services.chain_health",
-    # v7 Phase 2 adds `span()` here. Its two neighbours in core/ keep their
-    # exemption; this one file leaves it because this revision wrote code in it.
-    "backend.app.core.observability",
-]
-ignore_errors = false
-
-[[tool.mypy.overrides]]
-# v7's ReAct slice. `strict = true` and `files = ["backend/app"]` already cover
-# these -- they are named explicitly anyway, so the gate for this phase's files
-# is something a reader can *see* rather than something they have to infer from
-# the absence of an exclusion. The documented trap is exactly that: the
-# exclusion inventories are per-file, so `ignore_errors` inherited from a
-# neighbouring entry is invisible, and a green summary is not evidence a new
-# file was checked at all.
-#
-# `backend.app.react.*` is a wildcard rather than a file list on purpose: every
-# module this slice adds across the remaining phases is gated on creation
-# instead of when somebody remembers to extend an inventory. Phase 2's
-# `duplicate_guard` is covered by it, and so is whatever Phase 3 adds.
-module = [
-    "backend.app.api.react",
-    "backend.app.react.*",
-    # v7 Phase 2 declares the search capability's published result schema here
-    # (`SearchToolResult`), so this one file leaves the pre-v5 `services.*`
-    # blanket exemption for **mypy**. It stays in ruff's `extend-exclude`: the
-    # file carries a pre-existing long line, and reformatting a legacy path is
-    # the repo-wide reformat this gate is scoped to avoid. Type checking it
-    # costs nothing and catches the thing worth catching in an added model.
-    "backend.app.services.web_search",
-    # v9's Router slice, named for the same reason as the ReAct entries above:
-    # the gate on these files is visible rather than inferred, and the wildcard
-    # covers every module later phases add to the package.
-    "backend.app.api.router",
-    "backend.app.router.*",
-]
-ignore_errors = false
-
-
-[[tool.mypy.overrides]]
-# Third-party packages without shipped stubs.
-module = ["litellm.*", "sentence_transformers.*", "sklearn.*", "pgvector.*"]
+# The one third-party stub gap left: scikit-learn ships neither stubs nor a
+# py.typed marker. litellm, sentence-transformers and pgvector used to be
+# listed here too; all three now ship py.typed, so their entries were dropped
+# in v10 Phase 5 rather than kept as silent cover.
+module = ["sklearn.*"]
 ignore_missing_imports = true
 
 [tool.uv.sources]

@@ -30,7 +30,9 @@ def _passage(passage_id: str) -> RetrievedPassage:
 
 
 def test_audit_finds_the_passages_an_answer_cites() -> None:
-    audit = audit_citations("Voyager 1 launched in 1977 [1], and left the heliosphere [3].", 3)
+    audit = audit_citations(
+        "Voyager 1 launched in 1977 [1], and left the heliosphere [3].", 3
+    )
 
     assert audit.cited == [1, 3]
     assert audit.unresolved == []
@@ -79,7 +81,9 @@ def test_audit_treats_zero_as_unresolved() -> None:
 def test_build_answer_marks_a_cited_answer_grounded() -> None:
     with patch(
         "backend.app.rag.service.generate_answer",
-        return_value=GeneratedAnswer(text="Voyager 1 launched in 1977 [1].", model=SERVED_MODEL),
+        return_value=GeneratedAnswer(
+            text="Voyager 1 launched in 1977 [1].", model=SERVED_MODEL
+        ),
     ):
         result = build_answer("When did Voyager 1 launch?", [_passage("voyager-1-1")])
 
@@ -88,15 +92,20 @@ def test_build_answer_marks_a_cited_answer_grounded() -> None:
     assert result.unresolved_citations == []
 
 
-def test_build_answer_marks_an_uncited_answer_unsupported_despite_clearing_the_threshold() -> None:
+def test_build_answer_marks_uncited_answer_unsupported_despite_the_threshold() -> None:
     """The regression this whole change exists to prevent: passages scored
     above the threshold, so the old code called the result grounded no matter
     what the model said."""
     with patch(
         "backend.app.rag.service.generate_answer",
-        return_value=GeneratedAnswer(text="These passages do not say who the first woman in space was.", model=SERVED_MODEL),
+        return_value=GeneratedAnswer(
+            text="These passages do not say who the first woman in space was.",
+            model=SERVED_MODEL,
+        ),
     ):
-        result = build_answer("Who was the first woman in space?", [_passage("yuri-gagarin-1")])
+        result = build_answer(
+            "Who was the first woman in space?", [_passage("yuri-gagarin-1")]
+        )
 
     assert result.status == "unsupported"
     assert result.cited_passages == []
@@ -105,7 +114,9 @@ def test_build_answer_marks_an_uncited_answer_unsupported_despite_clearing_the_t
 def test_build_answer_surfaces_an_invented_citation() -> None:
     with patch(
         "backend.app.rag.service.generate_answer",
-        return_value=GeneratedAnswer(text="It launched in 1977 [4].", model=SERVED_MODEL),
+        return_value=GeneratedAnswer(
+            text="It launched in 1977 [4].", model=SERVED_MODEL
+        ),
     ):
         result = build_answer("When did Voyager 1 launch?", [_passage("voyager-1-1")])
 

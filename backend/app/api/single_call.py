@@ -151,7 +151,7 @@ async def generate(
             )
         else:
             result = await run_plain_call(session, prompt_text=prompt)
-    except _UnsupportedSchema as exc:
+    except _UnsupportedSchemaError as exc:
         return _error(422, "unsupported_response_schema", str(exc))
     except InvalidPromptError as exc:
         return _error(422, exc.code, str(exc))
@@ -177,7 +177,7 @@ async def generate(
     return JSONResponse(status_code=200, content=response.model_dump())
 
 
-class _UnsupportedSchema(Exception):
+class _UnsupportedSchemaError(Exception):
     """Raised when a request names a schema this deployment does not validate."""
 
 
@@ -199,7 +199,7 @@ def _schema_model_for(
         The Pydantic model to validate the response against.
 
     Raises:
-        _UnsupportedSchema: If `response_schema` carries no `title`, or a title
+        _UnsupportedSchemaError: If `response_schema` carries no `title`, or a title
             no curated schema uses. Not silently ignored -- falling back to the
             demo schema would validate the response against something the
             caller never asked for and report it as conforming.
@@ -208,10 +208,10 @@ def _schema_model_for(
         title = payload.response_schema.get("title")
         model = schema_model_for_title(title) if isinstance(title, str) else None
         if model is None:
-            raise _UnsupportedSchema(
-                f"Unrecognised response_schema {title!r}. This demo validates against its "
-                "curated schemas; fetch one from GET /api/single-call/presets and send it "
-                "back, or omit response_schema to use the default."
+            raise _UnsupportedSchemaError(
+                f"Unrecognised response_schema {title!r}. This demo validates against "
+                "its curated schemas; fetch one from GET /api/single-call/presets and "
+                "send it back, or omit response_schema to use the default."
             )
         return model
     if preset is not None:

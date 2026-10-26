@@ -18,10 +18,9 @@ order) and asyncio.run() rather than pytest-asyncio.
 
 from __future__ import annotations
 
-from typing import Any
-
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 
@@ -30,14 +29,16 @@ from backend.app.services import shared
 
 
 class _FakeExecuteResult:
-    def __init__(self, scalar: object = None, all_rows: list[object] | None = None) -> None:
+    def __init__(
+        self, scalar: object = None, all_rows: list[object] | None = None
+    ) -> None:
         self._scalar = scalar
         self._all_rows = all_rows or []
 
     def scalar_one_or_none(self) -> object:
         return self._scalar
 
-    def scalars(self) -> "_FakeExecuteResult":
+    def scalars(self) -> _FakeExecuteResult:
         return self
 
     def all(self) -> list[object]:
@@ -74,7 +75,9 @@ def test_a_capability_exhausted_last_hour_serves_again_this_hour() -> None:
 
     _reserve(session)
 
-    assert exhausted.used == 1, "counter should reset to 0 then take this hour's first unit"
+    assert exhausted.used == 1, (
+        "counter should reset to 0 then take this hour's first unit"
+    )
     assert exhausted.window_start == shared.utc_window()
 
 
@@ -103,7 +106,9 @@ def test_a_partially_used_window_is_not_reset_mid_hour() -> None:
 def test_a_stale_window_resets_even_when_far_in_the_past() -> None:
     """A service idle for months must not come back still exhausted."""
     long_ago = shared.utc_window() - timedelta(days=400)
-    limit = UsageLimit(capability="generation", used=100, cap=100, window_start=long_ago)
+    limit = UsageLimit(
+        capability="generation", used=100, cap=100, window_start=long_ago
+    )
     session: Any = _FakeSession(queued_results=[_FakeExecuteResult(scalar=limit)])
 
     _reserve(session, "generation")
@@ -137,7 +142,9 @@ def test_a_missing_window_fails_closed_rather_than_clearing_the_counter() -> Non
         _reserve(session)
 
     assert limit.used == 30
-    assert limit.window_start == shared.utc_window(), "the window should be adopted, not the reset"
+    assert limit.window_start == shared.utc_window(), (
+        "the window should be adopted, not the reset"
+    )
 
 
 def test_the_unavailable_message_tells_the_visitor_when_it_recovers() -> None:
@@ -159,9 +166,9 @@ def test_the_window_key_is_utc_not_local_time() -> None:
     """
     window = shared.utc_window()
 
-    assert window.tzinfo == timezone.utc
+    assert window.tzinfo == UTC
     assert (window.minute, window.second, window.microsecond) == (0, 0, 0)
-    assert window == datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    assert window == datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
 
 
 def test_two_reservations_in_the_same_hour_share_one_window() -> None:

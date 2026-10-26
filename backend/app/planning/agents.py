@@ -416,7 +416,9 @@ def _format_plan(plan: Plan) -> str:
     Returns:
         One line per step.
     """
-    return "\n".join(f"{step.index}. [{step.kind}] {step.description}" for step in plan.steps)
+    return "\n".join(
+        f"{step.index}. [{step.kind}] {step.description}" for step in plan.steps
+    )
 
 
 def _format_step_results(results: list[StepResult]) -> str:

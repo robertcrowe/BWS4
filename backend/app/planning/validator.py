@@ -82,15 +82,19 @@ def validate_plan(plan: Plan) -> list[str]:
     steps = plan.steps
 
     if not plan.goal.strip():
-        errors.append("The `goal` field was empty. Restate the visitor's goal in your own words.")
+        errors.append(
+            "The `goal` field was empty. Restate the visitor's goal in your own words."
+        )
 
     if len(steps) < MIN_STEPS or len(steps) > MAX_STEPS:
         errors.append(
-            f"The plan had {len(steps)} steps. A plan must have between {MIN_STEPS} and "
-            f"{MAX_STEPS} steps in total."
+            f"The plan had {len(steps)} steps. A plan must have between {MIN_STEPS} "
+            f"and {MAX_STEPS} steps in total."
         )
 
-    synthesis_positions = [i for i, step in enumerate(steps) if step.kind == KIND_SYNTHESIS]
+    synthesis_positions = [
+        i for i, step in enumerate(steps) if step.kind == KIND_SYNTHESIS
+    ]
 
     if not synthesis_positions:
         errors.append(
@@ -105,15 +109,16 @@ def validate_plan(plan: Plan) -> list[str]:
     elif synthesis_positions[0] != len(steps) - 1:
         errors.append(
             f"The `synthesis` step was at position {synthesis_positions[0] + 1} of "
-            f"{len(steps)}. It must be the last step, because it composes the itinerary "
-            "from the research steps before it."
+            f"{len(steps)}. It must be the last step, because it composes the "
+            "itinerary from the research steps before it."
         )
 
     for step in steps:
         if step.kind == KIND_RESEARCH and not (step.search_query or "").strip():
             errors.append(
-                f"Research step {step.index} ({step.description!r}) had no `search_query`. "
-                "Every research step must carry the literal text to send to a web search."
+                f"Research step {step.index} ({step.description!r}) had no "
+                "`search_query`. Every research step must carry the literal text to "
+                "send to a web search."
             )
         if step.kind == KIND_SYNTHESIS and (step.search_query or "").strip():
             errors.append(
@@ -122,8 +127,8 @@ def validate_plan(plan: Plan) -> list[str]:
             )
         if not step.description.strip():
             errors.append(
-                f"Step {step.index} had an empty `description`. Each step's description is "
-                "shown to the visitor before the plan runs."
+                f"Step {step.index} had an empty `description`. Each step's "
+                "description is shown to the visitor before the plan runs."
             )
 
     return errors
@@ -170,9 +175,9 @@ def trim_plan(plan: Plan) -> tuple[Plan, str | None]:
 
     note = (
         f"The planner proposed {len(research)} research steps; this demo runs at most "
-        f"{MAX_RESEARCH_STEPS}, so {dropped} were dropped before anything ran. That is a "
-        "budget limit of this deployment, not of the planning-agent pattern — a real one "
-        "would run every step it planned."
+        f"{MAX_RESEARCH_STEPS}, so {dropped} were dropped before anything ran. That is "
+        "a budget limit of this deployment, not of the planning-agent pattern — a real "
+        "one would run every step it planned."
     )
     return Plan(goal=plan.goal, steps=renumbered), note
 

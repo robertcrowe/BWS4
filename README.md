@@ -120,8 +120,9 @@ one `.env` file at the repo root.
    >
    > The router example also reads this table: at startup it lists the indexed document
    > titles to build the retrieval route's description. If the table is empty or
-   > unreachable, the API still boots, and the router's presets endpoint answers 503
-   > "not ready" until the titles can be read.
+   > unreachable, the API still boots, the router's presets endpoint reports
+   > `available: false`, and the Router screen shows its unavailable state with a
+   > **Retry** button (`POST /api/router/retry`) until the titles can be read.
 
 ## Running the Application
 
@@ -144,26 +145,27 @@ The app will be available at `http://localhost:5173` (or the port Vite reports),
 **Tests, lint, and typecheck:**
 
 ```shell
-uv run pytest backend/tests          # no database or provider required
-uv run ruff check backend            # Python lint
-uv run ruff format --check backend   # Python formatting
-uv run mypy backend/app              # Python typecheck (strict on v5 code)
+uv run pytest backend/tests          # no database; real GROQ_API_KEY + OPENAI_API_KEY required
+uv run ruff check .                  # Python lint
+uv run ruff format --check .         # Python formatting
+uv run mypy                          # Python typecheck (strict over all of backend/)
 npm run test --prefix frontend
 npm run lint --prefix frontend
 npm run build --prefix frontend      # `tsc -b` runs here, so this is also the typecheck
 ```
 
-Ruff and mypy arrived with the orchestrated-subagents revision, against a backend
-that had never had either. Both are **scoped on purpose**: the gate covers code
-written from that revision onward, and the paths that predate it are listed one
-per line in `pyproject.toml`. Running Ruff across the whole backend reports 366
-findings and would reformat 57 files, which would bury a feature diff in
-whitespace. Removing a path from those lists is a deliberate cleanup, not
-something to do by accident.
+Ruff and mypy arrived with the orchestrated-subagents revision, scoped at first to
+the code written from that revision onward. The v10 cleanup removed every
+exclusion: Ruff now checks and formats the whole repository, and mypy runs
+`strict` over the whole `backend/` tree (application and tests) with no
+per-module `ignore_errors` overrides, so a new module is covered by default.
 
-The backend suite needs neither a live Postgres nor a live model provider: `conftest.py` supplies
-fake-but-valid config so `Settings` validates, DB-touching routes are exercised through an
-in-memory fake session, and provider calls are stubbed at their point of use.
+The backend suite needs no live Postgres and makes no paid provider calls: `conftest.py` supplies
+fake-but-valid values for the other settings, DB-touching routes are exercised through an
+in-memory fake session, and provider calls are stubbed at their point of use. It does need the
+real `GROQ_API_KEY` and `OPENAI_API_KEY` (from `.env` or the environment), because `Settings`
+refuses to load without them; the moderation endpoint is held offline by an autouse fixture.
+The `-m live` smoke tests stay opt-in and are deselected by default.
 
 ### Using the app
 
@@ -190,9 +192,9 @@ platform's secrets manager.
 | `DATABASE_URL` | ✅ | Neon pooled Postgres connection string. Must be asyncpg-style: `postgresql+asyncpg://…?ssl=require` — *not* the `postgresql://…?sslmode=require` form Neon shows by default. |
 | `CORS_ORIGIN` | ✅ | The deployed frontend's exact origin. The API allows this single origin and never `*`. |
 | `OPENROUTER_API_KEY` | ✅ | Text generation via OpenRouter, reached by both model lanes — LiteLLM for the RAG, tool-use, and single-call apps, PydanticAI for the chained-calls app. Serves as the deep fallback in both model chains. |
-| `GROQ_API_KEY` | — | Optional second LLM provider, used by **both** model chains (tool calling and text generation) and by **both** lanes (LiteLLM and PydanticAI). Groq's free tier is metered **per model** (1,000+ requests/day each) rather than as one account-wide pool, so it leads both chains when set. Unset → `groq/` entries are dropped everywhere and OpenRouter serves alone. |
+| `GROQ_API_KEY` | ✅ | LLM provider used by **both** model chains (tool calling and text generation) and by **both** lanes (LiteLLM and PydanticAI). Groq's free tier is metered **per model** (1,000+ requests/day each) rather than as one account-wide pool, so it leads both chains. Required in every environment, tests included: missing or empty → startup fails naming it. No placeholder, no opt-out. |
 | `EXA_API_KEY` | ✅ | Live web search, called by the tool-use agent when *it* decides to search. |
-| `OPENAI_API_KEY` | — | The OpenAI moderation endpoint, used as the safety gate on **all free-text input across every example app**. Free of charge and separate from the free-model pool, so it costs a run nothing. **Unset → the gate fails closed and every free-text submission is refused** with `moderation_unavailable`. Each app's curated examples still work: they are verified server-side by byte-match and skip the gate by design, so an unconfigured deployment stays demonstrable. |
+| `OPENAI_API_KEY` | ✅ | The OpenAI moderation endpoint, used as the safety gate on **all free-text input across every example app**. Free of charge and separate from the free-model pool, so it costs a run nothing. Required in every environment, tests included: missing or empty → startup fails naming it. No placeholder, no opt-out. If the endpoint itself is unreachable at request time, the gate fails closed and the free-text submission is refused with `moderation_unavailable`; each app's curated examples are verified server-side by byte-match and skip the gate by design. |
 | `MODERATION_HASH_SALT` | — | Salt for the question hashes written to `moderation_log` and to the orchestrated run summary. (The multi-agent collaboration app hashes nothing: its inputs are a scenario enum and a numeric vector, so there is no free text to protect.) Unset → a process-stable salt is generated and a warning is logged, so hashes stop comparing across restarts. Raw question text is never stored either way. |
 | `PORT` | — | Defaults to `8000`; the VPS deployment relies on the default (Caddy proxies to `127.0.0.1:8000`). Don't leave it blank in `.env` — an empty value fails `int` parsing at startup. |
 | `EMBEDDING_MODEL_NAME` | — | Defaults to `sentence-transformers/all-MiniLM-L6-v2`. |
@@ -344,7 +346,7 @@ Other deployment notes:
 ## Roadmap
 
 - **Playwright** — end-to-end browser testing is planned but not yet part of this project's test suite or CI pipeline. Worth knowing that this is currently the widest gap in coverage: the app is verified by component tests and by calls against the live API, but no browser has been driven against it. Seven screens are affected — embeddings, single call, chained calls, planning, orchestrated subagents, multi-agent collaboration and the router.
-- **A rate limit.** The hourly caps bound the hour, not the burst, and two costs are exposed to that. In-process embedding spends local CPU rather than third-party quota, so it is deliberately uncapped — but on a free dyno the burst is the real cost. And OpenRouter enforces **20 requests/minute** on free models regardless of the daily allowance, so a burst can 429 with the daily budget barely touched. A rate limit is the right instrument for both; nothing has been built.
+- **A rate limit.** The hourly caps bound the hour, not the burst, and two costs are exposed to that. In-process embedding spends local CPU rather than third-party quota, so it is deliberately uncapped — but on a 2-vCore VPS the burst is the real cost. And OpenRouter enforces **20 requests/minute** on free models regardless of the daily allowance, so a burst can 429 with the daily budget barely touched. A rate limit is the right instrument for both; nothing has been built.
 - **An authenticated operator view of `usage_limits` / `service_log_entries`.** Both tables are written on every call and there is currently no in-app reader; an earlier public one was removed for spending real quota and echoing visitors' text. Any replacement needs authentication that fails closed and must not echo visitor input.
 - Additional example apps demonstrating further AI patterns, added incrementally without affecting existing ones.
 

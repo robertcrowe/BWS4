@@ -1,5 +1,5 @@
 # Built with Spec4 AI - https://spec4.ai
-"""Thin FastAPI handlers for the chained_calls_example_app, mirroring api/single_call.py.
+"""Thin FastAPI handlers for chained_calls_example_app, mirroring api/single_call.py.
 
 A chain whose second call failed is returned as **200** with
 `status: "critique_failed"`, not as an error. Call 1 succeeded and its output is

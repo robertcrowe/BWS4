@@ -1,8 +1,8 @@
 # Built with Spec4 AI - https://spec4.ai
 
-from typing import Any
 import asyncio
 import math
+from typing import Any
 
 from backend.app.db.models import DatasetEmbedding, TextRepresentation
 from backend.app.rag.chunking import chunk_document
@@ -39,17 +39,19 @@ class _FakeAsyncSession:
 
 
 def _expected_passage_count() -> int:
-    return sum(len(chunk_document(doc.title, doc.text)) for doc in load_dataset_documents())
+    return sum(
+        len(chunk_document(doc.title, doc.text)) for doc in load_dataset_documents()
+    )
 
 
 def _cosine_distance(a: list[float], b: list[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
     norm_a = math.sqrt(sum(x * x for x in a))
     norm_b = math.sqrt(sum(y * y for y in b))
     return 1 - dot / (norm_a * norm_b)
 
 
-def test_index_dataset_writes_one_dataset_embedding_and_representation_row_per_passage() -> None:
+def test_index_dataset_writes_an_embedding_and_representation_row_per_passage() -> None:
     expected_count = _expected_passage_count()
     session: Any = _FakeAsyncSession()
 
@@ -59,7 +61,9 @@ def test_index_dataset_writes_one_dataset_embedding_and_representation_row_per_p
     assert session.committed is True
 
     dataset_rows = [obj for obj in session.added if isinstance(obj, DatasetEmbedding)]
-    representation_rows = [obj for obj in session.added if isinstance(obj, TextRepresentation)]
+    representation_rows = [
+        obj for obj in session.added if isinstance(obj, TextRepresentation)
+    ]
 
     assert len(dataset_rows) == expected_count
     assert len(representation_rows) == expected_count
@@ -68,7 +72,7 @@ def test_index_dataset_writes_one_dataset_embedding_and_representation_row_per_p
     assert len({row.passage_id for row in dataset_rows}) == expected_count
 
 
-def test_cosine_distance_query_against_a_known_passages_own_embedding_returns_itself() -> None:
+def test_cosine_distance_query_for_a_known_passages_embedding_returns_itself() -> None:
     """Emulates pgvector's `embedding <=> :query_vector` cosine-distance
     ordering in plain Python against the same vectors index_dataset.py would
     write, since no live Postgres/pgvector instance is available here."""

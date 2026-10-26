@@ -13,13 +13,11 @@ alone.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-
-from typing import Any
-
 import os
 import time
+from collections.abc import Iterator
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -655,7 +653,8 @@ class TestRotIsReportedAndNotJustLogged:
 
         with patch.object(model_registry, "report_model_health") as reported:
             model_registry.note_rate_limit(
-                slug, "on tokens per day (TPD): Limit 200000. Please try again in 3m36s."
+                slug,
+                "on tokens per day (TPD): Limit 200000. Please try again in 3m36s.",
             )
 
         reported.assert_called_once()

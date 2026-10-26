@@ -14,15 +14,13 @@ pytest-asyncio, and `@pytest.mark.asyncio` would silently skip.
 
 from __future__ import annotations
 
-from typing import Any, cast
-
 import asyncio
+from typing import Any, cast
 from unittest.mock import patch
 
+import pytest
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
-
-import pytest
 
 from backend.app.planning import agents, budget, sanitize, service
 from backend.app.planning.schemas import Plan, PlanStep, StepResult
@@ -39,8 +37,16 @@ STEP = PlanStep(
 )
 
 RESULTS = [
-    ExaResult(title="Time Out Market", summary="A food hall in Cais do Sodre.", source="https://a.test/1"),
-    ExaResult(title="Tasca do Chico", summary="A small tasca in Bairro Alto.", source="https://a.test/2"),
+    ExaResult(
+        title="Time Out Market",
+        summary="A food hall in Cais do Sodre.",
+        source="https://a.test/1",
+    ),
+    ExaResult(
+        title="Tasca do Chico",
+        summary="A small tasca in Bairro Alto.",
+        source="https://a.test/2",
+    ),
 ]
 
 
@@ -63,24 +69,35 @@ def _run(coro: Any) -> Any:
 class TestResearchExecutor:
     """The tool-using step, and the one place a model could lie about sources."""
 
-    def test_the_model_calls_the_search_tool_and_summarises_what_came_back(self) -> None:
+    def test_the_model_calls_the_search_tool_and_summarises_what_came_back(
+        self,
+    ) -> None:
         def behave(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
             if len(messages) == 1:
                 return ModelResponse(
-                    parts=[ToolCallPart("web_search", {"query": "best street food Lisbon"})]
+                    parts=[
+                        ToolCallPart("web_search", {"query": "best street food Lisbon"})
+                    ]
                 )
             return ModelResponse(
                 parts=[
                     ToolCallPart(
                         info.output_tools[0].name,
-                        {"summary": "Time Out Market and Tasca do Chico look promising."},
+                        {
+                            "summary": (
+                                "Time Out Market and Tasca do Chico look promising."
+                            )
+                        },
                     )
                 ]
             )
 
         execute, seen = _search_returning(RESULTS)
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
+            lambda chain=None, **_: FunctionModel(behave),
+        ):
             outcome = _run(
                 agents.run_research(goal=GOAL, step=STEP, execute_search=execute)
             )
@@ -98,6 +115,7 @@ class TestResearchExecutor:
         real one, which is the exact defect `citations.py` exists to prevent in
         the RAG app.
         """
+
         def behave(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
             if len(messages) == 1:
                 return ModelResponse(parts=[ToolCallPart("web_search", {"query": "q"})])
@@ -112,8 +130,13 @@ class TestResearchExecutor:
 
         execute, _ = _search_returning(RESULTS)
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
-            outcome = _run(agents.run_research(goal=GOAL, step=STEP, execute_search=execute))
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
+            lambda chain=None, **_: FunctionModel(behave),
+        ):
+            outcome = _run(
+                agents.run_research(goal=GOAL, step=STEP, execute_search=execute)
+            )
 
         urls = {source.url for source in outcome.sources}
         assert urls == {"https://a.test/1", "https://a.test/2"}
@@ -134,7 +157,10 @@ class TestResearchExecutor:
 
         execute, _ = _search_returning(RESULTS)
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
+            lambda chain=None, **_: FunctionModel(behave),
+        ):
             _run(agents.run_research(goal=GOAL, step=STEP, execute_search=execute))
 
         assert captured
@@ -158,15 +184,22 @@ class TestResearchExecutor:
                 turns,
                 ModelResponse(
                     parts=[
-                        ToolCallPart(info.output_tools[0].name, {"summary": "found on retry"})
+                        ToolCallPart(
+                            info.output_tools[0].name, {"summary": "found on retry"}
+                        )
                     ]
                 ),
             )
 
         execute, seen = _search_returning([], RESULTS)
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
-            outcome = _run(agents.run_research(goal=GOAL, step=STEP, execute_search=execute))
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
+            lambda chain=None, **_: FunctionModel(behave),
+        ):
+            outcome = _run(
+                agents.run_research(goal=GOAL, step=STEP, execute_search=execute)
+            )
 
         assert seen == ["first", "second"]
         assert outcome.queries == ["first", "second"]
@@ -183,13 +216,20 @@ class TestResearchExecutor:
         def behave(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
             return next(
                 turns,
-                ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"summary": "s"})]),
+                ModelResponse(
+                    parts=[ToolCallPart(info.output_tools[0].name, {"summary": "s"})]
+                ),
             )
 
         execute, _ = _search_returning(RESULTS, RESULTS)
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
-            outcome = _run(agents.run_research(goal=GOAL, step=STEP, execute_search=execute))
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
+            lambda chain=None, **_: FunctionModel(behave),
+        ):
+            outcome = _run(
+                agents.run_research(goal=GOAL, step=STEP, execute_search=execute)
+            )
 
         assert len(outcome.sources) == 2
 
@@ -198,13 +238,22 @@ class TestResearchExecutor:
         # turns an empty source list into an honest "found nothing" summary.
         def behave(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
             return ModelResponse(
-                parts=[ToolCallPart(info.output_tools[0].name, {"summary": "I already know this."})]
+                parts=[
+                    ToolCallPart(
+                        info.output_tools[0].name, {"summary": "I already know this."}
+                    )
+                ]
             )
 
         execute, seen = _search_returning(RESULTS)
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
-            outcome = _run(agents.run_research(goal=GOAL, step=STEP, execute_search=execute))
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
+            lambda chain=None, **_: FunctionModel(behave),
+        ):
+            outcome = _run(
+                agents.run_research(goal=GOAL, step=STEP, execute_search=execute)
+            )
 
         assert seen == []
         assert outcome.sources == []
@@ -249,7 +298,8 @@ class TestTheSearchCapIsEnforcedInCode:
         behave, attempts = self._always_searches()
         execute, seen = _search_returning([], [], [], [], [])
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model",
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
             lambda chain=None, **_: FunctionModel(behave),
         ):
             with pytest.raises(StepRequestLimitExceeded):
@@ -276,7 +326,8 @@ class TestTheSearchCapIsEnforcedInCode:
             calls.append(query)
             return []
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model",
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
             lambda chain=None, **_: FunctionModel(behave),
         ):
             with pytest.raises(StepRequestLimitExceeded):
@@ -310,7 +361,8 @@ class TestTheSearchCapIsEnforcedInCode:
 
         execute, seen = _search_returning(RESULTS, RESULTS)
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model",
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
             lambda chain=None, **_: FunctionModel(behave),
         ):
             outcome = _run(
@@ -337,7 +389,8 @@ class TestTheSearchCapIsEnforcedInCode:
             refusals.append(str(messages[-1]))
             return cast(ModelResponse, behave(messages, info))
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model",
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
             lambda chain=None, **_: FunctionModel(capture),
         ):
             with pytest.raises(StepRequestLimitExceeded):
@@ -358,6 +411,7 @@ class TestTheSearchCapIsEnforcedInCode:
         """The cap bounds the abuse and not the behaviour the capability asks
         for -- the empty-results mitigation is a second search, and two is the
         cap."""
+
         def behave(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
             if len(messages) == 1:
                 return ModelResponse(
@@ -368,12 +422,15 @@ class TestTheSearchCapIsEnforcedInCode:
                     parts=[ToolCallPart("web_search", {"query": "reformulated"})]
                 )
             return ModelResponse(
-                parts=[ToolCallPart(info.output_tools[0].name, {"summary": "Found it."})]
+                parts=[
+                    ToolCallPart(info.output_tools[0].name, {"summary": "Found it."})
+                ]
             )
 
         execute, seen = _search_returning([], RESULTS)
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model",
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
             lambda chain=None, **_: FunctionModel(behave),
         ):
             outcome = _run(
@@ -535,7 +592,10 @@ class TestPlanner:
                 ]
             )
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
+            lambda chain=None, **_: FunctionModel(behave),
+        ):
             _run(
                 agents.run_planner(
                     goal=GOAL,
@@ -555,15 +615,31 @@ class TestPlanner:
                 parts=[
                     ToolCallPart(
                         info.output_tools[0].name,
-                        {"goal": "g", "steps": [
-                            {"index": 1, "kind": "research", "description": "d", "search_query": "q"},
-                            {"index": 2, "kind": "synthesis", "description": "d", "search_query": None},
-                        ]},
+                        {
+                            "goal": "g",
+                            "steps": [
+                                {
+                                    "index": 1,
+                                    "kind": "research",
+                                    "description": "d",
+                                    "search_query": "q",
+                                },
+                                {
+                                    "index": 2,
+                                    "kind": "synthesis",
+                                    "description": "d",
+                                    "search_query": None,
+                                },
+                            ],
+                        },
                     )
                 ]
             )
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
+            lambda chain=None, **_: FunctionModel(behave),
+        ):
             _run(agents.run_planner(goal=GOAL))
 
         assert "rejected by the plan checker" not in prompts[0]
@@ -600,12 +676,21 @@ class TestSynthesis:
                 ]
             )
 
-        plan = Plan(goal="g", steps=[STEP, PlanStep(index=2, kind="synthesis", description="d")])
+        plan = Plan(
+            goal="g", steps=[STEP, PlanStep(index=2, kind="synthesis", description="d")]
+        )
         results = [
-            StepResult(step_index=1, status="failed", summary="This step could not be completed."),
+            StepResult(
+                step_index=1,
+                status="failed",
+                summary="This step could not be completed.",
+            ),
         ]
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
+            lambda chain=None, **_: FunctionModel(behave),
+        ):
             _run(agents.run_synthesis(goal=GOAL, plan=plan, results=results))
 
         assert "failed" in prompts[0]
@@ -624,10 +709,17 @@ class TestSynthesis:
                 ]
             )
 
-        plan = Plan(goal="g", steps=[STEP, PlanStep(index=2, kind="synthesis", description="d")])
-        results = [StepResult(step_index=1, status="completed", summary="Found things.")]
+        plan = Plan(
+            goal="g", steps=[STEP, PlanStep(index=2, kind="synthesis", description="d")]
+        )
+        results = [
+            StepResult(step_index=1, status="completed", summary="Found things.")
+        ]
 
-        with patch("backend.app.planning.agents.agent_runtime.build_fallback_model", lambda chain=None, **_: FunctionModel(behave)):
+        with patch(
+            "backend.app.planning.agents.agent_runtime.build_fallback_model",
+            lambda chain=None, **_: FunctionModel(behave),
+        ):
             _run(agents.run_synthesis(goal=GOAL, plan=plan, results=results))
 
         assert "UNTRUSTED_WEB_CONTENT" in prompts[0]

@@ -41,9 +41,7 @@ def load_dataset_documents(dataset_dir: Path = DATASET_DIR) -> list[Document]:
     Returns:
         Documents in filename-sorted order, one per dataset file.
     """
-    return [
-        _parse_document(path) for path in sorted(dataset_dir.glob("*.md"))
-    ]
+    return [_parse_document(path) for path in sorted(dataset_dir.glob("*.md"))]
 
 
 def _parse_document(path: Path) -> Document:
@@ -70,4 +68,6 @@ def _parse_document(path: Path) -> Document:
     body = raw[title_match.end() :]
     body = _SOURCE_FOOTER.split(body, maxsplit=1)[0]
 
-    return Document(title=title_match.group(1).strip(), text=body.strip(), source_path=path)
+    return Document(
+        title=title_match.group(1).strip(), text=body.strip(), source_path=path
+    )

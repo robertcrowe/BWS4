@@ -43,8 +43,8 @@ semantic overlap signal behind these checks". None of them needs one: a semantic
 score cannot tell a quotation from a paraphrase, which is the exact distinction
 the traceability check exists to make. Reaching for the embedder would also
 break the property this module's tests assert -- that nothing here can reach a
-model or a datastore -- and would load a model into the request path of a free
-dyno to answer a question that is not being asked.
+model or a datastore -- and would load a model into the request path of a small
+shared host to answer a question that is not being asked.
 
 ## Distinctness is a guard, not a verdict
 

@@ -21,15 +21,16 @@ usage-limit, persistence, and logging concerns -- those live in tools/service.py
 from __future__ import annotations
 
 import json
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
+from typing import Protocol
 
 import litellm
 import structlog
 
 from backend.app.services import model_registry
-from backend.app.services.web_search import ExaClientError, ExaRateLimitError, ExaResult
 from backend.app.services.prompt_context import with_current_date
+from backend.app.services.web_search import ExaClientError, ExaRateLimitError, ExaResult
 from backend.app.tools.prompt_loader import load_prompt
 
 logger = structlog.get_logger()
@@ -107,7 +108,40 @@ class AgentRun:
 SearchExecutor = Callable[[str], Awaitable[list[ExaResult]]]
 
 
-def _assistant_message(message: object) -> dict:
+# The slice of a LiteLLM completion this loop reads. LiteLLM types
+# `acompletion` as returning Any, so these name what is actually relied on.
+class _ToolFunction(Protocol):
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def arguments(self) -> str: ...
+
+
+class _ToolCall(Protocol):
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def function(self) -> _ToolFunction: ...
+
+
+class _Message(Protocol):
+    @property
+    def content(self) -> str | None: ...
+
+
+class _Choice(Protocol):
+    @property
+    def message(self) -> _Message: ...
+
+
+class _Completion(Protocol):
+    @property
+    def choices(self) -> Sequence[_Choice]: ...
+
+
+def _assistant_message(message: object) -> dict[str, object]:
     """Rebuild an assistant turn as a plain dict for the next request.
 
     LiteLLM's message objects carry provider-specific and None-valued fields
@@ -121,7 +155,7 @@ def _assistant_message(message: object) -> dict:
         An OpenAI-shaped assistant message dict.
     """
     calls = getattr(message, "tool_calls", None) or []
-    rebuilt: dict = {
+    rebuilt: dict[str, object] = {
         "role": "assistant",
         "content": getattr(message, "content", "") or "",
     }
@@ -140,7 +174,7 @@ def _assistant_message(message: object) -> dict:
     return rebuilt
 
 
-def _parse_query(call: object) -> str | None:
+def _parse_query(call: _ToolCall) -> str | None:
     """Extract the `query` argument from a tool call, if it is usable.
 
     Args:
@@ -160,8 +194,8 @@ def _parse_query(call: object) -> str | None:
 
 
 async def _complete(
-    messages: list[dict], *, pinned: str | None, force_answer: bool
-) -> object:
+    messages: list[dict[str, object]], *, pinned: str | None, force_answer: bool
+) -> _Completion:
     """Call the model over the free-model chain.
 
     LiteLLM walks `fallbacks` itself on failure, so there is no hand-rolled
@@ -198,7 +232,7 @@ async def _complete(
     # Asking for an answer is the loop's only termination path, so it has to
     # survive both. Normal turns use a single "auto" attempt.
     if force_answer:
-        attempts: list[dict] = [
+        attempts: list[dict[str, object]] = [
             {"tools": TOOL_SCHEMAS, "tool_choice": "none"},
             {},
         ]
@@ -208,7 +242,7 @@ async def _complete(
     last_error: Exception | None = None
     for extra in attempts:
         try:
-            return await litellm.acompletion(
+            response: _Completion = await litellm.acompletion(
                 model=chain[0],
                 messages=messages,
                 fallbacks=chain[1:],
@@ -217,6 +251,7 @@ async def _complete(
                 max_tokens=MAX_RESPONSE_TOKENS,
                 **extra,
             )
+            return response
         except Exception as exc:  # noqa: BLE001 - any provider/transport failure
             last_error = exc
             model_registry.note_failure(exc)
@@ -254,7 +289,7 @@ async def run_agent(question: str, *, execute_search: SearchExecutor) -> AgentRu
             A later search failing is reported back to the model instead, so
             it can answer from the results it already has.
     """
-    messages: list[dict] = [
+    messages: list[dict[str, object]] = [
         # Dated: without it the model anchors "recent" on its training
         # cutoff and writes that year into its own search query. Observed
         # live -- see services/prompt_context.py.
@@ -317,7 +352,9 @@ async def run_agent(question: str, *, execute_search: SearchExecutor) -> AgentRu
                         "name": SEARCH_TOOL_NAME,
                         "content": json.dumps(
                             {
-                                "error": "Malformed arguments; expected {'query': string}."
+                                "error": (
+                                    "Malformed arguments; expected {'query': string}."
+                                )
                             }
                         ),
                     }
@@ -332,7 +369,10 @@ async def run_agent(question: str, *, execute_search: SearchExecutor) -> AgentRu
                         "name": SEARCH_TOOL_NAME,
                         "content": json.dumps(
                             {
-                                "error": "Search budget exhausted. Answer with what you have."
+                                "error": (
+                                    "Search budget exhausted. Answer with what you "
+                                    "have."
+                                )
                             }
                         ),
                     }
@@ -364,7 +404,9 @@ async def run_agent(question: str, *, execute_search: SearchExecutor) -> AgentRu
                         "name": SEARCH_TOOL_NAME,
                         "content": json.dumps(
                             {
-                                "error": "Search unavailable. Answer from earlier results."
+                                "error": (
+                                    "Search unavailable. Answer from earlier results."
+                                )
                             }
                         ),
                     }

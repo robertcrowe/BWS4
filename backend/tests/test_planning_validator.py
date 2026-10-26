@@ -25,13 +25,19 @@ from backend.app.planning.validator import (
 
 def _research(index: int, query: str = "a query") -> PlanStep:
     return PlanStep(
-        index=index, kind="research", description=f"Research step {index}", search_query=query
+        index=index,
+        kind="research",
+        description=f"Research step {index}",
+        search_query=query,
     )
 
 
 def _synthesis(index: int) -> PlanStep:
     return PlanStep(
-        index=index, kind="synthesis", description="Compose the itinerary", search_query=None
+        index=index,
+        kind="synthesis",
+        description="Compose the itinerary",
+        search_query=None,
     )
 
 
@@ -77,7 +83,9 @@ class TestRejection:
         assert any("exactly one" in error for error in errors)
 
     def test_a_research_step_without_a_query_is_rejected(self) -> None:
-        naked = PlanStep(index=1, kind="research", description="Look into it", search_query=None)
+        naked = PlanStep(
+            index=1, kind="research", description="Look into it", search_query=None
+        )
 
         errors = validate_plan(_plan(naked, _synthesis(2)))
 
@@ -166,7 +174,11 @@ class TestTrimming:
         trimmed, _ = trim_plan(_plan(*steps))
 
         assert trimmed.steps[-1].kind == "synthesis"
-        assert [step.kind for step in trimmed.steps] == ["research", "research", "synthesis"]
+        assert [step.kind for step in trimmed.steps] == [
+            "research",
+            "research",
+            "synthesis",
+        ]
 
     def test_trimming_renumbers_the_surviving_steps_contiguously(self) -> None:
         # step_index and source_refs both point at these numbers. A gap would
@@ -180,11 +192,16 @@ class TestTrimming:
     def test_trimming_keeps_the_earliest_research_steps(self) -> None:
         # The planner is told to order steps as they will run, so the earlier
         # ones are the ones it treated as foundational.
-        steps = [_research(i, query=f"query {i}") for i in range(1, 5)] + [_synthesis(5)]
+        steps = [_research(i, query=f"query {i}") for i in range(1, 5)] + [
+            _synthesis(5)
+        ]
 
         trimmed, _ = trim_plan(_plan(*steps))
 
-        assert [step.search_query for step in trimmed.steps[:2]] == ["query 1", "query 2"]
+        assert [step.search_query for step in trimmed.steps[:2]] == [
+            "query 1",
+            "query 2",
+        ]
 
     def test_the_trim_note_says_it_is_a_budget_limit_not_a_pattern_limit(self) -> None:
         # The app's whole teaching claim is that the pattern is unbounded and

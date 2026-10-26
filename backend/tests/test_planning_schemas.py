@@ -119,7 +119,9 @@ class TestThePrompts:
         assert "last step" in prompt
         assert "search_query" in prompt
 
-    def test_the_research_prompt_bounds_reformulation_and_forbids_invention(self) -> None:
+    def test_the_research_prompt_bounds_reformulation_and_forbids_invention(
+        self,
+    ) -> None:
         prompt = _prompt("research_v1")
 
         assert "once more" in prompt

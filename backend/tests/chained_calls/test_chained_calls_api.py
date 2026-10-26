@@ -14,11 +14,11 @@ skip.
 
 from __future__ import annotations
 
-from typing import Any
-
 import asyncio
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.chained_calls import service
@@ -40,15 +40,14 @@ from backend.app.chained_calls.service import (
 from backend.app.db.models import UsageLimit
 from backend.app.db.session import get_db_session
 from backend.app.main import app
-import pytest
 
 
 @pytest.fixture(autouse=True)
 def _gate_allows_everything(allow_all_moderation: Any) -> None:
     """Every request here carries free text, which the shared gate now checks.
 
-    The gate is not this file's subject, and with no `OPENAI_API_KEY` in the
-    test environment it fails closed and would refuse all of them. Overridden
+    The gate is not this file's subject, and with the moderation endpoint held
+    offline for the suite it fails closed and would refuse all of them. Overridden
     per module rather than globally, so a test that *should* exercise the gate
     cannot pass by accident.
     """
@@ -208,7 +207,8 @@ def test_a_second_call_failure_keeps_the_intermediate_output() -> None:
     try:
         with patch.object(service, "run_step", steps):
             response = _client(session).post(
-                "/api/chained-calls/generate", json={"story_prompt": "a lighthouse keeper"}
+                "/api/chained-calls/generate",
+                json={"story_prompt": "a lighthouse keeper"},
             )
     finally:
         app.dependency_overrides.clear()
@@ -309,12 +309,15 @@ def test_an_exhausted_quota_blocks_the_whole_chain_before_any_call() -> None:
 
 def test_an_exhausted_quota_is_reported_as_503_with_no_partial_output() -> None:
     """The wire form of the same rule."""
-    exhausted = UsageLimit(capability="generation", used=100, cap=100, window_start=None)
+    exhausted = UsageLimit(
+        capability="generation", used=100, cap=100, window_start=None
+    )
     session: Any = FakeSession([exhausted])
     try:
         with patch.object(service, "run_step", _steps()):
             response = _client(session).post(
-                "/api/chained-calls/generate", json={"story_prompt": "a lighthouse keeper"}
+                "/api/chained-calls/generate",
+                json={"story_prompt": "a lighthouse keeper"},
             )
     finally:
         app.dependency_overrides.clear()
@@ -332,7 +335,8 @@ def test_a_first_call_failure_is_an_error_not_an_empty_chain() -> None:
     try:
         with patch.object(service, "run_step", steps):
             response = _client(session).post(
-                "/api/chained-calls/generate", json={"story_prompt": "a lighthouse keeper"}
+                "/api/chained-calls/generate",
+                json={"story_prompt": "a lighthouse keeper"},
             )
     finally:
         app.dependency_overrides.clear()

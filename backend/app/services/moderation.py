@@ -408,9 +408,10 @@ async def moderate(
 
     api_key = get_settings().openai_api_key
     if not api_key:
-        # Fail closed, loudly, and at call time rather than at import: a
-        # deployment without the key must still start and serve every app whose
-        # input is pre-vetted.
+        # Unreachable in a running service -- Settings makes the key required
+        # and startup fails without it -- but kept as defence in depth: if a
+        # key ever goes missing, the gate fails closed, loudly, rather than
+        # letting text through.
         logger.warning("moderation_key_missing", calling_context=calling_context)
         return await _unavailable(session, text, calling_context, started)
 

@@ -10,7 +10,6 @@ example app being edited. Nothing here calls a model or touches a database.
 from __future__ import annotations
 
 from collections.abc import Iterator
-
 from unittest.mock import patch
 
 import pytest
@@ -207,7 +206,10 @@ def test_the_built_model_pairs_each_slug_with_its_own_provider() -> None:
     A single shared credential would be wrong for a mixed chain, so each entry
     is constructed by its own adapter.
     """
-    chain = ["groq/openai/gpt-oss-120b", "openrouter/nvidia/nemotron-3-super-120b-a12b:free"]
+    chain = [
+        "groq/openai/gpt-oss-120b",
+        "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+    ]
     model = agent_runtime.build_fallback_model(chain)
 
     base_urls = [str(inner.base_url) for inner in model.models]
@@ -277,7 +279,9 @@ class TestTheFallbackObserver:
         """
         observe = agent_runtime._observe_fallback("research-step-1")
 
-        assert observe(ModelHTTPError(status_code=429, model_name="x", body=None)) is True
+        assert (
+            observe(ModelHTTPError(status_code=429, model_name="x", body=None)) is True
+        )
         assert observe(ValueError("a bug in this repo, not a provider fault")) is False
 
     def test_a_rate_limited_slug_leaves_the_chain_for_its_stated_window(self) -> None:

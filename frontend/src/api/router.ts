@@ -1,6 +1,6 @@
 // Built with Spec4 AI - https://spec4.ai
 import { fetchEventSource } from '@microsoft/fetch-event-source'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 /**
  * Typed client for the Router endpoints.
@@ -46,6 +46,13 @@ export interface RouterRoute {
 
 /** Response body of GET /api/router/presets. */
 export interface RouterPresetsResponse {
+  /**
+   * False while the route descriptions are not ready (a failed best-effort
+   * warm-up). The presets and decision settings are still served, but the
+   * description list is empty, the block and hash are null, and every run is
+   * refused until a retry succeeds.
+   */
+  available: boolean
   presets: RouterPreset[]
   setVersion: string
   /** Top-two score gap at or below which a run is low-confidence. */
@@ -57,9 +64,9 @@ export interface RouterPresetsResponse {
    * The exact string the router prompt receives. Render it verbatim — no
    * trimming, no markdown — or the byte-for-byte claim on the page is false.
    */
-  routeDescriptionsBlock: string
+  routeDescriptionsBlock: string | null
   /** Hex SHA-256 of `routeDescriptionsBlock`'s UTF-8 bytes, computed server-side. */
-  routeDescriptionsSha256: string
+  routeDescriptionsSha256: string | null
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
@@ -105,13 +112,14 @@ interface RouteWire {
 }
 
 interface PresetsWire {
+  available: boolean
   presets: PresetWire[]
   set_version: string
   decision_margin: number
   cost_order: RouteId[]
   route_descriptions: RouteWire[]
-  route_descriptions_block: string
-  route_descriptions_sha256: string
+  route_descriptions_block: string | null
+  route_descriptions_sha256: string | null
 }
 
 /**
@@ -130,6 +138,28 @@ async function errorDetail(response: Response, url: string): Promise<string> {
     // Not JSON; fall through to the status line.
   }
   return `The backend returned ${response.status} for ${url}.`
+}
+
+/**
+ * Turn a non-2xx response into an error carrying the server's refusal code.
+ *
+ * A refusal's `detail` is `{code, message}`; anything else falls back to a
+ * plain string detail or a status line, coded `request_failed`.
+ */
+async function refusalError(response: Response, url: string): Promise<RouterRequestError> {
+  const parsed: unknown = await response.json().catch(() => null)
+  const detail =
+    typeof parsed === 'object' && parsed !== null && 'detail' in parsed
+      ? (parsed as { detail: unknown }).detail
+      : null
+  if (typeof detail === 'object' && detail !== null && 'code' in detail) {
+    const refusal = detail as { code: string; message?: string }
+    return new RouterRequestError(refusal.message ?? refusal.code, refusal.code)
+  }
+  return new RouterRequestError(
+    typeof detail === 'string' ? detail : `The backend returned ${response.status} for ${url}.`,
+    'request_failed',
+  )
 }
 
 /**
@@ -160,6 +190,12 @@ export async function fetchRouterPresets(): Promise<RouterPresetsResponse> {
 
   const body = (await response.json()) as PresetsWire
   return {
+    // Defensive: a "ready" answer without its block or hash cannot back the
+    // byte-for-byte panel, so it is shown as unavailable rather than half-drawn.
+    available:
+      body.available === true &&
+      body.route_descriptions_block !== null &&
+      body.route_descriptions_sha256 !== null,
     presets: body.presets.map((preset) => ({
       id: preset.id,
       request: preset.request,
@@ -182,6 +218,9 @@ export async function fetchRouterPresets(): Promise<RouterPresetsResponse> {
   }
 }
 
+/** The TanStack Query key for the presets, so a successful retry can refetch them. */
+export const ROUTER_PRESETS_KEY = ['router', 'presets'] as const
+
 /**
  * TanStack Query hook for the Router presets.
  *
@@ -194,10 +233,54 @@ export async function fetchRouterPresets(): Promise<RouterPresetsResponse> {
  */
 export function useRouterPresets() {
   return useQuery({
-    queryKey: ['router', 'presets'],
+    queryKey: ROUTER_PRESETS_KEY,
     queryFn: fetchRouterPresets,
     staleTime: Infinity,
     retry: false,
+  })
+}
+
+/**
+ * Ask the backend to prepare the route descriptions again, without a restart.
+ *
+ * Free: no model call, and the server never reserves usage for it. A failure is
+ * the server's ordinary 503 `{code, message}` refusal.
+ *
+ * @returns Resolves once the Router is available again.
+ * @throws RouterRequestError if the retry failed or the backend is unreachable.
+ */
+export async function retryRouter(): Promise<{ available: true }> {
+  const url = `${API_BASE_URL}/api/router/retry`
+
+  let response: Response
+  try {
+    response = await fetch(url, { method: 'POST' })
+  } catch (cause) {
+    throw unreachable(url, cause)
+  }
+
+  if (!response.ok) {
+    throw await refusalError(response, url)
+  }
+  return { available: true }
+}
+
+/**
+ * TanStack Query mutation for the Retry button on the unavailable Router page.
+ *
+ * On success it invalidates the presets query, which is otherwise permanently
+ * fresh, so the page re-renders as ready without a reload. `retry` is pinned
+ * to 0, as for every Router call: one click is one attempt, never a silent
+ * back-off that hammers a backend which has just failed.
+ *
+ * @returns The mutation backing the Retry button.
+ */
+export function useRouterRetry() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: retryRouter,
+    retry: 0,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ROUTER_PRESETS_KEY }),
   })
 }
 
@@ -472,19 +555,7 @@ async function streamRouter(
       if (response.ok) {
         return
       }
-      const parsed: unknown = await response.json().catch(() => null)
-      const detail =
-        typeof parsed === 'object' && parsed !== null && 'detail' in parsed
-          ? (parsed as { detail: unknown }).detail
-          : null
-      if (typeof detail === 'object' && detail !== null && 'code' in detail) {
-        const refusal = detail as { code: string; message?: string }
-        throw new RouterRequestError(refusal.message ?? refusal.code, refusal.code)
-      }
-      throw new RouterRequestError(
-        typeof detail === 'string' ? detail : `The backend returned ${response.status} for ${url}.`,
-        'request_failed',
-      )
+      throw await refusalError(response, url)
     },
 
     onmessage(message) {

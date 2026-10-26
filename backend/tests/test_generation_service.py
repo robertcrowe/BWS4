@@ -10,7 +10,6 @@ models are dead.
 from __future__ import annotations
 
 from collections.abc import Iterator
-
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -82,7 +81,9 @@ def test_generation_reports_the_model_that_actually_served() -> None:
         result = generation.generate_text(system_prompt="sys", user_prompt="user")
 
     assert result.text == "hello"
-    assert result.model == served, "the served model must be normalized to its chain slug"
+    assert result.model == served, (
+        "the served model must be normalized to its chain slug"
+    )
 
 
 def test_generation_failure_benches_a_withdrawn_model_for_every_capability() -> None:
@@ -98,13 +99,19 @@ def test_generation_failure_benches_a_withdrawn_model_for_every_capability() -> 
     bare = shared_slug.split("/", 1)[1]
     with patch(
         "backend.app.services.generation.litellm.completion",
-        side_effect=RuntimeError(f"NotFoundError: {bare} - No endpoints found for this model"),
+        side_effect=RuntimeError(
+            f"NotFoundError: {bare} - No endpoints found for this model"
+        ),
     ):
         with pytest.raises(generation.GenerationServiceError):
             generation.generate_text(system_prompt="sys", user_prompt="user")
 
-    assert shared_slug not in model_registry.active_chain(model_registry.GENERATION_MODEL_CHAIN)
-    assert shared_slug not in model_registry.active_chain(model_registry.TOOL_MODEL_CHAIN)
+    assert shared_slug not in model_registry.active_chain(
+        model_registry.GENERATION_MODEL_CHAIN
+    )
+    assert shared_slug not in model_registry.active_chain(
+        model_registry.TOOL_MODEL_CHAIN
+    )
 
 
 def test_generation_rejects_an_empty_response_rather_than_returning_it() -> None:
